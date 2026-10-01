@@ -1,4 +1,4 @@
-<script>
+<script nonce="{{ csp_nonce() }}">
  function get(url){
      $('#loadingDiv').show();
      $('#msg').html("")
@@ -19,16 +19,16 @@
 </script>
 <div class="container isdi-page">
     <div>
-    <h4 class="display-4"> Privacy Checkup <a href="#" style="font-size: 20px" onclick="close_window('close the privacy checkup?');return false;">close the privacy checkup</a>
+    <h4 class="display-4"> Privacy Checkup <a href="#" style="font-size: 20px" data-action="close-window" data-confirm="close the privacy checkup?">close the privacy checkup</a>
         </h4>
         <h3>Android</h3>
 	<img class="content-image" src="/webstatic/images/android.resiz.png">
 	<br><br>
     <div class="button-cluster">
             {% for k, v in  {"account": "Account", "sync": "Accounts and Sync", "backup": "Backup account", "gmap": "Google Map Sharing", "gphotos": "Google Photos Sharing"}.items() %}
-            <button class="btn btn-primary mx-2"  onclick="get('/privacy/android/{{ k }}')" value="{{ k }}">{{ v | title }}</button>
+            <button class="btn btn-primary mx-2"  data-action="privacy-get" data-url="/privacy/android/{{ k }}" value="{{ k }}">{{ v | title }}</button>
             {% endfor %}
-            <button class="btn btn-secondary mx-2"  onclick="get('/privacy/android/screenshot')" value="screenshot">Screenshot</button>      
+            <button class="btn btn-secondary mx-2"  data-action="privacy-get" data-url="/privacy/android/screenshot" value="screenshot">Screenshot</button>      
         </div>
         <div class="jumbotron" id="msg">
         </div>

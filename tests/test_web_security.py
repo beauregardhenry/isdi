@@ -155,3 +155,44 @@ def test_root_check_quotes_device_command(monkeypatch):
         argv = shlex.split(line)
         assert argv[:4] == ["adb", "-s", "SERIAL1", "shell"]
         assert len(argv) == 5 and argv[4] in by_cmd
+
+
+def _csp_nonce(resp):
+    import re
+
+    m = re.search(r"'nonce-([^']+)'", resp.headers["Content-Security-Policy"])
+    assert m, resp.headers["Content-Security-Policy"]
+    return m.group(1)
+
+
+def test_csp_blocks_inline_script(client):
+    csp = client.get("/instruction").headers["Content-Security-Policy"]
+    script_src = next(d for d in csp.split(";") if d.strip().startswith("script-src"))
+    assert "'unsafe-inline'" not in script_src
+    assert "'unsafe-eval'" not in script_src
+    for directive in ("object-src 'none'", "base-uri 'none'", "frame-ancestors 'none'"):
+        assert directive in csp
+
+
+def test_csp_nonce_is_fresh_per_response(client):
+    assert _csp_nonce(client.get("/instruction")) != _csp_nonce(
+        client.get("/instruction")
+    )
+
+
+@pytest.mark.parametrize("url", ["/", "/instruction", "/privacy", "/form/"])
+def test_pages_only_use_nonced_scripts(client, url):
+    """Every inline <script> must carry this response's nonce, and no
+    inline on* handlers may remain (CSP would silently drop them)."""
+    import re
+
+    r = client.get(url)
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    # Commented-out markup is never parsed, so ignore it.
+    html = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+    nonce = _csp_nonce(r)
+    for tag in re.findall(r"<script\b[^>]*>", html):
+        assert "src=" in tag or f'nonce="{nonce}"' in tag, tag
+    assert not re.search(r"\son[a-z]+\s*=", html, re.I)
+    assert "javascript:" not in html

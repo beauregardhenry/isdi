@@ -125,7 +125,7 @@ function delete_app(appid, e) {
         $(e).removeClass('text-warning');
         $(e).addClass('text-success');
         $(e).html('&#10003;');
-        $(e).prop('onclick', null).off('click');
+        $(e).removeAttr('data-action');
         report_success(r);
     }).fail(function(){
         report_failure("Could not delete the app '" + appid + "'")
@@ -233,3 +233,40 @@ function fetch(url, device) {
 }
 
 
+
+
+/* Event wiring. The Content-Security-Policy blocks inline on* handlers, so
+   templates mark elements with data-action and the handlers live here. */
+$(document).on('click', '[data-action]', function (e) {
+    var $el = $(this);
+    switch ($el.attr('data-action')) {
+        case 'close-app':
+            e.preventDefault();
+            close_isdi();
+            break;
+        case 'close-window':
+            e.preventDefault();
+            close_window($el.attr('data-confirm'));
+            break;
+        case 'delete-app':
+            e.preventDefault();
+            delete_app($el.attr('data-appid'), this);
+            break;
+        case 'privacy-get':
+            e.preventDefault();
+            get($el.attr('data-url'));
+            break;
+    }
+});
+
+$(document).on('submit', 'form[data-action="start-scan"]', function (e) {
+    if (startScan(this) === false) {
+        e.preventDefault();
+    }
+});
+
+$(document).on('submit', 'form[data-confirm]', function (e) {
+    if (!confirm($(this).attr('data-confirm'))) {
+        e.preventDefault();
+    }
+});
