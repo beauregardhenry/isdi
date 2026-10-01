@@ -6,7 +6,7 @@
                       device for a scan."><u>Scan Instructions</u></a>
             <a class='btn btn-normal' href="/form/edit" target="_blank" rel="noopener" data-toggle="tooltip" title="Edit previously submitted consult forms."><u>Edit previous consult forms</u></a>
             <a class='btn btn-normal' href="/privacy" target="_blank" rel="noopener" data-toggle="tooltip" title="Review the built-in sharing feature settings of your device with this."><u>Privacy Checkup</u></a>
-            <a class="isdi-close-link" href="#" onclick="return close_isdi();">&#x274C; Close App and End Session</a>
+            <a class="isdi-close-link" href="#" data-action="close-app">&#x274C; Close App and End Session</a>
         </div>
     </div>
 <div class="row">
@@ -19,7 +19,7 @@
             </p>
             <hr/>
             <label class="font-weight-bold lead">What type of device is this?</label>
-            <form id="scan_select" method="GET" action="/scan" onsubmit="return startScan(this);">
+            <form id="scan_select" method="GET" action="/scan" data-action="start-scan">
                 <div class="btn-group btn-group-toggle" data-toggle="buttons">
 		    {% for a in ["Android", "iOS"] %}
                     <label class="btn btn-outline-secondary {% if device==a.lower() %} active {% endif %}">
@@ -46,7 +46,7 @@
                 <div id="termux-usb-msg" class="small mt-2" style="display:none;"></div>
             </div>
             {% endif %}
-            <script>
+            <script nonce="{{ csp_nonce() }}">
                 (function() {
                     var btn = document.getElementById('btn-termux-usb');
                     if (!btn) {
@@ -126,7 +126,7 @@
         <a target="_blank" href="{{ url_for('scan', device=scanned.device, device_owner=scanned.device_primary_user, devid=scanned.serial, from_dump=1) }}">
             {{ scanned.device_model }} ({{ scanned.device_primary_user }})
         </a>
-        <form method="POST" action="/delete_device" style="display:inline;" onsubmit='return confirm({{ ("Delete all data for %s (%s)? This cannot be undone." | format(scanned.device_model, scanned.device_primary_user)) | tojson }});'>
+        <form method="POST" action="/delete_device" style="display:inline;" data-confirm="{{ "Delete all data for %s (%s)? This cannot be undone." | format(scanned.device_model, scanned.device_primary_user) }}">
           <input type="hidden" name="serial" value="{{ scanned.serial }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-danger btn-sm py-0 px-1" title="Delete all data for this device" style="font-size:0.75em;">&#x1F5D1; Delete</button>
@@ -175,16 +175,16 @@
                         <th class="col-md-1" style="width: 8%">Class</th>
                     </tr>
                 </thead>
-                <form id="form-applist" onsubmit="" method="post" name="form-applist" >
+                <form id="form-applist" method="post" name="form-applist" >
                     <tbody id="applist" class="h-100">
                         {% set app_items = apps_sorted if apps_sorted is defined else apps.items() %}
                         {% for appId, info in app_items %}
                         <tr id="{{ appId.replace('.', '-') }}">
                             {% if appId in sysapps %}
-                            <td align="center" data-label="Uninstall"><a class="h4" onclick="" href="javascript:;" data-toggle="tooltip"
+                            <td align="center" data-label="Uninstall"><a class="h4" href="#" data-toggle="tooltip"
                                                    title="System App! Cannot delete">&otimes;</a></td>
                             {%  else %}
-                            <td align="center" data-label="Uninstall"><a class="h4" onclick='delete_app({{ appId | tojson }}, this)' href="javascript:;" data-toggle="tooltip"
+                            <td align="center" data-label="Uninstall"><a class="h4" href="#" data-action="delete-app" data-appid="{{ appId }}" data-toggle="tooltip"
                                                   title="Delete app">&otimes;</a></td>
                             {% endif %}
                             {% if info['title'] %}

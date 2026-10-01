@@ -11,9 +11,9 @@
               href="{{ url_for('static', filename='style.css') }}?234">
         <script src="{{ url_for('static', filename='jquery-3.3.1.min.js') }}"></script>
         <script src="{{ url_for('static', filename='bootstrap.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='myjscript.js') }}?3"></script>
+        <script src="{{ url_for('static', filename='myjscript.js') }}?4"></script>
 	<title>{{ title }} {% if platform %}({{ platform }}){% endif %}</title>
-        <script>
+        <script nonce="{{ csp_nonce() }}">
 
          var device = {{ (device or "") | tojson }};
          var serial = {{ (serial or "") | tojson }};
