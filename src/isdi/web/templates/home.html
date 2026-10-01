@@ -6,7 +6,7 @@
                       device for a scan."><u>Scan Instructions</u></a>
             <a class='btn btn-normal' href="/form/edit" target="_blank" rel="noopener" data-toggle="tooltip" title="Edit previously submitted consult forms."><u>Edit previous consult forms</u></a>
             <a class='btn btn-normal' href="/privacy" target="_blank" rel="noopener" data-toggle="tooltip" title="Review the built-in sharing feature settings of your device with this."><u>Privacy Checkup</u></a>
-            <a class="isdi-close-link" href="/kill" onclick="window.open('','_self').close();">&#x274C; Close App and End Session</a>
+            <a class="isdi-close-link" href="#" onclick="return close_isdi();">&#x274C; Close App and End Session</a>
         </div>
     </div>
 <div class="row">
@@ -70,6 +70,7 @@
                         var xhr = new XMLHttpRequest();
                         xhr.open('POST', '/termux-usb-permission', true);
                         xhr.setRequestHeader('Content-Type', 'application/json');
+                        xhr.setRequestHeader('X-CSRFToken', csrf_token);
                         
                         xhr.onload = function() {
                             console.log('Response received:', xhr.status, xhr.statusText);
@@ -122,11 +123,12 @@
 		    {% for scanned in currently_scanned %}
 		    {% if scanned.serial %}
       <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-        <a target="_blank" href="/scan?device={{ scanned.device }}&device_owner={{ scanned.device_primary_user }}&devid={{ scanned.serial }}&from_dump=1">
+        <a target="_blank" href="{{ url_for('scan', device=scanned.device, device_owner=scanned.device_primary_user, devid=scanned.serial, from_dump=1) }}">
             {{ scanned.device_model }} ({{ scanned.device_primary_user }})
         </a>
-        <form method="POST" action="/delete_device" style="display:inline;" onsubmit="return confirm('Delete all data for {{ scanned.device_model }} ({{ scanned.device_primary_user }})? This cannot be undone.');">
+        <form method="POST" action="/delete_device" style="display:inline;" onsubmit='return confirm({{ ("Delete all data for %s (%s)? This cannot be undone." | format(scanned.device_model, scanned.device_primary_user)) | tojson }});'>
           <input type="hidden" name="serial" value="{{ scanned.serial }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-danger btn-sm py-0 px-1" title="Delete all data for this device" style="font-size:0.75em;">&#x1F5D1; Delete</button>
         </form>
       </div>
@@ -182,7 +184,7 @@
                             <td align="center" data-label="Uninstall"><a class="h4" onclick="" href="javascript:;" data-toggle="tooltip"
                                                    title="System App! Cannot delete">&otimes;</a></td>
                             {%  else %}
-                            <td align="center" data-label="Uninstall"><a class="h4" onclick="delete_app('{{ appId }}', this)" href="javascript:;" data-toggle="tooltip"
+                            <td align="center" data-label="Uninstall"><a class="h4" onclick='delete_app({{ appId | tojson }}, this)' href="javascript:;" data-toggle="tooltip"
                                                   title="Delete app">&otimes;</a></td>
                             {% endif %}
                             {% if info['title'] %}

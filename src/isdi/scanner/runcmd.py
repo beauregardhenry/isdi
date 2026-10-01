@@ -1,8 +1,29 @@
 import re
 import logging
-
-# import shlex
 import subprocess
+
+# Device serials and app ids are interpolated into shell commands, so anything
+# coming from a request must match these before it reaches run_command().
+# adb serials look like "R58M12ABCDE", "emulator-5554" or "192.168.1.5:5555";
+# iOS UDIDs are hex, optionally with a dash. Android package names and iOS
+# bundle ids are letters, digits, '_', '-' and '.'.
+_SERIAL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:\-]{0,127}")
+_APPID_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._\-]{0,254}")
+_HMAC_SERIAL_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def is_valid_serial(serial) -> bool:
+    return isinstance(serial, str) and _SERIAL_RE.fullmatch(serial) is not None
+
+
+def is_valid_appid(appid) -> bool:
+    return isinstance(appid, str) and _APPID_RE.fullmatch(appid) is not None
+
+
+def is_valid_hmac_serial(serial) -> bool:
+    """Serials stored in the database are hex HMAC-SHA256 digests."""
+    return isinstance(serial, str) and _HMAC_SERIAL_RE.fullmatch(serial) is not None
+
 
 """
 def add_to_error(*args):
@@ -80,17 +101,22 @@ def catch_err(
                 logging.error("Need USB for Charging.")
                 return ""
             else:
-                logging.error(s)
+                # Device output can contain personal data; keep it out of
+                # the default (INFO) log.
+                logging.debug(s)
                 return s
     except Exception as ex:
         # config.add_to_error(ex)
-        logging.error("Exception>>>", ex)
+        logging.error("Exception>>> %s", ex)
         return ""
 
 
 def run_command(cmd: str, **kwargs) -> subprocess.Popen[bytes]:
     """
     Run a command in a subprocess.
+
+    The command runs through the shell, so callers must shlex.quote() any
+    value that did not come from this codebase (serials, app ids, ...).
     Args:
         cmd (str): The command to run.
         **kwargs: Additional keyword arguments to format the command.

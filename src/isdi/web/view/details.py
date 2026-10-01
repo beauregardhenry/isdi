@@ -2,6 +2,7 @@ from flask import request, render_template
 from isdi.web import app
 from isdi.web.view.index import get_device
 from isdi.config import get_config
+from isdi.scanner.runcmd import is_valid_appid, is_valid_serial
 import os
 
 config = get_config()
@@ -10,18 +11,15 @@ config = get_config()
 @app.route("/details/app/<device>", methods=["GET"])
 def app_details(device):
     sc = get_device(device)
+    if sc is None:
+        return "Unknown device type", 400
     appid = request.args.get("appId")
     ser = request.args.get("serial")
+    if not is_valid_appid(appid) or not is_valid_serial(ser):
+        return "Invalid app id or device serial", 400
     d, info = sc.app_details(ser, appid)
     d["appId"] = appid
 
-    # detect apple and put the key into d.permissions
-    # if "Ios" in str(type(sc)):
-    #    print("apple iphone")
-    # else:
-    #    print(type(sc))
-
-    print(d.keys())
     return render_template(
         "main.html",
         task="app",

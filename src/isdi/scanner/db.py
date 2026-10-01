@@ -233,7 +233,6 @@ def create_scan(scan_d):
     """
     @scanr must have following fields.
     """
-    print(scan_d)
     return insert(
         "insert into scan_res "
         "(clientid, serial, device, device_model, device_version, device_manufacturer, last_full_charge, device_primary_user, is_rooted, rooted_reasons) "
@@ -264,13 +263,6 @@ def update_appinfo(scanid, appid, remark, action):
     )
 
 
-def update_app_deleteinfo(scanid, appid, remark):
-    return insert(
-        "update app_info set " "remark=? here scanid=? and appid=?",
-        args=(remark, action, scanid, appid),
-    )
-
-
 def update_mul_appinfo(args):
     return insert_many(
         "update app_info set " "remark=? where scanid=? and appid=?", args
@@ -295,20 +287,6 @@ def create_mult_appinfo(args):
         "insert into app_info (scanid, appid, flags, remark, action_taken) values (?,?,?,?,?)",
         args,
     )
-
-
-def get_is_rooted(serial):
-    try:
-        d = query_db(
-            "select id, is_rooted, rooted_reasons from scan_res where serial=?",
-            args=(serial),
-            one=False,
-        )
-        if d:
-            d = d[0]
-        return d["is_rooted"], d["rooted_reasons"]
-    except Exception as e:
-        return "<ROOTED_ERR>", "<ROOTED_ERR>"
 
 
 def get_device_info(ser: str) -> dict:
@@ -410,7 +388,9 @@ def delete_scan_data(serial: str) -> bool:
 
     # Remove dump files: stored as <serial>_<device_type>.<ext> inside DUMP_DIR
     dump_dir = config.DUMP_DIR
-    for fpath in glob.glob(os.path.join(dump_dir, f"{serial}_*")):
+    for fpath in glob.glob(
+        os.path.join(glob.escape(dump_dir), f"{glob.escape(serial)}_*")
+    ):
         try:
             if os.path.isdir(fpath):
                 shutil.rmtree(fpath)
@@ -442,4 +422,4 @@ def create_report(clientid):
         writer.writeheader()
         for row in rows:
             writer.writerow({k: row.get(k, "") for k in fieldnames})
-    return d
+    return reportf

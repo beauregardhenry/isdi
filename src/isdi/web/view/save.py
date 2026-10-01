@@ -10,6 +10,7 @@ from isdi.scanner.db import (
     get_device_from_db,
 )
 from isdi.web.view.index import get_device
+from isdi.scanner.runcmd import is_valid_appid, is_valid_serial
 
 config = get_config()
 
@@ -36,19 +37,26 @@ def record_scanres(scanid):
     )
 
 
-@app.route("/delete/app/<scanid>", methods=["POST", "GET"])
+@app.route("/delete/app/<scanid>", methods=["POST"])
 def delete_app(scanid):
     device = get_device_from_db(scanid)
-    serial = get_serial_from_db(scanid)
     sc = get_device(device)
+    if sc is None:
+        return "Unknown scan", 404
+    # The DB stores only the HMAC of the serial, so the page sends the raw
+    # serial back; it must belong to this scan.
+    serial = request.form.get("serial", "")
     appid = request.form.get("appid")
+    if not is_valid_serial(serial) or not is_valid_appid(appid):
+        return "Invalid app id or device serial", 400
+    if config.hmac_serial(serial) != get_serial_from_db(scanid):
+        return "Device does not match this scan", 400
     remark = request.form.get("remark")
     action = "delete"
     # TODO: Record the uninstall and note
     r = sc.uninstall(serial=serial, appid=appid)
     if r:
-        r = update_appinfo(scanid=scanid, appid=appid, remark=remark, action=action)
-        print("Update appinfo failed! r={}".format(r))
+        update_appinfo(scanid=scanid, appid=appid, remark=remark, action=action)
     else:
         print("Uninstall failed. r={}".format(r))
     return is_success(r, "Success!", config.error())

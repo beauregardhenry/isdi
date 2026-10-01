@@ -8,11 +8,13 @@ from time import perf_counter
 
 import click
 
+from isdi import __version__
+
 __all__ = ["main", "cli"]
 
 
 @click.group()
-@click.version_option(version="1.0.2")
+@click.version_option(version=__version__)
 def cli():
     """ISDi - Stalkerware Scanner
 
@@ -25,7 +27,8 @@ def cli():
 @click.option(
     "--host",
     default=None,
-    help="Host to bind to (default: 127.0.0.1 in debug, 0.0.0.0 in production)",
+    help="Host to bind to (default: 127.0.0.1). Binding to another address "
+    "exposes scan results and device controls to the network.",
 )
 @click.option("--port", type=int, default=None, help="Port to bind to (default: 6200)")
 @click.option("--debug/--no-debug", default=False, help="Enable debug mode")
@@ -53,6 +56,14 @@ def run(host, port, debug, test_mode, no_browser):
     # Override from command line
     final_host = host or config.host
     final_port = port or config.port
+    if final_host not in ("127.0.0.1", "localhost", "::1"):
+        click.secho(
+            f"⚠ Listening on {final_host}: other machines on this network can "
+            "view scan data and control connected devices. There is no login.",
+            fg="red",
+            err=True,
+        )
+    browser_host = "127.0.0.1" if final_host in ("0.0.0.0", "::") else final_host
 
     # Create app
     app_started = perf_counter()
@@ -63,7 +74,7 @@ def run(host, port, debug, test_mode, no_browser):
     if not no_browser and not debug and not test_mode:
 
         def open_browser():
-            webbrowser.open(f"http://{final_host}:{final_port}")
+            webbrowser.open(f"http://{browser_host}:{final_port}")
 
         Timer(1.5, open_browser).start()
 

@@ -7,7 +7,6 @@ Phone scanner module - handles Android and iOS device scanning.
 - catch_err(): Takes Popen object, waits & returns string output
 """
 
-from math import perm
 import os
 import json
 import re
@@ -429,7 +428,9 @@ class AndroidScanner(AppScanner):
     def get_device_owner_apps(self, serialno: str) -> set:
         """Return package names that hold device owner privilege on the device."""
         cmd = "{cli} -s {serial} shell dpm list-owners"
-        s = catch_err(run_command(cmd, cli=self.cli, serial=serialno), cmd=cmd)
+        s = catch_err(
+            run_command(cmd, cli=self.cli, serial=shlex.quote(serialno)), cmd=cmd
+        )
         device_owner_apps = set()
         if not s:
             return device_owner_apps
@@ -480,7 +481,9 @@ class AndroidScanner(AppScanner):
 
             for key, prop in props.items():
                 cmd = "{cli} -s {serial} shell getprop {prop}"
-                p = run_command(cmd, cli=self.cli, serial=serial, prop=prop)
+                p = run_command(
+                    cmd, cli=self.cli, serial=shlex.quote(serial), prop=prop
+                )
                 output = catch_err(p, cmd=cmd).strip()
                 m[key] = output or "Unknown"
 
@@ -501,7 +504,9 @@ class AndroidScanner(AppScanner):
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
         cmd = "{cli} -s {serial} uninstall {appid}"
-        p = run_command(cmd, cli=self.cli, serial=serial, appid=appid)
+        p = run_command(
+            cmd, cli=self.cli, serial=shlex.quote(serial), appid=shlex.quote(appid)
+        )
         output = catch_err(p, cmd=cmd)
         return "Success" in output
 
@@ -588,7 +593,9 @@ class IosScanner(AppScanner):
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
         cmd = "{cli} apps uninstall --udid {serial} {appid}"
-        p = run_command(cmd, cli=self.cli, serial=serial, appid=appid)
+        p = run_command(
+            cmd, cli=self.cli, serial=shlex.quote(serial), appid=shlex.quote(appid)
+        )
         output = catch_err(p, cmd=cmd)
         return "Success" in output or "uninstalled" in output.lower()
 

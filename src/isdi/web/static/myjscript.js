@@ -121,7 +121,7 @@ function delete_app(appid, e) {
     if (!y){return;}
     data = {'appid': appid, 'serial': serial, 'device': device};
     $.post('/delete/app/' + scanid, data=data).done(function (r){
-        $('tr#' + appid).addClass('text-muted');
+        $('tr#' + appid.replace(/\./g, '-')).addClass('text-muted');
         $(e).removeClass('text-warning');
         $(e).addClass('text-success');
         $(e).html('&#10003;');
