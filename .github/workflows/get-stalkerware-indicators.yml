@@ -41,14 +41,26 @@ jobs:
       run: |
         python scripts/get-stalkerware-indicators.py
 
+    # PRs opened with GITHUB_TOKEN do not trigger other workflows, so the
+    # required "Tests" checks would never run and the PR could not merge.
+    # INDICATORS_PR_TOKEN should be a fine-grained personal access token for
+    # this repository only, with Contents and Pull requests set to read/write.
+    - name: Check PR token
+      env:
+        INDICATORS_PR_TOKEN: ${{ secrets.INDICATORS_PR_TOKEN }}
+      run: |
+        if [ -z "$INDICATORS_PR_TOKEN" ]; then
+          echo "::warning::INDICATORS_PR_TOKEN is not set; falling back to GITHUB_TOKEN. CI will not run on the generated PR, so required checks will block it."
+        fi
+
     - name: Create Pull Request
       id: cpr
-      uses: peter-evans/create-pull-request@v5
+      uses: peter-evans/create-pull-request@v8
       with:
         add-paths: |
           src/isdi/data/app-flags.csv
 
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.INDICATORS_PR_TOKEN || secrets.GITHUB_TOKEN }}
         commit-message: Update stalkerware indicators
         committer: GitHub <noreply@github.com>
         author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
