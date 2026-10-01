@@ -59,7 +59,9 @@ def edit_forms():
 
         if clientnote:  # if requesting a form to edit
             session["form_edit_pk"] = clientnote  # set session cookie
-            form_obj = Client.query.get(clientnote)
+            form_obj = sa.session.get(Client, clientnote)
+            if form_obj is None:
+                return redirect(url_for("edit_forms"))
             form = ClientForm(obj=form_obj)
             for field in form:
                 if field.type == "SelectMultipleField":
@@ -72,7 +74,9 @@ def edit_forms():
                 clientid=form_obj.clientid,
             )
         else:  # if edits were submitted
-            form_obj = Client.query.get(session["form_edit_pk"])
+            form_obj = sa.session.get(Client, session.get("form_edit_pk"))
+            if form_obj is None:
+                return redirect(url_for("edit_forms"))
             cid = form_obj.clientid  # preserve before populate_obj
             form = ClientForm(request.form)
             if form.validate():

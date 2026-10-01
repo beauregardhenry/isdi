@@ -47,6 +47,8 @@ class Config:
         # Ensure directories exist
         for dir_path in self.dirs.values():
             dir_path.mkdir(parents=True, exist_ok=True)
+        # The config dir holds the PII HMAC key and the session secret.
+        _restrict_permissions(self.dirs["config"], 0o700)
 
         # Setup paths
         self.setup_paths()
@@ -60,7 +62,9 @@ class Config:
 
         # App metadata
         self.TITLE = "ISDi - Stalkerware Scanner"
-        self.VERSION = "1.0.0"
+        from isdi import __version__
+
+        self.VERSION = __version__
         self.DEVICE_PRIMARY_USER = "client"  # Default label for device owner
 
         # Platform detection
@@ -234,13 +238,20 @@ class Config:
 
             print(f"Downloading app-info.db from GitHub...")
             dst_db.parent.mkdir(parents=True, exist_ok=True)
+            tmp_db = dst_db.with_name(dst_db.name + ".part")
 
             # Download with timeout
             try:
                 with urllib.request.urlopen(github_url, timeout=30) as response:
                     if response.status == 200:
-                        with open(dst_db, "wb") as f:
-                            f.write(response.read())
+                        with open(tmp_db, "wb") as f:
+                            shutil.copyfileobj(response, f)
+                        # A truncated or non-SQLite download would otherwise
+                        # be kept forever, since only size > 0 is checked.
+                        with open(tmp_db, "rb") as f:
+                            if f.read(16) != b"SQLite format 3\x00":
+                                raise ValueError("downloaded file is not a SQLite db")
+                        os.replace(tmp_db, dst_db)
                         print(
                             f"✓ Downloaded app-info.db ({dst_db.stat().st_size} bytes)"
                         )
@@ -263,6 +274,8 @@ class Config:
                 print(
                     f"app-info.db download attempt took {time.perf_counter() - start:.2f}s"
                 )
+            finally:
+                tmp_db.unlink(missing_ok=True)
 
         except Exception as e:
             # Avoid failing config init if download fails
@@ -274,21 +287,11 @@ class Config:
         """Setup encryption keys and secrets"""
         # PII encryption key
         self.pii_key_file = self.secrets_dir / "pii.key"
-        if not self.pii_key_file.exists():
-            with open(self.pii_key_file, "wb") as f:
-                f.write(secrets.token_bytes(32))
-
-        with open(self.pii_key_file, "rb") as f:
-            self.PII_KEY = f.read(32)
+        self.PII_KEY = _load_or_create_secret(self.pii_key_file)[:32]
 
         # Flask secret
         self.flask_secret_file = self.secrets_dir / "flask.secret"
-        if not self.flask_secret_file.exists():
-            with open(self.flask_secret_file, "wb") as f:
-                f.write(secrets.token_bytes(32))
-
-        with open(self.flask_secret_file, "rb") as f:
-            self.FLASK_SECRET = f.read()
+        self.FLASK_SECRET = _load_or_create_secret(self.flask_secret_file)
 
     def set_test_mode(self, enabled: bool = True):
         """Set test mode"""
@@ -309,11 +312,34 @@ class Config:
 
     @property
     def host(self) -> str:
-        return "127.0.0.1" if self.DEBUG else "0.0.0.0"
+        # Never listen on the network by default: anyone on the same Wi-Fi
+        # could otherwise read scan results or act on the connected phone.
+        return "127.0.0.1"
 
     @property
     def port(self) -> int:
         return 6202 if self.TEST else (6200 if not self.DEBUG else 6201)
+
+
+def _restrict_permissions(path: Path, mode: int) -> None:
+    try:
+        if path.stat().st_mode & 0o777 != mode:
+            os.chmod(path, mode)
+    except OSError:
+        pass  # e.g. Termux shared storage does not support chmod
+
+
+def _load_or_create_secret(path: Path) -> bytes:
+    """Read a 32-byte secret, creating it owner-readable only if missing."""
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        _restrict_permissions(path, 0o600)
+    else:
+        with os.fdopen(fd, "wb") as f:
+            f.write(secrets.token_bytes(32))
+    with open(path, "rb") as f:
+        return f.read()
 
 
 # Global config instance

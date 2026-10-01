@@ -1,5 +1,6 @@
 from typing import Tuple, List, Optional
 import logging
+import shlex
 import socket
 from pymobiledevice3.lockdown import create_using_usbmux
 from isdi.scanner.runcmd import run_command, catch_err
@@ -100,10 +101,17 @@ def check_android_root(serial: str, cli_path: str) -> Tuple[bool, List[str]]:
     reasons: List[str] = []
 
     for check in ANDROID_ROOT_INDICATORS:
-        cmd = "{cli} -s {serial} shell '{cmd_str}'"
-        cmd_run = cmd.format(cli=cli_path, serial=serial, cmd_str=check["cmd_str"])
+        # cmd_str is meant for the device shell; quote it so the host shell
+        # passes it through intact (several checks contain quotes and pipes).
+        cmd = "{cli} -s {serial} shell {cmd_str}"
+        fmt = dict(
+            cli=cli_path,
+            serial=shlex.quote(serial),
+            cmd_str=shlex.quote(check["cmd_str"]),
+        )
+        cmd_run = cmd.format(**fmt)
         try:
-            p = run_command(cmd, cli=cli_path, serial=serial, cmd_str=check["cmd_str"])
+            p = run_command(cmd, **fmt)
             output = catch_err(p, cmd=cmd).strip()
 
             if output == "" and check.get("skip_if_missing", False):

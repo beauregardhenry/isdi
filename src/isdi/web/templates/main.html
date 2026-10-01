@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel=stylesheet type=text/css
               href="{{ url_for('static', filename='bootstrap.min.css') }}">
         <link rel=stylesheet type=text/css
@@ -14,9 +15,26 @@
 	<title>{{ title }} {% if platform %}({{ platform }}){% endif %}</title>
         <script>
 
-         var device = "{{ device }}";
-         var serial = "{{ serial }}";
-         var scanid = "{{ scanid }}";
+         var device = {{ (device or "") | tojson }};
+         var serial = {{ (serial or "") | tojson }};
+         var scanid = {{ (scanid or "") | tojson }};
+         var csrf_token = $('meta[name="csrf-token"]').attr('content');
+
+         $.ajaxSetup({
+             beforeSend: function (xhr, settings) {
+                 if (!/^(GET|HEAD|OPTIONS)$/i.test(settings.type)) {
+                     xhr.setRequestHeader('X-CSRFToken', csrf_token);
+                 }
+             }
+         });
+
+         function close_isdi() {
+             $.post('/kill').always(function () {
+                 document.body.textContent = 'The app has been closed!';
+                 window.open('', '_self').close();
+             });
+             return false;
+         }
 	
          function close_window(msg) {
 		 if (confirm(msg)) {

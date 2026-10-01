@@ -1,9 +1,10 @@
 """Flask application factory"""
 
+from html import escape
 from pathlib import Path
 from time import perf_counter
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 
 __all__ = ["create_app"]
 
@@ -26,6 +27,10 @@ def create_app(config=None):
     app.config["SECRET_KEY"] = config.FLASK_SECRET
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{config.database_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    # One token per session; the page is often left open for a whole consult.
+    app.config["WTF_CSRF_TIME_LIMIT"] = None
 
     # Store config in app
     app.config["ISDI_CONFIG"] = config
@@ -35,6 +40,16 @@ def create_app(config=None):
 
     db_init_started = perf_counter()
     sa.init_app(app)
+    # The server can uninstall apps and drive the connected phone, so any
+    # other web page the browser visits must not be able to POST to it.
+    CSRFProtect(app)
+
+    @app.after_request
+    def _security_headers(resp):
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("Referrer-Policy", "no-referrer")
+        return resp
 
     try:
         from isdi.scanner.db import init_db
@@ -63,8 +78,8 @@ def create_app(config=None):
             <body>
                 <h1>ISDi - Stalkerware Scanner</h1>
                 <p>Server is running but web routes are not fully initialized.</p>
-                <p>Data directory: {config.dirs['data']}</p>
-                <p>Database: {config.database_path}</p>
+                <p>Data directory: {escape(str(config.dirs['data']))}</p>
+                <p>Database: {escape(str(config.database_path))}</p>
             </body>
             </html>
             """

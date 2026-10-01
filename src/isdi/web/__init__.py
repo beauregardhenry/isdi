@@ -1,5 +1,7 @@
 """Web interface modules"""
 
+from html import escape
+
 from flask_sqlalchemy import SQLAlchemy
 
 # Global app reference for legacy code
@@ -25,7 +27,6 @@ def init_routes(flask_app):
             details,
             privacy,
             error,
-            results,
             save,
         )
     except Exception as e:
@@ -35,8 +36,8 @@ def init_routes(flask_app):
         traceback.print_exc()
 
         # Capture exception details for closure
-        exc_error = str(e)
-        exc_traceback = traceback.format_exc()
+        exc_error = escape(str(e))
+        exc_traceback = escape(traceback.format_exc())
 
         # Create minimal fallback route
         @flask_app.route("/")

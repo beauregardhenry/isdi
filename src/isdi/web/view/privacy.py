@@ -3,6 +3,7 @@ from isdi.web import app
 from isdi.web.view.index import get_device
 from isdi.scanner.privacy_scan_android import do_privacy_check
 from isdi.config import get_config
+from isdi.scanner.runcmd import is_valid_serial
 import os
 
 config = get_config()
@@ -37,5 +38,7 @@ def privacy_scan(device, cmd):
         serial = devices[0] if devices else None
     if not serial:
         return "No device serial provided", 400
+    if not is_valid_serial(serial):
+        return "Invalid device serial", 400
     res = do_privacy_check(serial, cmd)
     return res

@@ -7,7 +7,7 @@ import signal
 import threading
 
 
-@app.route("/kill", methods=["POST", "GET"])
+@app.route("/kill", methods=["POST"])
 def killme():
     def _shutdown():
         import time
@@ -24,10 +24,15 @@ def killme():
 def delete_device():
     """Delete all scan data and files for a device identified by its stored serial."""
     from isdi.scanner.db import delete_scan_data
+    from isdi.scanner.runcmd import is_valid_hmac_serial
 
     serial = request.form.get("serial", "").strip()
     if not serial:
         return jsonify({"error": "No serial provided"}), 400
+    # Stored serials are HMAC digests; anything else could smuggle glob
+    # patterns or path segments into the dump-file cleanup.
+    if not is_valid_hmac_serial(serial):
+        return jsonify({"error": "Invalid serial"}), 400
 
     delete_scan_data(serial)
     return redirect(url_for("index"))

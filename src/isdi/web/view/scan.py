@@ -7,7 +7,9 @@ from isdi.config import get_config
 from isdi.web import app
 from isdi.web.view.index import get_device
 from flask import jsonify, render_template, request, session, redirect, url_for
+from markupsafe import escape
 from isdi.scanner import db, blocklist
+from isdi.scanner.runcmd import is_valid_hmac_serial, is_valid_serial
 from isdi.scanner.db import (
     get_client_devices_from_db,
     new_client_id,
@@ -20,9 +22,36 @@ config = get_config()
 
 _SCAN_JOBS = {}
 _SCAN_JOBS_LOCK = threading.Lock()
+# Finished jobs hold full scan results in memory; drop them after this long.
+_SCAN_JOB_TTL = 60 * 60
+
+
+def _prune_scan_jobs():
+    cutoff = time.time() - _SCAN_JOB_TTL
+    with _SCAN_JOBS_LOCK:
+        for job_id in [
+            k
+            for k, j in _SCAN_JOBS.items()
+            if j["status"] in ("done", "error") and j["updated_at"] < cutoff
+        ]:
+            del _SCAN_JOBS[job_id]
+
+
+def _isrooted_html(rooted, rooted_reason):
+    if rooted:
+        s = "<strong class='text-danger'>Detected</strong>"
+    elif rooted is None:
+        s = "Not Detected (some checks incomplete)"
+    else:
+        s = "Not Detected"
+    if rooted_reason:
+        # Reasons include raw device output, so escape before rendering |safe.
+        s += f". Reason(s): {escape(str(rooted_reason))}"
+    return s
 
 
 def _create_scan_job(clientid, device, device_owner, serial):
+    _prune_scan_jobs()
     job_id = uuid.uuid4().hex
     with _SCAN_JOBS_LOCK:
         _SCAN_JOBS[job_id] = {
@@ -104,29 +133,15 @@ def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
         template_d["error"] = "Please choose one device to scan."
         return template_d, 201
 
-    progress(12, "Connecting", f"Looking for {device} device {ser}")
+    progress(12, "Connecting", f"Looking for {device} device")
     if not ser:
         template_d["error"] = (
             "A device was not detected. Please reconnect it and try again."
         )
         return template_d, 201
-
-    if device == "ios":
-        error = (
-            "If an iPhone is connected, open iTunes, click through the "
-            'connection dialog and wait for the "Trust this computer" '
-            "prompt to pop up in the iPhone, and then scan again."
-        )
-    else:
-        error = (
-            "If an Android device is connected, disconnect and reconnect "
-            "the device, make sure developer options is activated and USB "
-            "debugging is turned on on the device, and then scan again."
-        )
-    error += (
-        "{} <b>Please follow the <a href='/instruction' target='_blank'"
-        " rel='noopener'>setup instructions here,</a> if needed.</b>"
-    )
+    if not is_valid_serial(ser):
+        template_d["error"] = "Invalid device id."
+        return template_d, 201
 
     progress(30, "Reading device", "Collecting device details")
     device_name_print, device_name_map = sc.device_info(serial=ser)
@@ -139,7 +154,7 @@ def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
             "The scanning failed. This could be due to many reasons. Try"
             " rerunning the scan from the beginning. If the problem persists,"
             " please report it in the file. <code>report_failed.md</code> in the<code>"
-            "phone_scanner/</code> directory. Checn the phone manually. Sorry for"
+            "phone_scanner/</code> directory. Check the phone manually. Sorry for"
             " the inconvenience."
         )
         return template_d, 201
@@ -185,15 +200,7 @@ def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
         key=lambda item: (-item[1].get("score", 0.0), item[0]),
     )
 
-    if rooted:
-        isrooted_str = "<strong class='text-danger'>Detected</strong>"
-    elif rooted is None:
-        isrooted_str = "Not Detected (some checks incomplete)"
-    else:
-        isrooted_str = "Not Detected"
-
-    if rooted_reason:
-        isrooted_str += f". Reason(s): {rooted_reason}"
+    isrooted_str = _isrooted_html(rooted, rooted_reason)
 
     template_d.update(
         dict(
@@ -282,6 +289,8 @@ def scan_start():
             ),
             409,
         )
+    if not is_valid_serial(ser):
+        return jsonify({"error": "Invalid device id."}), 400
 
     job_id = _create_scan_job(session["clientid"], device, device_owner, ser)
     worker = threading.Thread(
@@ -311,7 +320,7 @@ def scan_status(job_id):
 @app.route("/scan/result/<job_id>", methods=["GET"])
 def scan_result(job_id):
     job = _get_scan_job(job_id)
-    if not job:
+    if not job or job["clientid"] != session.get("clientid"):
         return redirect(url_for("index"))
 
     if job.get("status") != "done" or not job.get("result"):
@@ -338,7 +347,6 @@ def scan():
     clientid = session["clientid"]
     device_primary_user = get_param("device_primary_user")
     device = get_param("device")
-    action = get_param("action")
     device_owner = get_param("device_owner")
     ser = get_param("devid")
 
@@ -358,15 +366,6 @@ def scan():
     )
     # lookup devices scanned so far here. need to add this by model rather
     # than by serial.
-    print("CURRENTLY SCANNED: {}".format(currently_scanned))
-    print("DEVICE OWNER IS: {}".format(device_owner))
-    print("PRIMARY USER IS: {}".format(device_primary_user))
-    print("SERIAL NO: {}".format(ser))
-    print("-" * 80)
-    print("CLIENT ID IS: {}".format(session["clientid"]))
-    print("-" * 80)
-    print("--> Action = ", action)
-
     sc = get_device(device)
     if not sc:
         template_d["error"] = "Please choose one device to scan."
@@ -378,7 +377,6 @@ def scan():
     if not ser:
         ser = first_element_or_none(sc.devices())
 
-    print("Devices: {}".format(ser))
     if not ser:
         # FIXME: add pkexec scripts/ios_mount_linux.sh workflow for iOS if
         # needed.
@@ -390,15 +388,15 @@ def scan():
         template_d["error"] = error
         return render_template("main.html", **template_d), 201
 
-    # clientid = new_client_id()
-    print(">>>scanning_device", device, ser, "<<<<<")
-
     # Only explicit from_dump requests should load old results.
     # Some real device serials are long hex strings and were mis-detected as hashed.
     from_dump = get_param("from_dump") == "1"
 
     if from_dump:
         # Load scan data from database — do NOT run ADB/iOS commands with hashed serial
+        if not is_valid_hmac_serial(ser):
+            template_d["error"] = "Invalid device id."
+            return render_template("main.html", **template_d), 201
         scanid = db.get_most_recent_scan_id(ser)
         if not scanid:
             template_d["error"] = (
@@ -460,87 +458,16 @@ def scan():
 
     else:
         # Live scan — device must be connected
-
-        if device == "ios":
-            error = (
-                "If an iPhone is connected, open iTunes, click through the "
-                'connection dialog and wait for the "Trust this computer" '
-                "prompt to pop up in the iPhone, and then scan again."
-            )
-        else:
-            error = (
-                "If an Android device is connected, disconnect and reconnect "
-                "the device, make sure developer options is activated and USB "
-                "debugging is turned on on the device, and then scan again."
-            )
-        error += (
-            "{} <b>Please follow the <a href='/instruction' target='_blank'"
-            " rel='noopener'>setup instructions here,</a> if needed.</b>"
-        )
-
-        device_name_print, device_name_map = sc.device_info(serial=ser)
-        apps = sc.find_spyapps(serialno=ser)
-
-        if len(apps) <= 0:
-            print("The scanning failed for some reason.")
-            error = (
-                "The scanning failed. This could be due to many reasons. Try"
-                " rerunning the scan from the beginning. If the problem persists,"
-                " please report it in the file. <code>report_failed.md</code> in the<code>"
-                "phone_scanner/</code> directory. Check the phone manually. Sorry for"
-                " the inconvenience."
-            )
-            template_d["error"] = error
-            return render_template("main.html", **template_d), 201
-
-        scan_d = {
-            "clientid": session["clientid"],
-            "serial": config.hmac_serial(ser),
-            "device": device,
-            "device_model": device_name_map.get("model", "<Unknown>").strip(),
-            "device_version": device_name_map.get("version", "<Unknown>").strip(),
-            "device_primary_user": device_owner,
-        }
-
-        if device == "ios":
-            scan_d["device_manufacturer"] = "Apple"
-            scan_d["last_full_charge"] = "unknown"
-        else:
-            scan_d["device_manufacturer"] = device_name_map.get(
-                "brand", "<Unknown>"
-            ).strip()
-            scan_d["last_full_charge"] = device_name_map.get(
-                "last_full_charge", "<Unknown>"
-            )
-
-        rooted, rooted_reason = sc.isrooted(ser)
-        scan_d["is_rooted"] = rooted
-        scan_d["rooted_reasons"] = json.dumps(rooted_reason)
-
-        scanid = create_scan(scan_d)
-
-        print("Creating appinfo...")
-        create_mult_appinfo(
-            [
-                (scanid, appid, json.dumps(info["flags"]), "", "<new>")
-                for appid, info in apps.items()
-            ]
-        )
+        result_d, status_code = _run_live_scan(clientid, device, device_owner, ser)
+        result_d["device_primary_user_sel"] = device_primary_user
+        return render_template("main.html", **result_d), status_code
 
     apps_sorted = sorted(
         apps.items(),
         key=lambda item: (-item[1].get("score", 0.0), item[0]),
     )
     currently_scanned = get_client_devices_from_db(session["clientid"])
-    if rooted:
-        isrooted_str = "<strong class='text-danger'>Detected</strong>"
-    elif rooted is None:
-        isrooted_str = "Not Detected (some checks incomplete)"
-    else:
-        isrooted_str = "Not Detected"
-
-    if rooted_reason:
-        isrooted_str += f". Reason(s): {rooted_reason}"
+    isrooted_str = _isrooted_html(rooted, rooted_reason)
 
     template_d.update(
         dict(

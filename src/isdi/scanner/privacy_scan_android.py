@@ -60,7 +60,7 @@ def run_command(cmd, **kwargs):
 
 def thiscli(ser):
     if ser:
-        return "{adb} -s {ser}".format(adb=adb, ser=ser)
+        return "{adb} -s {ser}".format(adb=adb, ser=shlex.quote(ser))
     else:
         return "{adb}".format(adb=adb)
 
@@ -79,8 +79,8 @@ def open_activity(ser, activity_name):
     """
     Opens an activity
     """
-    cmd = "{cli} shell am start '{act}'"
-    out, err = run_command(cmd, cli=thiscli(ser), act=activity_name)
+    cmd = "{cli} shell am start {act}"
+    out, err = run_command(cmd, cli=thiscli(ser), act=shlex.quote(activity_name))
     if err:
         print("ERROR (open_activity): {!r}".format(err))
         return False
