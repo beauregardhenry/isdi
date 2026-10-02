@@ -22,7 +22,7 @@ follow the remaining instructions as a Linux user would.
 ### System Requirements
 
 #### Python
-- Python 3.8 or higher is required
+- Python 3.10 or higher is required (tested on 3.10–3.13)
 - Check your version: `python3 --version`
 - On macOS, install via: `brew install python`
 - On Linux (Debian/Ubuntu): `sudo apt install python3 python3-pip`

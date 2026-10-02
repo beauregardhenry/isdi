@@ -1,0 +1,41 @@
+
+DUMP OF SERVICE package
+Database versions:
+  Internal:
+    sdkVersion=34 databaseVersion=3
+Packages:
+  Package [com.android.settings] (1a2b3c4):
+    userId=1000
+    versionCode=34 minSdk=34 targetSdk=34
+    versionName=14
+    flags=[ SYSTEM HAS_CODE PERSISTENT ]
+    installerPackageName=null
+    firstInstallTime=2008-12-31 16:00:00
+    lastUpdateTime=2008-12-31 16:00:00
+  Package [com.example.spy] (5d6e7f8):
+    userId=10234
+    versionCode=7 minSdk=21 targetSdk=30
+    versionName=2.1
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    lastUpdateTime=2026-09-01 12:00:00
+  Package [com.whatsapp] (9a8b7c6):
+    userId=10150
+    versionCode=231 minSdk=21 targetSdk=34
+    versionName=2.24.1
+    flags=[ HAS_CODE ALLOW_BACKUP ]
+    installerPackageName=com.android.vending
+    firstInstallTime=2025-01-01 09:00:00
+    lastUpdateTime=2026-08-01 09:00:00
+
+DUMP OF SERVICE netstats detail
+BPF map content:
+  mAppUidStatsMap:
+    uid rxBytes rxPackets txBytes txPackets
+    1023 9999999 1 9999999 1
+    10234 1048576 10 2097152 20
+    10150 0 0 0 0
+
+DUMP OF SERVICE net_stats
+
+DUMP OF SETTINGS secure
+android_id=0123456789abcdef

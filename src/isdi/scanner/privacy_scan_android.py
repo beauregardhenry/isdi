@@ -29,10 +29,12 @@ Finally screen capture.
     adb shell am start 'com.google.android.apps.photos/com.google.android.apps.photos.home.HomeActivity' && sleep 10 && adb shell input tap 20 80
 """
 
+import base64
 import re, os
 import shlex
 import time
 import random
+from html import escape
 from subprocess import Popen, PIPE, TimeoutExpired, run, CalledProcessError
 from pathlib import Path
 from flask import url_for
@@ -40,6 +42,11 @@ from isdi.config import get_config
 
 config = get_config()
 adb = config.ADB_PATH
+
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+LEGACY_SCREENSHOT = (
+    Path(__file__).parent.parent / "web" / "static" / "images" / "tmp.png"
+)
 
 
 def run_command(cmd, **kwargs):
@@ -124,41 +131,32 @@ def is_screen_on(ser):
         return False
 
 
-def take_screenshot(ser, fname=None):
+def take_screenshot(ser):
     """
-    Take a screenshot and output the iamge
+    Take a screenshot of the phone and return it as an inline <img>.
+
+    The image is never written to disk: it shows what is on the scanned
+    person's screen, and the old tmp.png stayed in the package's static
+    folder, served to anyone who could reach the app.
     """
-    # if not is_screen_on(ser):
-    #     keycode(ser, 'power'); keycode(ser, 'menu') # Wakes the screen up
-    if not fname:
-        fname = "tmp_screencap.png"
-
-    cli = thiscli(ser)
-    cmd = "{} exec-out screencap -p | perl -pe 's/\\x0D\\x0A/\\x0A/g'".format(cli)
-    if os.name == "posix":  # Formatting for posix systems
-        cmd = "{} exec-out screencap -p".format(cli)
-
+    argv = [adb] + (["-s", ser] if ser else []) + ["exec-out", "screencap", "-p"]
     try:
-        # This command spits out the screenshot to stdout, which we capture
-        # and write to the file.
-        result = run(shlex.split(cmd), check=True, stdout=PIPE)
-        with open(fname, "wb") as f:
-            f.write(result.stdout)
-
-        # Return the image that will be inserted into the HTML.
-        return add_image(fname.split("webstatic/", 1)[-1], nocache=True)
-
+        result = run(argv, check=True, stdout=PIPE, stderr=PIPE, timeout=30)
     except CalledProcessError as e:
-        print(f"Command failed with exit code {e.returncode}: {e.output}")
+        print(f"Command failed with exit code {e.returncode}: {e.stderr!r}")
         return "<div class='screenshotfail'>Screenshot failed with exit code {}</div>".format(
             e.returncode
         )
-
-    except Exception as e:
+    except (OSError, TimeoutExpired) as e:
         print(e)
-        return "<div class='screenshotfail'>Screenshot failed with exception {}</div>".format(
-            e
+        return "<div class='screenshotfail'>Screenshot failed: {}</div>".format(
+            escape(str(e))
         )
+
+    if not result.stdout.startswith(PNG_SIGNATURE):
+        return "<div class='screenshotfail'>Screenshot failed: the phone did not return an image. Is the screen unlocked?</div>"
+    data = base64.b64encode(result.stdout).decode("ascii")
+    return f"<img height='400px' alt='Phone screenshot' src='data:image/png;base64,{data}'/>"
 
 
 def wait(t):
@@ -176,9 +174,7 @@ def add_image(img, nocache=False):
     )
 
 
-def do_privacy_check(ser, command, screenshot_fname=None):
-    from pathlib import Path
-
+def do_privacy_check(ser, command):
     command = command.lower()
     if command == "account":  # 1. Account ownership  & 3. Sync (if present)
         open_activity(
@@ -235,14 +231,9 @@ def do_privacy_check(ser, command, screenshot_fname=None):
             )
 
     elif command == "screenshot":
-        # Use config to get the proper static directory
-        if screenshot_fname is None:
-            static_dir = Path(__file__).parent.parent / "web" / "static" / "images"
-            static_dir.mkdir(parents=True, exist_ok=True)
-            screenshot_fname = static_dir / "tmp.png"
-        elif isinstance(screenshot_fname, str):
-            screenshot_fname = Path(screenshot_fname)
-        return take_screenshot(ser, fname=str(screenshot_fname))
+        # Older versions saved the screenshot here; don't leave it behind.
+        LEGACY_SCREENSHOT.unlink(missing_ok=True)
+        return take_screenshot(ser)
     else:
         return "Command not supported; should be one of ['account', 'backup', 'gmap', 'gphotos'] (case in-sensitive)"
 
