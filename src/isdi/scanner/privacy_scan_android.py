@@ -30,7 +30,7 @@ Finally screen capture.
 """
 
 import base64
-import re, os
+
 import shlex
 import time
 import random
@@ -72,16 +72,6 @@ def thiscli(ser):
         return "{adb}".format(adb=adb)
 
 
-def get_screen_res(ser):
-    cmd = "{cli} shell dumpsys window | grep 'mUnrestrictedScreen'"
-    out, err = run_command(cmd, cli=thiscli(ser))
-    m = re.match(r"mUnrestrictedScreen=\(0,0\) (?P<w>\d+)x(?P<h>\d+)", out.strip())
-    if m:
-        return int(m.group("w")), int(m.group("h"))
-    else:
-        return -1, -1
-
-
 def open_activity(ser, activity_name):
     """
     Opens an activity
@@ -101,19 +91,6 @@ def open_activity(ser, activity_name):
     return True
 
 
-def tap(ser, xpercent, ypercent):
-    """
-    Tap at xpercent and ypercent from top left
-    """
-    w, h = get_screen_res(ser)
-    x = int(xpercent * w / 100)
-    y = int(ypercent * h / 100)
-    cmd = "{cli} shell input tap {x} {y}"
-    out, err = run_command(cmd, cli=thiscli(ser), x=x, y=y)
-    if err:
-        print("ERROR (tap): {!r}".format(err))
-
-
 def keycode(ser, evt):
     cmds = {"home": "3", "back": "4", "menu": "82", "power": "26"}
     if evt not in cmds:
@@ -121,18 +98,6 @@ def keycode(ser, evt):
 
     key = cmds.get(evt)
     run_command("{cli} shell input keyevent {key}", cli=thiscli(ser), key=key)
-
-
-def is_screen_on(ser):
-    cmd = "{cli} shell dumpsys input_method | grep 'mInteractive' | sed 's/.*mInteractive=//g'"
-    out, err = run_command(cmd, cli=thiscli(ser))
-    if err:
-        print("ERROR (is_screen_on): {!r}".format(err))
-    out = out.strip()
-    if out == "true":
-        return True
-    else:
-        return False
 
 
 def take_screenshot(ser):
@@ -208,7 +173,7 @@ def do_privacy_check(ser, command):
         wait(2)
         keycode(ser, "menu")
         return "Check the <code>location sharing</code> option; " + add_image(
-            "google_maps_sharing.png"
+            "images/google_maps_sharing.png"
         )
     elif command == "gphotos":  # 5. Google Photos sharing
         open_activity(
@@ -218,7 +183,7 @@ def do_privacy_check(ser, command):
         wait(2)
         keycode(ser, "menu")
         return "Check the <code>Shared library</code>. " + add_image(
-            "google_maps_sharing.png"
+            "images/google_photos_sharing.png"
         )
     elif command == "sync":
         if not open_activity(

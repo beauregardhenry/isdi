@@ -1,5 +1,5 @@
 from flask import request, render_template
-from isdi.web import app
+from isdi.web import bp
 from isdi.web.view.index import get_device
 from isdi.config import get_config
 from isdi.scanner.runcmd import is_valid_appid, is_valid_hmac_serial, is_valid_serial
@@ -8,7 +8,7 @@ import os
 config = get_config()
 
 
-@app.route("/details/app/<device>", methods=["GET"])
+@bp.route("/details/app/<device>", methods=["GET"])
 def app_details(device):
     sc = get_device(device)
     if sc is None:

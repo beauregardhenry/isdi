@@ -1,5 +1,5 @@
+import logging
 import sqlite3
-from flask_sqlalchemy import SQLAlchemy
 from isdi.config import get_config
 from flask import g
 from datetime import datetime as dt
@@ -136,25 +136,25 @@ def _init_schema(db) -> None:
 
 
 def today():
-    db = get_db()
-    t = dt.now()
-    today = t.strftime("%Y%m%d")
-    return today
+    return dt.now().strftime("%Y%m%d")
 
 
 def new_client_id():
-    last_client_id = query_db(
-        "select max(clientid) as cid from clients_notes "
-        'where created_at > datetime("now", "localtime", "start of day")',
-        one=True,
-    )["cid"]
-    d, t = today(), 0
-    # FIXME: won't parse if different ClientID.
-    if last_client_id:
-        d, t = last_client_id.rsplit("_", 1)
-    cid = "{}_{:03d}".format(d, int(t) + 1)
-    print("new_client_id >>>> {}".format(cid))
-    return cid
+    """Today's date and a counter: 20260101_001, 20260101_002, ...
+
+    Counts only today's ids in that format, so an id written some other way
+    (or a created_at in another time zone) cannot break or repeat it."""
+    prefix = today() + "_"
+    rows = query_db(
+        "select clientid from clients_notes where substr(clientid, 1, ?) = ?",
+        (len(prefix), prefix),
+    )
+    counters = [
+        int(r["clientid"][len(prefix) :])
+        for r in rows
+        if r["clientid"][len(prefix) :].isdigit()
+    ]
+    return "{}{:03d}".format(prefix, max(counters, default=0) + 1)
 
 
 def make_dicts(cursor, row):
@@ -165,7 +165,7 @@ def get_db():
     try:
         db = getattr(g, "_database", None)
         if db is None:
-            print("Creating new db connection {}".format(DATABASE))
+            logging.debug("Opening database %s", DATABASE)
             db = g._database = sqlite3.connect(DATABASE)
             db.row_factory = make_dicts
             if _schema_needs_init(db):
@@ -173,7 +173,7 @@ def get_db():
         return db
     except RuntimeError:
         if not hasattr(_thread_local, "db") or _thread_local.db is None:
-            print("Creating fallback db connection {}".format(DATABASE))
+            logging.debug("Opening thread-local database %s", DATABASE)
             _thread_local.db = sqlite3.connect(DATABASE)
             _thread_local.db.row_factory = make_dicts
             if _schema_needs_init(_thread_local.db):
@@ -181,7 +181,15 @@ def get_db():
         return _thread_local.db
 
 
+def close_db(exc=None):
+    """Close this app context's connection (registered as a teardown)."""
+    db = g.pop("_database", None)
+    if db is not None:
+        db.close()
+
+
 def init_db(app, sa, force=False):
+    app.teardown_appcontext(close_db)
     with app.app_context():
         if force or not os.path.exists(DATABASE):
             db = get_db()
@@ -269,36 +277,12 @@ def update_mul_appinfo(args):
     )
 
 
-def create_appinfo(scanid, appid, flags, remark="", action="<new>"):
-    """
-    @scanr must have following fields.
-
-    """
-    return insert(
-        "insert into app_info (scanid, appid, flags, remark, action_taken) "
-        "values (?,?,?,?,?)",
-        args=(scanid, appid, flags, remark, action),
-    )
-
-
 def create_mult_appinfo(args):
     """ """
     return insert_many(
         "insert into app_info (scanid, appid, flags, remark, action_taken) values (?,?,?,?,?)",
         args,
     )
-
-
-def get_device_info(ser: str) -> dict:
-    d = query_db(
-        "select id,device,device_model,serial,device_primary_user from scan_res where serial=?",
-        args=(ser,),
-        one=True,
-    )
-    if d:
-        return d
-    else:
-        return {}
 
 
 def get_client_devices_from_db(clientid: str) -> list:

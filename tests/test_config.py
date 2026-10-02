@@ -5,12 +5,13 @@ import io
 import os
 import stat
 import urllib.request
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
 from isdi import config as config_mod
-from isdi.config import Config
+from isdi.config import Config, get_config
 
 posix_only = pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")
 
@@ -103,10 +104,9 @@ def test_existing_db_is_not_redownloaded(cache_config, tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run_cli(app, monkeypatch):
-    """Invoke `isdi run` without starting a server; return (output, host).
-    Depends on `app` so the shared app is created first: only the first
-    create_app() gets the routes (see conftest.py)."""
+def run_cli(monkeypatch):
+    """Invoke `isdi run --test` without starting a server; return
+    (output, host)."""
     from flask import Flask
 
     from isdi import cli
@@ -117,7 +117,7 @@ def run_cli(app, monkeypatch):
     )
 
     def invoke(*args):
-        res = CliRunner().invoke(cli.cli, ["run", "--no-browser", *args])
+        res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", *args])
         assert res.exit_code == 0, res.output
         return res.output, bound["host"]
 
@@ -141,3 +141,20 @@ def test_cli_reports_package_version():
 
     res = CliRunner().invoke(cli.cli, ["--version"])
     assert __version__ in res.output
+
+
+def test_suite_never_touches_the_users_isdi_data():
+    """conftest.py points the config at throwaway directories; if a module
+    created a production config first, tests would write to the real
+    client database and use the real PII key."""
+    cfg = get_config()
+    assert cfg.TEST
+    home = Path.home()
+    for d in (cfg.dirs["data"], cfg.dirs["config"], cfg.database_path):
+        assert not Path(d).is_relative_to(home / ".local" / "share"), d
+        assert not Path(d).is_relative_to(home / ".config"), d
+
+
+def test_config_refuses_to_switch_environment():
+    with pytest.raises(RuntimeError, match="cannot switch"):
+        get_config("production")

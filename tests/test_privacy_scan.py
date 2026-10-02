@@ -2,6 +2,7 @@
 
 import base64
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -104,3 +105,22 @@ def test_activity_name_survives_both_shells(monkeypatch, activity):
     host_argv = argv_after_shell_word(seen[0])
     device_cmd = " ".join(host_argv[host_argv.index("shell") + 1 :])
     assert argv_after_shell_word(device_cmd) == ["am", "start", activity]
+
+
+@pytest.mark.parametrize(
+    "command, image",
+    [
+        ("gmap", "images/google_maps_sharing.png"),
+        ("gphotos", "images/google_photos_sharing.png"),
+    ],
+)
+def test_sharing_checks_show_their_own_example(app, monkeypatch, command, image):
+    """Each check shows the example screenshot for its own app (Photos used
+    to show the Maps one), and the image ships with the package."""
+    monkeypatch.setattr(ps, "open_activity", lambda ser, name: True)
+    monkeypatch.setattr(ps, "keycode", lambda ser, evt: None)
+    monkeypatch.setattr(ps, "wait", lambda t: None)
+    with app.test_request_context():
+        html = ps.do_privacy_check("SER1", command)
+    assert f"/static/{image}" in html
+    assert (Path(app.static_folder) / image).is_file()

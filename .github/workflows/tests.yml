@@ -31,9 +31,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            setup.cfg
+          cache-dependency-path: pyproject.toml
 
       - name: Install package
         run: |
@@ -41,7 +39,35 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Run tests
-        run: python -m pytest tests/ -v
+        # Fails if coverage drops below fail_under in pyproject.toml.
+        run: python -m pytest -v --cov --cov-report=term-missing:skip-covered
+
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      # Installs the wheel, not the source tree, so files missing from the
+      # package (templates, schema.sql, scripts, data) fail here.
+      - name: Install the wheel in a clean environment and start the app
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-env"
+          "$RUNNER_TEMP/wheel-env/bin/pip" install dist/*.whl
+          "$RUNNER_TEMP/wheel-env/bin/isdi" --version
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-env/bin/python" "$GITHUB_WORKSPACE/scripts/smoke_test_wheel.py"
 
   format:
     runs-on: ubuntu-latest
@@ -57,7 +83,7 @@ jobs:
 
       # Pinned so a new black release cannot fail CI by reformatting
       # unchanged code. Bump deliberately, together with the dev extra in
-      # pyproject.toml and setup.cfg, and run `make format`.
+      # pyproject.toml, and run `make format`.
       - name: Check formatting
         run: |
           python -m pip install "black==26.5.1"

@@ -6,7 +6,7 @@
 # _order in ClientForm should be modified .
 
 from isdi.web import sa
-from wtforms.validators import Email, InputRequired
+from wtforms.validators import InputRequired
 
 
 class Client(sa.Model):
@@ -63,10 +63,7 @@ class Client(sa.Model):
     referring_professional_email = sa.Column(
         sa.String(255),
         nullable=True,
-        info={
-            "label": "Email of Referring Professional (Optional)",
-            "validators": Email(),
-        },
+        info={"label": "Email of Referring Professional (Optional)"},
     )
 
     referring_professional_phone = sa.Column(

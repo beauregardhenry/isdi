@@ -10,7 +10,6 @@ on:
     paths:
       - "scripts/get-stalkerware-indicators.py"
       - ".github/workflows/get-stalkerware-indicators.yml"
-      - "requirements.txt"
   schedule:
     # Weekly on Sunday at 00:00 UTC
     - cron: '0 0 * * 0'
