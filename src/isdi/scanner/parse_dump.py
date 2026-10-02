@@ -301,7 +301,11 @@ class AndroidDump(PhoneDump):
                 continue
             if l.startswith("DUMP OF SERVICE") or l.startswith("DUMP OF SETTINGS"):
                 if service:
-                    d[service] = _parse(join_lines)
+                    parsed = _parse(join_lines)
+                    # Dumps contain both "netstats detail" (renamed below) and
+                    # an often-empty /proc "net_stats" section; keep the data.
+                    if parsed or not d.get(service):
+                        d[service] = parsed
                 service = re.sub(r"DUMP OF SERVICE |DUMP OF SETTINGS ", "", l).strip()
                 if service == "netstats detail":
                     service = "net_stats"
@@ -392,22 +396,24 @@ class AndroidDump(PhoneDump):
             d["net_stats"] = d["net_stats"][0]
         dn = d["net_stats"]
         if process_uid.startswith("u0a"):
-            process_uid = "10" + process_uid[3:]
+            # u0aN is app uid 10000 + N
+            process_uid = str(10000 + int(process_uid[3:]))
 
         # Backgroud data allowed?
         bgdata = dn.get("BPF map content", {}).get("mUidCounterSetMap", [])
         allowed = False
         for l in bgdata:
-            if l.values()[0].startswith(process_uid):
+            entry = next(iter(l.values()), "") if isinstance(l, dict) else l
+            if str(entry).startswith(process_uid):
                 allowed = True
                 break
-        # Get the data usage
+        # Get the data usage: rows are "uid rxBytes rxPackets txBytes txPackets"
         rxstats = dn.get("BPF map content", {}).get("mAppUidStatsMap", [])
 
         for l in rxstats:
-            if l.startswith(process_uid):
-                s = l.split(" ")
-                if len(s) != 4:
+            s = str(l).split()
+            if s and s[0] == process_uid:
+                if len(s) != 5:
                     logging.error(
                         f"Error parsing net_stats for {appid} with uid {process_uid}: {s}"
                     )
@@ -439,6 +445,16 @@ class AndroidDump(PhoneDump):
             return t[1]
         return b
 
+    @staticmethod
+    def _find_packages_section(section):
+        """The parsed `dumpsys package` output is a dict or a list depending
+        on which other sections the phone prints; find "Packages" in either."""
+        items = section if isinstance(section, list) else [section]
+        for item in items:
+            if isinstance(item, dict) and isinstance(item.get("Packages"), dict):
+                return item["Packages"]
+        return None
+
     def _get_apps(self) -> dict:
         if self.apps:
             return self.apps
@@ -451,12 +467,10 @@ class AndroidDump(PhoneDump):
                 f"'package' is not a key in self.df, where keys = {list(d.keys())}"
             )
             return {}
-        if not isinstance(d["package"], list) or len(d["package"]) == 0:
-            logging.error(
-                f"'package' key in self.df is not a non-empty list, d['package']={d['package']}"
-            )
+        app_d = self._find_packages_section(d["package"])
+        if app_d is None:
+            logging.error(f"No 'Packages' section in the package dump")
             return {}
-        app_d = d["package"][0]["Packages"]
         # get_all_leaves(match_keys(d, "^package$//^Packages//^Package .*"))
         packages = {}
         for k, v in app_d.items():
@@ -524,7 +538,7 @@ class AndroidDump(PhoneDump):
         if appid not in a:
             logging.error(f"AppId {appid} not found in apps={a}")
             return {}
-        app = d["package"][0]["Packages"][a[appid]["packageKey"]]
+        app = self._find_packages_section(d["package"])[a[appid]["packageKey"]]
         res = {
             k: app.get(k, "")
             for k in [

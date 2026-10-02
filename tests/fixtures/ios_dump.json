@@ -1,0 +1,29 @@
+{
+  "apps": {
+    "com.apple.mobilesafari": {
+      "CFBundleIdentifier": "com.apple.mobilesafari",
+      "CFBundleExecutable": "MobileSafari",
+      "CFBundleVersion": "8619.1.26",
+      "ApplicationType": "System"
+    },
+    "com.example.tracker": {
+      "CFBundleIdentifier": "com.example.tracker",
+      "CFBundleExecutable": "Tracker",
+      "CFBundleVersion": "3.4",
+      "ApplicationType": "User",
+      "NSLocationAlwaysUsageDescription": "We share your location with your family.",
+      "NSCameraUsageDescription": "Scan QR codes.",
+      "Entitlements": {
+        "com.apple.private.tcc.allow": ["kTCCServiceMicrophone"]
+      }
+    }
+  },
+  "devinfo": {
+    "DeviceClass": "iPhone",
+    "ProductType": "iPhone11,8",
+    "ModelNumber": "MRY42",
+    "RegionInfo": "LL/A",
+    "ProductVersion": "17.6.1",
+    "SerialNumber": "not-copied-into-results"
+  }
+}
