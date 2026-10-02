@@ -66,3 +66,11 @@ isdi = [
 testpaths = ["tests"]
 xfail_strict = true
 addopts = "--strict-markers"
+
+[tool.coverage.run]
+source = ["isdi"]
+branch = true
+
+[tool.coverage.report]
+# A ratchet: raise it when coverage goes up, never lower it.
+fail_under = 71

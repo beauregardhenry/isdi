@@ -1,3 +1,4 @@
+from isdi.config import get_config
 from isdi.web import bp
 from flask import request, jsonify, url_for, redirect
 import subprocess
@@ -41,9 +42,10 @@ def delete_device():
 @bp.route("/termux-usb-permission", methods=["POST"])
 def request_termux_usb_permission():
     """Request USB permission for iOS device in Termux"""
-    # Temporarily disabled for testing
-    # if not os.environ.get('PREFIX'):
-    #     return jsonify({"error": "This endpoint is only available on Termux"}), 403
+    # The home page only offers this on Termux (or in debug mode, to work
+    # on the page itself).
+    if not (os.environ.get("PREFIX") or get_config().DEBUG):
+        return jsonify({"error": "This endpoint is only available on Termux"}), 403
 
     try:
         # First, list USB devices
