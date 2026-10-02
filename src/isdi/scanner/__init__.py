@@ -14,6 +14,7 @@ import shlex
 import sqlite3
 import subprocess
 import logging
+import time
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
@@ -88,23 +89,32 @@ class AppScanner:
         """Return dict of app package IDs and titles: {appId: title}."""
         return {}
 
-    def dump_path(self, serial: str) -> str:
-        """Get the file path for a device's dump."""
-        hmac_serial = cfg.hmac_serial(serial)
+    def dump_path(self, serial: str, stored: bool = False) -> str:
+        """Get the file path for a device's dump. With stored=True, `serial`
+        is already the HMAC kept in the database (a saved scan)."""
+        hmac_serial = serial if stored else cfg.hmac_serial(serial)
         fkind = "json" if self.device_type == "ios" else "txt"
         return os.path.join(cfg.DUMP_DIR, f"{hmac_serial}_{self.device_type}.{fkind}")
 
-    def _load_dump(self, serialno: str) -> Optional[parse_dump.PhoneDump]:
-        """Load device dump from file, creating it if needed."""
-        dumpf = self.dump_path(serialno)
+    def _load_dump(
+        self, serialno: str, stored: bool = False
+    ) -> Optional[parse_dump.PhoneDump]:
+        """Load device dump from file, creating it if needed. A stored dump
+        (saved scan) is only read, never re-created from the phone."""
+        dumpf = self.dump_path(serialno, stored=stored)
 
+        if stored:
+            if not os.path.exists(dumpf):
+                return None
         # Re-dump if file is missing or suspiciously small (a header-only empty dump is ~600B)
-        if not os.path.exists(dumpf) or os.path.getsize(dumpf) < 5000:
+        elif not os.path.exists(dumpf) or os.path.getsize(dumpf) < 5000:
             self.ddump = None
             if not self._dump_phone(serialno):
                 return None
 
-        if isinstance(self.ddump, parse_dump.PhoneDump):
+        # The scanner is shared by all requests: only reuse the cached dump
+        # if it is this phone's.
+        if isinstance(self.ddump, parse_dump.PhoneDump) and self.ddump.dumpf == dumpf:
             return self.ddump
 
         try:
@@ -154,7 +164,7 @@ class AppScanner:
         return os.path.exists(dumpf)
 
     def get_multiple_app_details(
-        self, serialno: str, appids: List[str]
+        self, serialno: str, appids: List[str], stored: bool = False
     ) -> Dict[str, Tuple[Dict, Dict]]:
         """Get details for multiple apps at once, returning dict keyed by appId."""
 
@@ -196,11 +206,15 @@ class AppScanner:
         if not appids:
             return {}
 
-        if not self.ddump:
-            self._load_dump(serialno)
+        if not self._load_dump(serialno, stored=stored):
+            self.ddump = None
 
         if not AppScanner.app_info_conn:
-            return {appid: ({}, {}) for appid in appids}
+            # No app metadata db: still show what the phone's dump says.
+            return {
+                appid: ({}, (self.ddump.info(appid) if self.ddump else None) or {})
+                for appid in appids
+            }
 
         conn = AppScanner.app_info_conn
         if conn.row_factory is None:
@@ -216,13 +230,19 @@ class AppScanner:
             if appid:
                 details[appid] = _process_app_row(appid, d)
 
+        # Apps missing from the metadata db (often exactly the sideloaded
+        # ones) still get what the phone's dump says about them.
         for appid in appids:
-            details.setdefault(appid, ({}, {}))
+            if appid not in details:
+                info = self.ddump.info(appid) if self.ddump else None
+                details[appid] = ({}, info or {})
         return details
 
-    def app_details(self, serialno: str, appid: str) -> Tuple[Dict, Dict]:
+    def app_details(
+        self, serialno: str, appid: str, stored: bool = False
+    ) -> Tuple[Dict, Dict]:
         """Get detailed info for an app."""
-        details = self.get_multiple_app_details(serialno, [appid])
+        details = self.get_multiple_app_details(serialno, [appid], stored=stored)
         return details.get(appid, ({}, {}))
 
     def find_spyapps(self, serialno: str) -> Dict[str, Dict[str, Any]]:
@@ -374,9 +394,6 @@ class AndroidScanner(AppScanner):
             "activity",
             "appops",
         ]
-        _email_re = re.compile(
-            r"(\s*)[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,4}\b"
-        )
 
         def _run(*args, timeout=120) -> str:
             try:
@@ -396,10 +413,8 @@ class AndroidScanner(AppScanner):
             with open(dumpf, "w", encoding="utf-8", errors="replace") as f:
                 for svc in services:
                     f.write(f"\nDUMP OF SERVICE {svc}\n")
-                    out = _email_re.sub(
-                        r"\1<email>", _run("shell", "dumpsys", *svc.split())
-                    )
-                    f.write(out)
+                    out = _run("shell", "dumpsys", *svc.split())
+                    f.write(parse_dump.normalize_dumpsys(parse_dump.redact_emails(out)))
 
                 f.write("\nDUMP OF SERVICE net_stats\n")
                 f.write(
@@ -410,7 +425,11 @@ class AndroidScanner(AppScanner):
 
                 for ns in ("secure", "system", "global"):
                     f.write(f"\nDUMP OF SETTINGS {ns}\n")
-                    f.write(_run("shell", "settings", "list", ns, timeout=30))
+                    f.write(
+                        parse_dump.normalize_dumpsys(
+                            _run("shell", "settings", "list", ns, timeout=30)
+                        )
+                    )
 
             size = os.path.getsize(dumpf)
             if size < 5000:
@@ -514,8 +533,30 @@ class AndroidScanner(AppScanner):
 class IosScanner(AppScanner):
     """Scanner for iOS devices using pymobiledevice3."""
 
+    # A live scan reads the phone in device_info() and again in get_apps();
+    # reuse the first read for the rest of that scan only.
+    DUMP_REUSE_SECONDS = 120
+
     def __init__(self):
         super().__init__("ios", cfg.LIBIMOBILEDEVICE_PATH)
+        self._last_dump: Optional[Tuple[str, float]] = None
+
+    def _dump_for_scan(self, serial: str, fresh: bool) -> bool:
+        """Dump the phone unless this scan already did (fresh=False only)."""
+        now = time.monotonic()
+        if (
+            not fresh
+            and self._last_dump is not None
+            and self._last_dump[0] == serial
+            and now - self._last_dump[1] < self.DUMP_REUSE_SECONDS
+            and os.path.exists(self.dump_path(serial))
+        ):
+            return True
+        self._last_dump = None
+        if not self._dump_phone(serial):
+            return False
+        self._last_dump = (serial, now)
+        return True
 
     def devices(self) -> List[str]:
         """Get list of connected iOS devices."""
@@ -538,7 +579,7 @@ class IosScanner(AppScanner):
 
     def get_apps(self, serialno: str) -> List[str]:
         """Get installed apps from dump."""
-        if not self._dump_phone(serialno):
+        if not self._dump_for_scan(serialno, fresh=False):
             logging.error("Failed to dump iOS device")
             return []
 
@@ -574,8 +615,8 @@ class IosScanner(AppScanner):
                 return {}
 
     def device_info(self, serial: str) -> Tuple[str, Dict]:
-        """Get iOS device info."""
-        if not self._dump_phone(serial):
+        """Get iOS device info. Starts a scan, so always reads the phone."""
+        if not self._dump_for_scan(serial, fresh=True):
             return "Unknown iOS Device", {}
 
         self._load_dump(serial)

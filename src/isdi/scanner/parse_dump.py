@@ -46,6 +46,35 @@ def complexparse(lines: list[str]) -> dict:
     return d
 
 
+# Applied to `adb shell` output before it is written to a dump file; ported
+# from the sed pipeline in scripts/android_scan.sh. [ \t] rather than \s so a
+# pattern never spans lines, as with sed.
+_EMAIL_RE = re.compile(r"([ \t]*)[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,4}\b")
+_DB_EMAIL_RE = re.compile(r"([ \t]*)[a-zA-Z0-9._%+\-]+_gmail\.com")
+_NORMALIZE_RES = [
+    (re.compile(r"^([ \t]*)lastDisabledCaller: ", re.M), r"\1lastDisabledCaller:\1  "),
+    # Put per-user state on its own indented block so it parses as a section.
+    (
+        re.compile(r"^([ \t]*)User 0: ceDataInode(.*)$", re.M),
+        r"\1User 0:\n\1  ceDataInode\2",
+    ),
+    (re.compile(r"^([ \t]*)(Excluded packages:)", re.M), r"  \1\2"),
+    (re.compile(r"^([ \t]*)#(.*)$", re.M), r"\1\2"),
+]
+
+
+def redact_emails(text: str) -> str:
+    """Replace account emails (and <name>_gmail.com database names)."""
+    return _DB_EMAIL_RE.sub(r"\1<db_email>", _EMAIL_RE.sub(r"\1<email>", text))
+
+
+def normalize_dumpsys(text: str) -> str:
+    """Rewrite dumpsys lines that the indentation parser would misread."""
+    for pattern, repl in _NORMALIZE_RES:
+        text = pattern.sub(repl, text)
+    return text
+
+
 def count_lspaces(lspaces: str) -> int:
     """Counts the number of leading spaces in a line"""
     # print(">>", repr(l))
@@ -646,16 +675,10 @@ class IosDump(PhoneDump):
             if not permission:
                 continue  # Empty permission, skip
             if permission not in self.permissions_map:
-                logging.info(
-                    f"Have not seen {permission} before. Making note of this..."
-                )
-                permission_human_readable = permission.replace("kTCCService", "")
-                with open(
-                    os.path.join(config.STATIC_DATA, "ios_permissions.json"), "w"
-                ) as fh:
-                    self.permissions_map[permission] = permission_human_readable
-                    fh.write(json.dumps(self.permissions_map))
-                logging.info("Noted.")
+                # Keep it for this dump only: the map ships with the package,
+                # which may be read-only and must not change at runtime.
+                logging.info(f"Unknown iOS permission {permission!r}")
+                self.permissions_map[permission] = permission.replace("kTCCService", "")
 
     def get_permissions(self, app: dict) -> list:
         """

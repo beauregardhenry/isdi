@@ -26,20 +26,26 @@ outf="$2"
 
 printf "Serial: %s\n" "${serial[@]}"
 
-# dump only if the file is at least 20 bytes and was modified within the last day
-if [ -f "$outf" ] && [ "$(wc -c < "$outf")" -ge 20 ] && [ "$(find "$outf" -mtime -1 -print)" ]; then
-    echo "Dump file already exists and is recent: $outf"
-    exit 0
-fi
-echo "{
-    \"apps\": $(${idb} apps list "${serial[@]}"),
-    \"devinfo\": $(${idb} lockdown info "${serial[@]}")
-}" > "$outf"
-
-if [ -s "$outf" ]; then
-    echo "Dump completed successfully: $outf"
-    exit 0
-else
-    echo "Error: Failed to create dump file"
+# Always read the phone: a cached dump would hide apps installed or removed
+# since the last scan. The caller reuses a dump within a single scan.
+# shellcheck disable=SC2086  # $idb may be a multi-word command
+if ! apps=$(${idb} apps list "${serial[@]}"); then
+    echo "Error: could not list apps (is the phone unlocked and trusted?)" >&2
     exit 1
 fi
+# shellcheck disable=SC2086
+if ! devinfo=$(${idb} lockdown info "${serial[@]}"); then
+    echo "Error: could not read device info" >&2
+    exit 1
+fi
+
+# Write atomically so a failed run never leaves a half-written dump behind.
+tmpf="$outf.tmp.$$"
+if printf '{\n    "apps": %s,\n    "devinfo": %s\n}\n' "$apps" "$devinfo" > "$tmpf" \
+    && mv -f "$tmpf" "$outf"; then
+    echo "Dump completed successfully: $outf"
+    exit 0
+fi
+rm -f "$tmpf"
+echo "Error: Failed to create dump file" >&2
+exit 1

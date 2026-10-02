@@ -87,7 +87,11 @@ def open_activity(ser, activity_name):
     Opens an activity
     """
     cmd = "{cli} shell am start {act}"
-    out, err = run_command(cmd, cli=thiscli(ser), act=shlex.quote(activity_name))
+    # adb joins its arguments and runs them in the phone's shell, so quote
+    # once for that shell and once for ours; otherwise the phone expands
+    # "$PrivacySettingsActivity" in ".Settings$PrivacySettingsActivity" to "".
+    act = shlex.quote(shlex.quote(activity_name))
+    out, err = run_command(cmd, cli=thiscli(ser), act=act)
     if err:
         print("ERROR (open_activity): {!r}".format(err))
         return False

@@ -38,7 +38,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
-    "black>=23.0",
+    "black==26.5.1",  # keep in sync with .github/workflows/tests.yml
 ]
 termux = [
     "pymobiledevice3>=4.0",

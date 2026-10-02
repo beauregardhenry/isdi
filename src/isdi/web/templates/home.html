@@ -50,8 +50,7 @@
                 (function() {
                     var btn = document.getElementById('btn-termux-usb');
                     if (!btn) {
-                        console.error('USB button not found');
-                        return;
+                        return;  // only rendered on Termux / in debug mode
                     }
                     
                     btn.addEventListener('click', function(e) {
@@ -188,10 +187,10 @@
                                                   title="Delete app">&otimes;</a></td>
                             {% endif %}
                             {% if info['title'] %}
-                            <td data-label="App Name"><a href="/details/app/{{ device }}?appId={{ appId }}&serial={{ serial }}" target="_blank" rel="noopener"
+                            <td data-label="App Name"><a href="{{ url_for('app_details', device=device, appId=appId, serial=serial, from_dump=('1' if from_dump else None)) }}" target="_blank" rel="noopener"
 		                   class="text text-dark">{{ info['title'] }}</a></td>
                             {% else %}
-                            <td data-label="App Name"><a href="/details/app/{{ device }}?appId={{ appId }}&serial={{ serial }}" target="_blank" rel="noopener"
+                            <td data-label="App Name"><a href="{{ url_for('app_details', device=device, appId=appId, serial=serial, from_dump=('1' if from_dump else None)) }}" target="_blank" rel="noopener"
                                    class="text text-dark"> &lt;Unknown&gt;</a></td>
                             {% endif %}
                             <td data-label="App ID"><a class="{{ info.class_ }} appid" href="https://www.google.com/search?q={{ appId }}"
