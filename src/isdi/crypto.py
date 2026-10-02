@@ -39,6 +39,7 @@ SCRYPT_P = 1
 
 _data_key: Optional[bytes] = None
 _pii_key: Optional[bytes] = None
+_signing_key: Optional[bytes] = None
 
 
 class LockedError(RuntimeError):
@@ -145,17 +146,16 @@ def setup(path: Path, passphrase: str, pii_key: Optional[bytes] = None) -> str:
     data_key = AESGCM.generate_key(bit_length=256)
     pii_key = pii_key or secrets.token_bytes(32)
     recovery = new_recovery_key()
-    _write_keyfile(
-        Path(path),
-        {
-            "version": KEYFILE_VERSION,
-            "cipher": "AES-256-GCM",
-            "passphrase": _wrap(passphrase, data_key),
-            "recovery": _wrap(recovery, data_key),
-            "pii_key": _seal(data_key, pii_key, b"isdi-pii-key"),
-        },
-    )
-    _set_keys(data_key, pii_key)
+    data = {
+        "version": KEYFILE_VERSION,
+        "cipher": "AES-256-GCM",
+        "passphrase": _wrap(passphrase, data_key),
+        "recovery": _wrap(recovery, data_key),
+        "pii_key": _seal(data_key, pii_key, b"isdi-pii-key"),
+    }
+    _add_signing_key(data, data_key)
+    _write_keyfile(Path(path), data)
+    _set_keys(data_key, pii_key, data)
     return recovery
 
 
@@ -173,7 +173,11 @@ def unlock(
         pii_key = _open(data_key, data["pii_key"], b"isdi-pii-key")
     except InvalidTag as e:
         raise UnlockError("the keyfile is damaged") from e
-    _set_keys(data_key, pii_key)
+    if "signing_key" not in data:
+        # Keyfiles made before signed exports: add a signing key once.
+        _add_signing_key(data, data_key)
+        _write_keyfile(Path(path), data)
+    _set_keys(data_key, pii_key, data)
 
 
 def change_passphrase(
@@ -191,13 +195,81 @@ def change_passphrase(
     _write_keyfile(Path(path), data)
 
 
-def _set_keys(data_key: bytes, pii_key: bytes) -> None:
-    global _data_key, _pii_key
+def _add_signing_key(data: dict, data_key: bytes) -> None:
+    """An Ed25519 key pair for signing exports. The private key is stored
+    encrypted with the data key; the public key in the clear, so exports
+    can be verified without the passphrase."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    key = Ed25519PrivateKey.generate()
+    raw = key.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )
+    data["signing_key"] = _seal(data_key, raw, b"isdi-signing-key")
+    data["signing_public_key"] = _b64(
+        key.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw
+        )
+    )
+
+
+def _set_keys(data_key, pii_key, keyfile_data=None) -> None:
+    global _data_key, _pii_key, _signing_key
     _data_key, _pii_key = data_key, pii_key
+    _signing_key = None
+    if data_key is not None and keyfile_data and "signing_key" in keyfile_data:
+        _signing_key = _open(data_key, keyfile_data["signing_key"], b"isdi-signing-key")
 
 
 def lock() -> None:
     _set_keys(None, None)
+
+
+def _state():
+    """The unlocked keys, for tests that lock or switch keyfiles."""
+    return (_data_key, _pii_key, _signing_key)
+
+
+def _restore(state) -> None:
+    global _data_key, _pii_key, _signing_key
+    _data_key, _pii_key, _signing_key = state
+
+
+def sign(data: bytes) -> bytes:
+    """Ed25519 signature of data with this installation's signing key."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    if _signing_key is None:
+        raise LockedError("ISDi is locked: unlock it with the passphrase first")
+    return Ed25519PrivateKey.from_private_bytes(_signing_key).sign(data)
+
+
+def public_key(path: Path) -> bytes:
+    """This installation's signing public key (raw 32 bytes), read from the
+    keyfile; no passphrase needed."""
+    return _unb64(_read_keyfile(path)["signing_public_key"])
+
+
+def fingerprint(public: bytes) -> str:
+    """SHA-256 of a public key, as hex in groups of four for reading aloud."""
+    import hashlib
+
+    h = hashlib.sha256(public).hexdigest()
+    return " ".join(h[i : i + 4] for i in range(0, len(h), 4))
+
+
+def verify_signature(public: bytes, data: bytes, signature: bytes) -> bool:
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    try:
+        Ed25519PublicKey.from_public_bytes(public).verify(signature, data)
+        return True
+    except (InvalidSignature, ValueError):
+        return False
 
 
 def is_unlocked() -> bool:

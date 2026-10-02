@@ -125,6 +125,21 @@ CREATE TABLE IF NOT EXISTS audit_log (
   mac TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_clientid on audit_log (clientid);
+
+-- Raw dumps kept, encrypted, when the operator asks for an evidence copy
+-- (isdi/evidence.py). dump_sha256 is the hash at the time of the scan.
+CREATE TABLE IF NOT EXISTS evidence (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scanid INTEGER NOT NULL,
+  clientid TEXT,
+  created TEXT NOT NULL,
+  dump_name TEXT,
+  dump_sha256 TEXT NOT NULL,
+  size INTEGER,
+  data TEXT,
+  FOREIGN KEY(scanid) REFERENCES scan_res(id)
+);
+CREATE INDEX IF NOT EXISTS idx_evidence_scanid on evidence (scanid);
 """
 
 
@@ -155,9 +170,10 @@ ENCRYPTED_COLUMNS = {
         "data_usage battery_usage details"
     ).split(),
     "audit_log": "operator details".split(),
+    "evidence": "dump_name data".split(),
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def _enc(column, value):
@@ -520,6 +536,7 @@ def delete_scan_data(serial: str) -> bool:
     if scan_ids:
         for row in scan_ids:
             db_conn.execute("DELETE FROM app_info WHERE scanid=?", (row["id"],))
+            db_conn.execute("DELETE FROM evidence WHERE scanid=?", (row["id"],))
         db_conn.execute("DELETE FROM scan_res WHERE serial=?", (serial,))
         db_conn.commit()
         from isdi import audit
@@ -592,6 +609,9 @@ def erase_client(clientid) -> dict:
     ).rowcount
     counts["clients"] = db.execute(
         "DELETE FROM clients WHERE clientid=?", (clientid,)
+    ).rowcount
+    counts["evidence"] = db.execute(
+        "DELETE FROM evidence WHERE clientid=?", (clientid,)
     ).rowcount
     db.commit()
     from isdi import audit

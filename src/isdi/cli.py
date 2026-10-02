@@ -259,11 +259,16 @@ def export(clientid, output, operator):
         )
     text = json.dumps(data, indent=2, default=str)
     if output:
+        from isdi import crypto
+        from isdi.evidence import sign_file
+
         fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(text + "\n")
+        sig = sign_file(output, crypto.public_key(config.keyfile))
         click.echo(
-            f"✓ Wrote {output}. It is not encrypted: delete it once handed over.",
+            f"✓ Wrote {output} and its signature {sig}. It is not encrypted: "
+            "delete it once handed over.",
             err=True,
         )
     else:
@@ -295,6 +300,101 @@ def erase(clientid, operator):
         + ", ".join(f"{n} {table}" for table, n in counts.items() if n)
         + " row(s)."
     )
+
+
+@cli.group("evidence")
+def evidence_group():
+    """Evidence copies of scans (kept when "Keep an evidence copy" is ticked)."""
+
+
+@evidence_group.command("list")
+@click.argument("clientid", required=False)
+@_operator_option
+def evidence_list(clientid, operator):
+    """List kept evidence copies (all, or one client's)."""
+    from isdi import evidence
+    from isdi.config import get_config
+
+    with _data(get_config(), operator):
+        rows = evidence.list_evidence(clientid)
+    if not rows:
+        click.echo("No evidence copies are kept.")
+    for r in rows:
+        click.echo(
+            f"scan {r['scanid']}  client {r['clientid']}  kept {r['created']}  "
+            f"{r['size']} bytes  sha256 {r['dump_sha256']}"
+        )
+
+
+@evidence_group.command("export")
+@click.argument("scanid", type=int)
+@click.option(
+    "-o",
+    "--output",
+    required=True,
+    type=click.Path(file_okay=False),
+    help="New directory to write the package to.",
+)
+@_operator_option
+def evidence_export(scanid, output, operator):
+    """Write a signed evidence package for one scan to a new directory.
+
+    The package (raw dump if kept, results, audit trail, manifest and
+    signature) is not encrypted: hand it over securely."""
+    from isdi import crypto, evidence
+    from isdi.config import get_config
+
+    config = get_config()
+    with _data(config, operator):
+        try:
+            evidence.export_package(scanid, output, crypto.public_key(config.keyfile))
+        except (LookupError, FileExistsError, ValueError) as e:
+            raise click.ClickException(str(e))
+    fp = crypto.fingerprint(crypto.public_key(config.keyfile))
+    click.echo(f"✓ Wrote {output}. Signed by key {fp}")
+    click.echo("  It is not encrypted: hand it over securely.")
+
+
+@cli.command("verify")
+@click.argument("path", type=click.Path(exists=True))
+def verify_cmd(path):
+    """Check a signed export file or evidence package (no passphrase needed).
+
+    Compare the fingerprint shown with the one the clinic published
+    (`isdi signing-key` on the clinic's computer)."""
+    from isdi import evidence
+
+    try:
+        result = evidence.verify(path)
+    except (OSError, ValueError, KeyError) as e:
+        raise click.ClickException(f"Cannot verify {path}: {e}")
+    click.echo(f"Signed by key {result['fingerprint']}")
+    if not result["ok"]:
+        for problem in result["problems"]:
+            click.echo(f"  ✗ {problem}")
+        raise click.ClickException("Verification FAILED")
+    click.echo("✓ Signature valid and every file matches the manifest")
+
+
+@cli.command("signing-key")
+def signing_key():
+    """Show this installation's signing public key and its fingerprint."""
+    import base64
+
+    from isdi import crypto
+    from isdi.config import get_config
+
+    config = get_config()
+    if not crypto.is_set_up(config.keyfile):
+        raise click.ClickException("Encryption is not set up yet; run `isdi run`.")
+    try:
+        public = crypto.public_key(config.keyfile)
+    except KeyError:
+        raise click.ClickException(
+            "No signing key yet: start ISDi once (`isdi run`) to create it."
+        )
+    click.echo(f"Public key:  {base64.b64encode(public).decode()}")
+    click.echo(f"Fingerprint: {crypto.fingerprint(public)}")
 
 
 @cli.group("audit")

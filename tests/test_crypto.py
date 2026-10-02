@@ -12,9 +12,9 @@ from isdi import crypto
 @pytest.fixture
 def keyfile(tmp_path):
     """A separate keyfile; the suite's own keys are restored afterwards."""
-    saved = (crypto._data_key, crypto._pii_key)
+    saved = crypto._state()
     yield tmp_path / "datakey.json"
-    crypto._set_keys(*saved)
+    crypto._restore(saved)
 
 
 def test_setup_unlock_and_round_trip(keyfile):

@@ -21,6 +21,7 @@ compliant with either.
 | Device serials | database | pseudonymised (HMAC-SHA256 with a secret key) |
 | Client ids (`YYYYMMDD_NNN`), device type (android/ios), row ids, timestamps | database | **not encrypted**: queries need them. They reveal when consultations and scans took place, and how many. |
 | Raw phone dumps | dump directory | exist only while the phone is scanned (see below) |
+| Evidence copies (only when "Keep an encrypted evidence copy" is ticked) | database | encrypted, with the SHA-256 recorded at the scan |
 | Encryption keys | `datakey.json` in the config directory | encrypted with the passphrase and the recovery key |
 | Audit log: who did what, when (scans, notes and their edits, uninstalls, exports, erasures) | database | entries chained with HMAC-SHA256; details encrypted, and blanked when a client is erased |
 | Log file `isdi.log` | cache directory | no serials, device output, app lists or email addresses |
@@ -44,7 +45,7 @@ compliant with either.
 - The serial-pseudonymisation key is kept in the keyfile, encrypted with
   the data key.
 
-### Raw data is not kept
+### Raw data is not kept, unless asked for as evidence
 
 - A phone's raw dump is written to the dump directory (owner-only) while
   it is scanned, and **deleted when the scan ends**, whether it succeeded,
@@ -53,6 +54,10 @@ compliant with either.
   deleted at the next start.
 - What the details pages need is extracted from the dump and stored,
   encrypted, with the scan.
+- **Exception:** when the operator ticks "Keep an encrypted evidence copy",
+  the dump is also kept, encrypted, for use in court. See
+  [COURT_RECORDS.md](COURT_RECORDS.md). The copy is deleted with the client
+  (`isdi erase`) or the device's data.
 - Screenshots from the privacy checks are only sent to the browser, never
   saved.
 - The parser no longer caches dumps as JSON.

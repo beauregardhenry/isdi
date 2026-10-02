@@ -34,6 +34,14 @@
                 <input class="form-control" name="device_owner" id="device_owner" 
                        placeholder="Nickname for device? Whose is it?"
                        rows="2" value="{% if device_primary_user_sel %}{{ device_primary_user_sel }}{% endif %}"/>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="preserve_evidence"
+                           value="1" id="preserve_evidence">
+                    <label class="form-check-label small" for="preserve_evidence">
+                        Keep an encrypted evidence copy of the raw scan data
+                        (for a protective order or court case)
+                    </label>
+                </div>
 		<br>
                 <button class="btn btn-primary btn-block isdi-form-actions">Scan now</button>
             </form>
@@ -161,6 +169,11 @@
             {% if device_name %}
             <label>Scanned: <b>{{ device_name }}</b></label><br/>
   	    <label>Jailbroken or rooted? {{ isrooted | safe }}</label>
+            {% if evidence_sha256 %}<br/>
+            <label class="small">Evidence copy kept, encrypted (SHA-256
+                <code>{{ evidence_sha256[:16] }}…</code>). Export it with
+                <code>isdi evidence export {{ scanid }}</code>.</label>
+            {% endif %}
             {% endif %}
             <div class="table-wrap">
             <table class="table table-bordered w-100 applist-table">
