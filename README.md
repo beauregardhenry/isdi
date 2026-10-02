@@ -6,11 +6,21 @@ in ["Clinical Computer Security for Victims of Intimate Partner Violence"
 (USENIX 2019)](https://www.usenix.org/conference/usenixsecurity19/presentation/havron). The blacklist is based
 on apps crawled in ["The Spyware Used in Intimate Partner Violence" (IEEE S&P 2018)](https://www.computer.org/csdl/pds/api/csdl/proceedings/download-article/12OmNxWuiny/pdf).
 
-[![ISDI_Linter](https://github.com/stopipv/isdi/actions/workflows/super-linter.yml/badge.svg)](https://github.com/stopipv/isdi/actions/workflows/super-linter.yml)
-[![Sync with IOC stalkerware indicators](https://github.com/stopipv/isdi/actions/workflows/get-stalkerware-indicators.yml/badge.svg)](https://github.com/stopipv/isdi/actions/workflows/get-stalkerware-indicators.yml)
+[![Tests](https://github.com/beauregardhenry/isdi/actions/workflows/tests.yml/badge.svg)](https://github.com/beauregardhenry/isdi/actions/workflows/tests.yml)
+[![ISDI_Linter](https://github.com/beauregardhenry/isdi/actions/workflows/super-linter.yml/badge.svg)](https://github.com/beauregardhenry/isdi/actions/workflows/super-linter.yml)
+[![Sync with IOC stalkerware indicators](https://github.com/beauregardhenry/isdi/actions/workflows/get-stalkerware-indicators.yml/badge.svg)](https://github.com/beauregardhenry/isdi/actions/workflows/get-stalkerware-indicators.yml)
 
-## Contribution Guidelines
-For more information about contributing to ISDi, see the [contribution guidelines](https://github.com/stopipv/isdi/blob/main/contribution.md).
+## About this fork
+
+This is a maintained fork of [stopipv/isdi](https://github.com/stopipv/isdi).
+It fixes security and detection bugs in upstream 1.0.9, including a command
+injection reachable from any web page and a blocklist that flagged no known
+stalkerware (see the [releases](https://github.com/beauregardhenry/isdi/releases)).
+It is distributed through GitHub releases, not PyPI: the `isdi-scanner`
+package on PyPI is upstream's.
+
+To report a security problem, see [SECURITY.md](SECURITY.md). For anything
+else, open an [issue](https://github.com/beauregardhenry/isdi/issues).
 
 
 ## Installing ISDi :computer:
@@ -51,24 +61,37 @@ For iOS device support on Linux, `pymobiledevice3` will be installed automatical
 
 
 **Termux/Android:**
-See [TERMUX_INSTALL.md](https://github.com/stopipv/isdi/blob/main/TERMUX_INSTALL.md) for Android device setup.
+See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Android device setup.
 
-### Option 1: Install via pip (Recommended)
+### Option 1: Install a release (Recommended)
 
-The easiest way to install ISDi is via pip:
+Install the latest release of this fork straight from GitHub (replace
+`v1.1.0` with the newest tag on the
+[releases page](https://github.com/beauregardhenry/isdi/releases)):
 
 ```bash
-pip install isdi-scanner
+pip install "git+https://github.com/beauregardhenry/isdi@v1.1.0"
 ```
+
+Or, without git, install the wheel attached to the release:
+
+```bash
+pip install https://github.com/beauregardhenry/isdi/releases/download/v1.1.0/isdi_scanner-1.1.0-py3-none-any.whl
+```
+
+> **Note:** this fork uses the same package name, `isdi-scanner`, as
+> upstream's PyPI release. Installing it replaces upstream's version, but
+> `pip install -U isdi-scanner` (without a URL) would download upstream's
+> 1.0.9 from PyPI again. Always upgrade with one of the commands above.
 
 ### Option 2: Install from Source (Development)
 
 Clone the repository and install in development mode:
 
 ```bash
-git clone https://github.com/stopipv/isdi.git
+git clone https://github.com/beauregardhenry/isdi.git
 cd isdi
-pip install -e .
+pip install -e ".[dev]"
 ``` 
 
 ## Running ISDi
@@ -96,7 +119,7 @@ Then navigate to the URL shown in the terminal. Click on `"Scan Instructions"` a
 
 It should look something like this:
 
-![Phone Scanner UI before scan](https://github.com/stopipv/isdi/blob/main/src/isdi/web/static/ISDi_before_scan.png "Phone Scanner
+![Phone Scanner UI before scan](src/isdi/web/static/ISDi_before_scan.png "Phone Scanner
 UI before scan")
 
 Connect a device and click on the suitable button `Android` or `iOS`. Give it a
@@ -107,7 +130,7 @@ device plugged in when clicking on apps on the scan results table.
 
 After the scan, the UI will look something like this:
 
-![Phone Scanner UI after scan](https://github.com/stopipv/isdi/blob/main/src/isdi/web/static/ISDi_after_scan.png "Phone Scanner
+![Phone Scanner UI after scan](src/isdi/web/static/ISDi_after_scan.png "Phone Scanner
 UI")
 
 
@@ -128,10 +151,10 @@ pymobiledevice3 usbmux list
 ### General
 - Run ISDi with `--debug` flag for verbose logging
 - Check logs in `~/.local/share/isdi/logs/`
-- File issues on [GitHub](https://github.com/stopipv/isdi/issues/) with error messages
+- File issues on [GitHub](https://github.com/beauregardhenry/isdi/issues) with error messages
 
 ### Termux/Android
-See [TERMUX_INSTALL.md](https://github.com/stopipv/isdi/blob/main/TERMUX_INSTALL.md) for Termux-specific troubleshooting.
+See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Termux-specific troubleshooting.
 
 ## Downloaded data ## 
 The data downloaded and stored in the study are the
@@ -149,7 +172,7 @@ following.
 * `batterystats`, `netstats`, `usagestats` App running information: `activity`,
 * `appops`
 
-See details about the services in [notes.md](https://github.com/stopipv/isdi/blob/main/notes.md)
+See details about the services in [notes.md](notes.md)
 
 ##### iOS 
 Only the `appIds`, and their names. Also, I got "permissions" granted
@@ -188,4 +211,4 @@ to the application. I don't know how to get install date, resource usage, etc.
 
 
 
-See [notes.md](https://github.com/stopipv/isdi/blob/main/notes.md) for other developer helps.
+See [notes.md](notes.md) for other developer helps.
