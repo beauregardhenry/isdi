@@ -272,3 +272,18 @@ def test_ios_unknown_permission_is_named_without_touching_package_data(tmp_path)
     info = pdump.IosDump(str(tmp_path / "new.json")).info("com.example.tracker")
     assert ("Somethingnew", "permission granted by system") in info["permissions"]
     assert shipped.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "product_type, model",
+    [
+        ("iPhone11,8", "iPhone XR"),  # existing entry, unchanged
+        ("iPhone12,1", "iPhone 11"),
+        ("iPhone17,3", "iPhone 16"),
+    ],
+)
+def test_ios_model_names(tmp_path, product_type, model):
+    d = json.loads((DATA / "ios_dump.json").read_text())
+    d["devinfo"]["ProductType"] = product_type
+    (tmp_path / "m.json").write_text(json.dumps(d))
+    assert pdump.IosDump(str(tmp_path / "m.json")).device_info()[1]["model"] == model
