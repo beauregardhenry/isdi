@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS scan_res (
   device_access TEXT,
   how_obtained TEXT,
   time DATETIME DEFAULT (datetime('now', 'localtime')),
+  operator TEXT,
   FOREIGN KEY(clientid) REFERENCES clients_notes(clientid)
 );
 
@@ -108,6 +109,22 @@ CREATE TABLE IF NOT EXISTS app_info (
 CREATE INDEX IF NOT EXISTS idx_clients_notes_clientid on clients_notes (clientid);
 CREATE INDEX IF NOT EXISTS idx_scan_res_clientid on scan_res (clientid);
 CREATE INDEX IF NOT EXISTS idx_app_info_scanid on app_info (scanid);
+
+-- Append-only record of who did what (isdi/audit.py). Each entry's mac
+-- covers the previous entry's, so removed or altered entries are detected.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  time TEXT NOT NULL,
+  operator TEXT,
+  action TEXT NOT NULL,
+  clientid TEXT,
+  scanid INTEGER,
+  details TEXT,
+  details_mac TEXT,
+  prev TEXT NOT NULL,
+  mac TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_clientid on audit_log (clientid);
 """
 
 
@@ -130,16 +147,17 @@ ENCRYPTED_COLUMNS = {
     "scan_res": (
         "note device_model device_manufacturer device_version is_rooted "
         "rooted_reasons last_full_charge device_primary_user device_access "
-        "how_obtained"
+        "how_obtained operator"
     ).split(),
     "app_info": (
         "appid flags remark action_taken apk_path install_date last_updated "
         "app_version permissions permissions_reason permissions_used "
         "data_usage battery_usage details"
     ).split(),
+    "audit_log": "operator details".split(),
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _enc(column, value):
@@ -253,8 +271,13 @@ def _migrate(db) -> None:
     (version,) = db.execute("PRAGMA user_version").fetchone()
     if version >= SCHEMA_VERSION:
         return
+    # Columns and tables added since the database was created.
     if "details" not in _columns(db, "app_info"):
         db.execute("ALTER TABLE app_info ADD COLUMN details TEXT")
+    if "operator" not in _columns(db, "scan_res"):
+        db.execute("ALTER TABLE scan_res ADD COLUMN operator TEXT")
+    audit = SCHEMA_SQL[SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS audit_log") :]
+    db.executescript(audit)
     sql = db.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='clients_notes'"
     ).fetchone()[0]
@@ -288,9 +311,10 @@ def _migrate(db) -> None:
                 )
     db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     db.commit()
-    # The old plaintext is still in the file's free pages until rewritten.
-    db.execute("VACUUM")
-    logging.info("Database migrated: client data is encrypted")
+    if version < 1:
+        # The old plaintext is still in the file's free pages until rewritten.
+        db.execute("VACUUM")
+        logging.info("Database migrated: client data is encrypted")
 
 
 def insert(query, args):
@@ -330,8 +354,8 @@ def create_scan(scan_d):
     """
     return insert(
         "insert into scan_res "
-        "(clientid, serial, device, device_model, device_version, device_manufacturer, last_full_charge, device_primary_user, is_rooted, rooted_reasons) "
-        "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "(clientid, serial, device, device_model, device_version, device_manufacturer, last_full_charge, device_primary_user, is_rooted, rooted_reasons, operator) "
+        "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         args=(
             scan_d["clientid"],
             scan_d["serial"],
@@ -343,6 +367,7 @@ def create_scan(scan_d):
             _enc("device_primary_user", scan_d["device_primary_user"]),
             _enc("is_rooted", scan_d["is_rooted"]),
             _enc("rooted_reasons", scan_d["rooted_reasons"]),
+            _enc("operator", scan_d.get("operator")),
         ),
     )
 
@@ -451,6 +476,11 @@ def get_app_info_from_db(scanid):
         return []
 
 
+def get_clientid_for_scan(scanid):
+    d = query_db("select clientid from scan_res where id=?", args=(scanid,), one=True)
+    return d["clientid"] if d else None
+
+
 def get_device_from_db(scanid):
     d = query_db("select device from scan_res where id=?", args=(scanid,), one=True)
     if d:
@@ -492,6 +522,13 @@ def delete_scan_data(serial: str) -> bool:
             db_conn.execute("DELETE FROM app_info WHERE scanid=?", (row["id"],))
         db_conn.execute("DELETE FROM scan_res WHERE serial=?", (serial,))
         db_conn.commit()
+        from isdi import audit
+
+        ids = [row["id"] for row in scan_ids]
+        audit.erase_scan_details(ids)
+        audit.record(
+            "device_data_deleted", details={"serial_hmac": serial, "scans": ids}
+        )
 
     # Remove dump files: stored as <serial>_<device_type>.<ext> inside DUMP_DIR
     dump_dir = config.DUMP_DIR
@@ -519,12 +556,18 @@ def export_client(clientid) -> dict:
         scan["apps"] = query_db(
             "select * from app_info where scanid=? order by id", args=(scan["id"],)
         )
+    from isdi import audit
+
     return {
         "clientid": clientid,
         "notes": query_db(
             "select * from clients_notes where clientid=? order by id", (clientid,)
         ),
         "scans": scans,
+        "audit_log": audit.entries(clientid),
+        # The newest entry of the whole log when this export was made: a
+        # log rebuilt or cut short afterwards no longer matches it.
+        "audit_head": audit.head(),
     }
 
 
@@ -551,4 +594,7 @@ def erase_client(clientid) -> dict:
         "DELETE FROM clients WHERE clientid=?", (clientid,)
     ).rowcount
     db.commit()
+    from isdi import audit
+
+    counts["audit_details"] = audit.erase_client_details(clientid)
     return counts

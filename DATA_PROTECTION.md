@@ -22,6 +22,7 @@ compliant with either.
 | Client ids (`YYYYMMDD_NNN`), device type (android/ios), row ids, timestamps | database | **not encrypted**: queries need them. They reveal when consultations and scans took place, and how many. |
 | Raw phone dumps | dump directory | exist only while the phone is scanned (see below) |
 | Encryption keys | `datakey.json` in the config directory | encrypted with the passphrase and the recovery key |
+| Audit log: who did what, when (scans, notes and their edits, uninstalls, exports, erasures) | database | entries chained with HMAC-SHA256; details encrypted, and blanked when a client is erased |
 | Log file `isdi.log` | cache directory | no serials, device output, app lists or email addresses |
 | App metadata (`app-info.db`) | cache directory | public data, not client data |
 
@@ -98,9 +99,16 @@ These are gaps you need to cover with how ISDi is run, or that would need
 changes to ISDi.
 
 - **No user accounts.** Anyone who can use the computer while ISDi is
-  running and unlocked can see all data in the browser. HIPAA's unique user
-  identification and audit-control requirements (45 CFR 164.312(a)(2)(i)
-  and (b)) are not met by ISDi itself.
+  running and unlocked can see all data in the browser.
+  - ISDi records the operator's name, given at startup, with every scan and
+    audit entry, but it is the operator's own statement, not a login.
+  - The audit log (`isdi audit verify`, `isdi audit show`) records actions
+    and detects altered, inserted or removed entries. Someone with the
+    passphrase could still rebuild the whole log; an earlier export, which
+    records the newest entry, would then no longer match.
+  - HIPAA's unique user identification requirement (45 CFR
+    164.312(a)(2)(i)) is therefore still not met by ISDi itself, and the
+    audit log covers only part of its audit-control requirement (164.312(b)).
   - Use a separate OS account for ISDi.
   - Lock the screen when away.
   - Stop ISDi (Ctrl-C) when the consultation ends.

@@ -107,6 +107,9 @@ isdi run
 
 ISDi asks for its passphrase, then starts a local web server on port 6200. Open your browser to `http://localhost:6200` for the ISDi UI. In debug mode, the server is on port 6201, and in test mode (`--test`) on 6202.
 
+ISDi also asks for your name (or `--operator NAME`): it is recorded with
+every scan and change, in a tamper-evident audit log.
+
 **First start:** ISDi encrypts all client data, and asks you to choose a
 passphrase (at least 12 characters). It then shows a **recovery key** once.
 Write it down and keep it safe, away from the computer: without the
@@ -122,6 +125,8 @@ isdi run --debug                  # Debug mode (verbose logging)
 isdi change-passphrase            # New passphrase (--recovery if it is lost)
 isdi export CLIENTID -o file.json # Everything stored about a client, decrypted
 isdi erase CLIENTID               # Delete everything stored about a client
+isdi audit verify                 # Check the audit log for tampering
+isdi audit show [CLIENTID]        # Who did what, and when
 isdi --help                       # Show all options
 ```
 

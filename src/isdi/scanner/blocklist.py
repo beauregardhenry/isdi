@@ -36,6 +36,9 @@ def _load_app_flags(path) -> list:
 
 
 APP_FLAGS = _load_app_flags(config.APP_FLAGS_FILE)
+# Recorded with each scan: which blocklist the results came from.
+with open(config.APP_FLAGS_FILE, "rb") as _f:
+    BLOCKLIST_SHA256 = __import__("hashlib").sha256(_f.read()).hexdigest()
 # appId -> row, built once (lookups happen for every app on every scan).
 _FLAGS_BY_APPID = {r["appId"]: r for r in APP_FLAGS if r.get("appId")}
 

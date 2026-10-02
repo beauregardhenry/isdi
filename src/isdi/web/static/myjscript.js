@@ -117,7 +117,17 @@ function startScan(form) {
 }
 
 function delete_app(appid, e) {
-    y = confirm(`Are you sure you want to delete the app  '${appid}'?"`);
+    // Removing an app can destroy evidence that it was installed and what
+    // it did. Say so before every uninstall, not only for flagged apps.
+    y = confirm(
+        `Uninstall '${appid}'?\n\n` +
+        'Removing an app can destroy evidence. If this may be used in court ' +
+        '(protective order, family or criminal case), keep an evidence copy of ' +
+        'the scan first, and consider leaving the app in place until a lawyer ' +
+        'or advocate has been consulted. Removing monitoring software can also ' +
+        'alert the person who installed it; plan for safety first.\n\n' +
+        'Uninstall now?'
+    );
     if (!y){return;}
     data = {'appid': appid, 'serial': serial, 'device': device};
     $.post('/delete/app/' + scanid, data=data).done(function (r){

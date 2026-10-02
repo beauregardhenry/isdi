@@ -1,5 +1,6 @@
 import json
 import logging
+from isdi import audit
 from isdi.config import get_config
 from isdi.web import bp, sa
 from isdi.web.model import Client
@@ -8,6 +9,13 @@ from flask import render_template, request, session, redirect, url_for
 from isdi.scanner.db import get_client_devices_from_db, new_client_id
 
 config = get_config()
+
+
+def _fields(client) -> dict:
+    """The consultation notes of a Client row, as plain values."""
+    from isdi.scanner.db import ENCRYPTED_COLUMNS
+
+    return {c: getattr(client, c) for c in ENCRYPTED_COLUMNS["clients_notes"]}
 
 
 def _lists_to_json(form):
@@ -41,6 +49,7 @@ def client_forms():
             logging.exception("Could not save the consult form")
             sa.session.rollback()
             raise
+        audit.record("notes_created", clientid=client.clientid, details=_fields(client))
         return render_template(
             "main.html", task="form", formdone="yes", title=config.TITLE
         )
@@ -92,9 +101,20 @@ def edit_forms():
                     clientid=cid,
                 )
             _lists_to_json(form)
+            before = _fields(form_obj)
             form.populate_obj(form_obj)
             form_obj.clientid = cid
             sa.session.commit()
+            # The edit replaces the stored values; the audit log keeps the
+            # old ones (encrypted), so the history of the notes survives.
+            audit.record(
+                "notes_edited",
+                clientid=cid,
+                details={
+                    "note_id": form_obj.id,
+                    "changes": audit.changes(before, _fields(form_obj)),
+                },
+            )
             return render_template(
                 "main.html", task="form", formdone="yes", title=config.TITLE
             )

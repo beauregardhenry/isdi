@@ -25,6 +25,12 @@ TEST_PASSPHRASE = "correct horse battery staple"
 # Cheap key derivation, for speed only; the keyfile records the parameters.
 crypto.SCRYPT_N = 2**10
 crypto.setup(get_config("test").keyfile, TEST_PASSPHRASE)
+TEST_OPERATOR = "Test Operator"
+os.environ["ISDI_OPERATOR"] = TEST_OPERATOR
+
+from isdi import audit  # noqa: E402
+
+audit.set_operator(TEST_OPERATOR)
 
 
 @pytest.fixture
