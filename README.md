@@ -184,8 +184,9 @@ to the application. I don't know how to get install date, resource usage, etc.
 
 - **`src/isdi/scanner/`** - Core scanning logic
   - `parse_dump.py` - Parses device dumps (Android/iOS)
-  - `android_permissions.py` - Android permission analysis
   - `privacy_scan_android.py` - Android privacy scanning
+  - `root_check.py` - Root and jailbreak checks
+  - `runcmd.py` - Shell command helpers and input validation
   - `blocklist.py` - Stalkerware/spyware blocklist management
   - `lightweight_df.py` - CSV/data processing (pandas-free)
   - `db.py` - SQLite database operations
@@ -194,20 +195,21 @@ to the application. I don't know how to get install date, resource usage, etc.
 - **`src/isdi/web/`** - Flask web application
   - `templates/` - HTML templates for the web UI
   - `static/` - CSS, JavaScript, and images
-  - `schema.sql` - Database schema (embedded in code)
+  - `schema.sql` - Database schema
   - `forms/` - WTForms for consultation forms
   - `model/` - SQLAlchemy models
   - `view/` - Flask route handlers
 
 - **`src/isdi/scripts/`** - Shell scripts for device interaction
-  - `android_scan.sh` - Android device scanning
-  - `ios_scan.sh` - iOS device scanning
+  - `ios_scan.sh` - iOS device dump (Android dumps are taken in Python)
+  - `ios_mount_linux.sh` - Mounts an iPhone on Linux (not yet wired in)
 
 - **`src/isdi/data/`** - Static data and reference files
   - `app-flags.csv` - App classification metadata
-  - `app-info.db` - Cached app information
-  - `android_permissions.csv` - Android permission database
-  - `ios_permissions.json` - iOS permission database
+  - `ios_permissions.json` - iOS permission names
+  - `ios_device_identifiers.json` - iPhone model names
+  - `app-info.db` is not shipped: it is downloaded on first run into the
+    cache directory and checked against a pinned SHA-256
 
 
 

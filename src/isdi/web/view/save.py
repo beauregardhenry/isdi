@@ -59,7 +59,7 @@ def delete_app(scanid):
         update_appinfo(scanid=scanid, appid=appid, remark=remark, action=action)
     else:
         print("Uninstall failed. r={}".format(r))
-    return is_success(r, "Success!", config.error())
+    return is_success(r, "Success!", "Uninstall failed.")
 
 
 def is_success(b, msg_succ="", msg_err=""):

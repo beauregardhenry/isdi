@@ -3,7 +3,6 @@
 import sys
 import webbrowser
 from threading import Timer
-from pathlib import Path
 from time import perf_counter
 
 import click

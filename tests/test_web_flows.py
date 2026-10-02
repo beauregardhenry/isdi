@@ -192,3 +192,12 @@ def test_uninstall_unknown_scan(no_csrf, client):
 def test_save_notes_writes_report(no_csrf, client, stored_scan):
     r = client.post(f"/savescan/{stored_scan}", data={"notes": "checked with client"})
     assert r.status_code == 200
+
+
+def test_test_mode_scanner_reports_flagged_apps():
+    """`isdi run --test` shows the scanner working without a phone: the stub
+    used to read a list file that was never shipped, so every scan failed."""
+    apps = scanner.TestScanner().find_spyapps(serialno="testdevice1")
+    assert "stalkerware" in apps["a.tck.lvmchi"]["flags"]
+    assert "dual-use" in apps["com.life360.android.safetymapd"]["flags"]
+    assert apps["com.whatsapp"]["flags"] == []

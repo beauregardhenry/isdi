@@ -163,13 +163,6 @@ def flag_str(flags):
     )
 
 
-def store_str(st):
-    if st in ("playstore", "appstore"):
-        return "onstore"
-    else:
-        return "offstore"
-
-
 def app_title_and_flag(apps_list, offstore_apps=None, system_apps=None):
     """
     Gets app flags and title from app-flags data.
@@ -249,17 +242,6 @@ def app_title_and_flag(apps_list, offstore_apps=None, system_apps=None):
     return list(result_dict.values())
 
 
-# def flag_apps(apps, device=''):
-#     """Flag a list of apps based on the APP_FLAGS obtained from the csv file, or spy regex flags"""
-#     _td = APP_FLAGS.loc[set(apps) & set(APP_FLAGS.index)]
-#     flagged_apps = (_td['store'].apply(store_str) + '-' + _td['flag']).fillna('').apply(lambda x: [x] if x else [])
-#     # print(apps, flagged_apps)
-#     a = flagged_apps + flagged_apps.index.map(_regex_blocklist)
-#     return a
-
-
-# def flag_app(app, device=''):
-#     return flag_apps([app], device=device).iloc[0]
 if __name__ == "__main__":
     apps = [{"appId": "com.TrackView"}, {"appId": "com.apple.mobileme.fmf1"}]
     print(app_title_and_flag(apps, system_apps=["com.apple.mobileme.fmf1"]))

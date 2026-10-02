@@ -7,7 +7,6 @@ from wtforms import (
     SelectMultipleField,
 )
 from wtforms.validators import Email, DataRequired, Optional as OptionalValidator
-from wtforms.fields import SelectMultipleField
 from wtforms.widgets import CheckboxInput, ListWidget
 
 

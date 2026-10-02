@@ -25,24 +25,6 @@ def is_valid_hmac_serial(serial) -> bool:
     return isinstance(serial, str) and _HMAC_SERIAL_RE.fullmatch(serial) is not None
 
 
-"""
-def add_to_error(*args):
-    global ERROR_LOG
-    m = '\n'.join(str(e) for e in args)
-    print(m)
-    ERROR_LOG.append(m)
-
-def error():
-    global ERROR_LOG
-    e = ''
-    if len(ERROR_LOG)>0:
-        e, ERROR_LOG = ERROR_LOG[0], ERROR_LOG[1:]
-
-        print("ERROR: {}".format(e))
-    return e.replace("\n", "<br/>")
-"""
-
-
 # TODO: @sam the catch_err should only catch the os level errors, not
 # application level errors. They should go to particular application specific
 # handling.

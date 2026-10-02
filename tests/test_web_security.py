@@ -1,6 +1,7 @@
 import os
 import shlex
 import stat
+from pathlib import Path
 
 import pytest
 
@@ -190,3 +191,20 @@ def test_every_app_gets_all_routes(app):
     rules = lambda a: {r.rule for r in a.url_map.iter_rules()}
     assert rules(other) == rules(app)
     assert {"/", "/scan", "/form/", "/kill"} <= rules(other)
+
+
+def test_templates_only_reference_static_files_that_exist(app):
+    """A missing file fails silently in the browser (a 404 image or script)."""
+    import re
+
+    templates = Path(app.template_folder)
+    static = Path(app.static_folder)
+    pattern = re.compile(r"url_for\(['\"]static['\"],\s*filename=['\"]([^'\"]+)")
+    refs = {
+        (t.name, m)
+        for t in templates.glob("*.html")
+        for m in pattern.findall(t.read_text(encoding="utf-8"))
+    }
+    assert refs, "pattern no longer matches the templates"
+    missing = [(t, f) for t, f in refs if not (static / f).is_file()]
+    assert not missing

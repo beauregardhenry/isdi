@@ -2,7 +2,6 @@
 
 import os
 import sys
-import shutil
 import shlex
 from pathlib import Path
 from typing import Optional
@@ -123,47 +122,15 @@ class Config:
             else:
                 self.LIBIMOBILEDEVICE_PATH = "pymobiledevice3.exe"
 
-        # Approved app installers
-        self.APPROVED_INSTALLERS = {
-            "com.android.vending",
-            "com.sec.android.preloadinstaller",
-        }
-
-        # Error logging
-        self.ERROR_LOG = []
-
-        # CSV files
-        self.SPYWARE_LIST_FILE = self.package_data / "stalkerware-indicators.csv"
         self.APP_INFO_SQLITE_FILE = f'sqlite:///{self.dirs["cache"]}/app-info.db'
-        self.ANDROID_PERMISSIONS_CSV = self.package_data / "android_permissions.csv"
-        self.ANDROID_PERMISSIONS = self.package_data / "android_permissions.txt"
-        self.TEST_APP_LIST = self.package_data / "android.test.apps_list"
 
         # Ensure app-info.db exists in cache for runtime lookups
         self._ensure_app_info_db()
-
-        # Source files for data_process (creating app-info database)
-        self.source_files = {
-            "playstore": str(self.package_data / "android_apps_crawl.csv.gz"),
-            "appstore": str(self.package_data / "ios_apps_crawl.csv.gz"),
-            "offstore": str(self.package_data / "offstore_apks.csv"),
-        }
-
-        # IOC (Indicators of Compromise)
-        self.IOC_PATH = self.package_data / "stalkerware-indicators"
-        self.IOC_FILE = self.IOC_PATH / "ioc.yaml"
-
-        # Date format
-        self.DATE_STR = "%Y-%m-%d %H:%M:%S"
 
         # Logging
         import logging
 
         self.logging = logging.getLogger("isdi")
-
-    def error(self):
-        """Return error message/status"""
-        return ""  # Empty error means no error
 
     def hmac_serial(self, serial: str) -> str:
         """HMAC hash of device serial for privacy"""
@@ -210,9 +177,6 @@ class Config:
         # Legacy compatibility - point to user data dirs
         self.REPORT_PATH = str(self.reports_dir)
         self.SQL_DB_PATH = f"sqlite:///{self.database_path}"
-        self.PHONE_DUMPS_PATH = str(self.phone_dumps_dir)
-        self.LOGS_PATH = str(self.logs_dir)
-        self.DUMPS_PATH = str(self.dumps_dir)
 
         # App flags file
         self.APP_FLAGS_FILE = self.package_data / "app-flags.csv"

@@ -3,9 +3,6 @@ ISDi - Stalkerware Scanner
 A privacy and security scanner for mobile devices
 """
 
-import sys
-import types
-
 __version__ = "1.1.0"
 __author__ = "ISDI Contributors"
 

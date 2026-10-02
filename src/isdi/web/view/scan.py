@@ -212,7 +212,6 @@ def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
             sysapps=set(),
             serial=ser,
             currently_scanned=get_client_devices_from_db(clientid),
-            error=config.error(),
         )
     )
 
@@ -480,7 +479,6 @@ def scan():
             serial=ser,
             from_dump=True,
             currently_scanned=currently_scanned,
-            error=config.error(),
         )
     )
     return render_template("main.html", **template_d), 200

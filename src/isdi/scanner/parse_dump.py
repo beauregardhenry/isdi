@@ -1,4 +1,3 @@
-import io
 import itertools
 import json
 import operator
@@ -10,7 +9,7 @@ from isdi.config import get_config
 from collections import OrderedDict
 from functools import reduce
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict
 from rsonlite import simpleparse
 
 config = get_config()
@@ -47,7 +46,7 @@ def complexparse(lines: list[str]) -> dict:
 
 
 # Applied to `adb shell` output before it is written to a dump file; ported
-# from the sed pipeline in scripts/android_scan.sh. [ \t] rather than \s so a
+# from the sed pipeline in the old scripts/android_scan.sh. [ \t] rather than \s so a
 # pattern never spans lines, as with sed.
 _EMAIL_RE = re.compile(r"([ \t]*)[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,4}\b")
 _DB_EMAIL_RE = re.compile(r"([ \t]*)[a-zA-Z0-9._%+\-]+_gmail\.com")
@@ -73,21 +72,6 @@ def normalize_dumpsys(text: str) -> str:
     for pattern, repl in _NORMALIZE_RES:
         text = pattern.sub(repl, text)
     return text
-
-
-def count_lspaces(lspaces: str) -> int:
-    """Counts the number of leading spaces in a line"""
-    # print(">>", repr(l))
-    return re.search(r"\S", lspaces).start()
-
-
-def get_d_at_level(d: dict, lvl: list) -> dict:
-    """Returns the dictionary at the level specified by lvl"""
-    for level in lvl:
-        if level not in d:
-            d[level] = {}
-        d = d[level]
-    return d
 
 
 def clean_json(d):
@@ -162,18 +146,6 @@ def extract(d: list | dict, lkeys_dict: list | dict) -> list:
         if k in d:
             r.extend(extract(d[k], v))
     return r
-
-
-def _extract_one(d, lkeys):
-    for k in lkeys:
-        if isinstance(d, list):
-            d = d[0]
-        d = d.get(k, {})
-    return d
-
-
-def split_equalto_delim(k: str) -> list[str]:
-    return k.split("=", 1)
 
 
 def prune_empty_keys(d: dict) -> dict | list:
@@ -344,49 +316,6 @@ class AndroidDump(PhoneDump):
         if len(join_lines) > 0 and len(d.get(service, [])) == 0:
             d[service] = _parse(join_lines)
         return _clean_dictionary(d)
-
-    def _extract_info_lines(self, fp) -> list:
-        lastpos = fp.tell()
-        content: List[str] = []
-        a = True
-        while a:
-            line = fp.readline()
-            if not line:
-                a = False
-                break
-            if line.startswith("DUMP OF"):
-                fp.seek(lastpos)
-                return content
-            lastpos = fp.tell()
-            content.append(line.rstrip())
-        return content
-
-    def _parse_dump_service_info_lines(self, lines) -> dict:
-        res: Dict[str, dict] = {}
-        curr_spcnt = [0]
-        curr_lvl = 0
-        lvls = ["" for _ in range(20)]  # Max 20 levels allowed
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            i += 1
-            if not line.strip():  # subsection ends
-                continue
-            line = line.replace("\t", " " * 5)
-            t_spcnt = count_lspaces(line)
-            if t_spcnt >= 0 and t_spcnt >= curr_spcnt[-1] + 2:
-                curr_lvl += 1
-                curr_spcnt.append(t_spcnt)
-            while curr_spcnt and curr_spcnt[-1] > 0 and t_spcnt <= curr_spcnt[-1] - 2:
-                curr_lvl -= 1
-                curr_spcnt.pop()
-            if curr_spcnt[-1] > 0:
-                curr_spcnt[-1] = t_spcnt
-            curr = get_d_at_level(res, lvls[:curr_lvl])
-            k = line.strip().rstrip(":")
-            lvls[curr_lvl] = k  # '{} --> {}'.format(curr_lvl, k)
-            curr[lvls[curr_lvl]] = {}
-        return prune_empty_keys(res)
 
     def load_file(self, failed_before: str = False) -> dict:
         fname = self.dumpf.rsplit(".", 1)[0] + ".txt"

@@ -1,5 +1,4 @@
 import sqlite3
-from flask_sqlalchemy import SQLAlchemy
 from isdi.config import get_config
 from flask import g
 from datetime import datetime as dt
@@ -269,36 +268,12 @@ def update_mul_appinfo(args):
     )
 
 
-def create_appinfo(scanid, appid, flags, remark="", action="<new>"):
-    """
-    @scanr must have following fields.
-
-    """
-    return insert(
-        "insert into app_info (scanid, appid, flags, remark, action_taken) "
-        "values (?,?,?,?,?)",
-        args=(scanid, appid, flags, remark, action),
-    )
-
-
 def create_mult_appinfo(args):
     """ """
     return insert_many(
         "insert into app_info (scanid, appid, flags, remark, action_taken) values (?,?,?,?,?)",
         args,
     )
-
-
-def get_device_info(ser: str) -> dict:
-    d = query_db(
-        "select id,device,device_model,serial,device_primary_user from scan_res where serial=?",
-        args=(ser,),
-        one=True,
-    )
-    if d:
-        return d
-    else:
-        return {}
 
 
 def get_client_devices_from_db(clientid: str) -> list:

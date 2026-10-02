@@ -15,16 +15,13 @@ import sqlite3
 import subprocess
 import logging
 import time
-from pathlib import Path
 from datetime import datetime
-from collections import defaultdict
 from typing import Optional, List, Tuple, Dict, Any
 
 from isdi.config import get_config
 
 from . import blocklist
 from . import parse_dump
-from .android_permissions import all_permissions
 from .runcmd import catch_err, run_command
 
 cfg = get_config()
@@ -60,10 +57,6 @@ class AppScanner:
         except Exception as e:
             logging.error(f"Failed to connect to database: {e}")
             AppScanner.app_info_conn = None
-
-    def setup(self) -> None:
-        """Device-specific setup (e.g., ADB server)."""
-        pass
 
     def devices(self) -> List[str]:
         """Return list of connected device serial numbers."""
@@ -356,12 +349,6 @@ class AndroidScanner(AppScanner):
     def __init__(self):
         super().__init__("android", cfg.ADB_PATH)
 
-    def setup(self) -> None:
-        """Initialize ADB server."""
-        p = run_command("{cli} kill-server; {cli} start-server", cli=self.cli)
-        if p.returncode != 0:
-            logging.error(f"ADB setup failed with returncode {p.returncode}")
-
     def _dump_phone(self, serial: str) -> bool:
         """Dump Android device info by running adb commands directly.
 
@@ -650,20 +637,25 @@ class TestScanner(AppScanner):
     def devices(self) -> List[str]:
         return ["testdevice1", "testdevice2"]
 
+    # What `isdi run --test` shows: ordinary apps, a dual-use app and a
+    # stalkerware app from app-flags.csv.
+    APPS = [
+        "com.android.settings",
+        "com.android.chrome",
+        "com.google.android.gm",
+        "com.whatsapp",
+        "com.life360.android.safetymapd",
+        "a.tck.lvmchi",
+    ]
+
     def get_apps(self, serialno: str) -> List[str]:
-        """Load test app list."""
-        try:
-            with open(str(cfg.TEST_APP_LIST), "r") as f:
-                return f.read().strip().split("\n")
-        except Exception as e:
-            logging.error(f"Cannot load test apps: {e}")
-            return []
+        return list(self.APPS)
 
     def get_system_apps(self, serialno: str) -> List[str]:
-        return self.get_apps(serialno)[:10]
+        return self.get_apps(serialno)[:1]
 
     def get_offstore_apps(self, serialno: str) -> List[str]:
-        return self.get_apps(serialno)[-4:]
+        return []
 
     def uninstall(self, serial: str, appid: str) -> bool:
         return True
