@@ -6,7 +6,7 @@ from wtforms import (
     SelectField,
     SelectMultipleField,
 )
-from wtforms.validators import Email, DataRequired, Optional as OptionalValidator
+from wtforms.validators import DataRequired, Optional as OptionalValidator, Regexp
 from wtforms.widgets import CheckboxInput, ListWidget
 
 
@@ -45,7 +45,13 @@ class ClientForm(Form):
 
     referring_professional_email = StringField(
         "Email of Referring Professional (Optional)",
-        validators=[Email(), OptionalValidator()],
+        # Optional first, so an empty field skips the email check. A plain
+        # pattern rather than Email(), which needs the email_validator
+        # package (not a dependency): without it every submission raised.
+        validators=[
+            OptionalValidator(),
+            Regexp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", message="Invalid email address."),
+        ],
     )
 
     referring_professional_phone = StringField(

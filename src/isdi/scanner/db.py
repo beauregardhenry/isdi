@@ -135,25 +135,25 @@ def _init_schema(db) -> None:
 
 
 def today():
-    db = get_db()
-    t = dt.now()
-    today = t.strftime("%Y%m%d")
-    return today
+    return dt.now().strftime("%Y%m%d")
 
 
 def new_client_id():
-    last_client_id = query_db(
-        "select max(clientid) as cid from clients_notes "
-        'where created_at > datetime("now", "localtime", "start of day")',
-        one=True,
-    )["cid"]
-    d, t = today(), 0
-    # FIXME: won't parse if different ClientID.
-    if last_client_id:
-        d, t = last_client_id.rsplit("_", 1)
-    cid = "{}_{:03d}".format(d, int(t) + 1)
-    print("new_client_id >>>> {}".format(cid))
-    return cid
+    """Today's date and a counter: 20260101_001, 20260101_002, ...
+
+    Counts only today's ids in that format, so an id written some other way
+    (or a created_at in another time zone) cannot break or repeat it."""
+    prefix = today() + "_"
+    rows = query_db(
+        "select clientid from clients_notes where substr(clientid, 1, ?) = ?",
+        (len(prefix), prefix),
+    )
+    counters = [
+        int(r["clientid"][len(prefix) :])
+        for r in rows
+        if r["clientid"][len(prefix) :].isdigit()
+    ]
+    return "{}{:03d}".format(prefix, max(counters, default=0) + 1)
 
 
 def make_dicts(cursor, row):

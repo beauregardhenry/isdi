@@ -1,4 +1,5 @@
 import json
+import logging
 from isdi.config import get_config
 from isdi.web import bp, sa
 from isdi.web.model import Client
@@ -7,6 +8,13 @@ from flask import render_template, request, session, redirect, url_for
 from isdi.scanner.db import get_client_devices_from_db, new_client_id
 
 config = get_config()
+
+
+def _lists_to_json(form):
+    """Checkbox lists are stored as JSON strings."""
+    for field in form:
+        if field.type == "SelectMultipleField":
+            field.data = json.dumps(field.data)
 
 
 @bp.route("/form/", methods=["GET", "POST"])
@@ -22,25 +30,20 @@ def client_forms():
     client = Client()
     form = ClientForm(request.form)
 
-    if request.method == "POST":
+    if request.method == "POST" and form.validate():
+        _lists_to_json(form)
+        form.populate_obj(client)
+        client.clientid = session["clientid"]
         try:
-            if form.validate():
-                print("VALIDATED")
-                # convert checkbox lists to json-friendly strings
-                for field in form:
-                    if field.type == "SelectMultipleField":
-                        field.data = json.dumps(field.data)
-                form.populate_obj(client)
-                client.clientid = session["clientid"]
-                sa.session.add(client)
-                sa.session.commit()
-                return render_template(
-                    "main.html", task="form", formdone="yes", title=config.TITLE
-                )
-        except Exception as e:
-            print("NOT VALIDATED")
-            print(e)
+            sa.session.add(client)
+            sa.session.commit()
+        except Exception:
+            logging.exception("Could not save the consult form")
             sa.session.rollback()
+            raise
+        return render_template(
+            "main.html", task="form", formdone="yes", title=config.TITLE
+        )
 
     # clients_list = Client.query.all()
     return render_template(
@@ -79,12 +82,16 @@ def edit_forms():
                 return redirect(url_for("main.edit_forms"))
             cid = form_obj.clientid  # preserve before populate_obj
             form = ClientForm(request.form)
-            if form.validate():
-                print("VALIDATED")
-                # convert checkbox lists to json-friendly strings
-                for field in form:
-                    if field.type == "SelectMultipleField":
-                        field.data = json.dumps(field.data)
+            if not form.validate():
+                # Show the errors; saving now would store invalid values.
+                return render_template(
+                    "main.html",
+                    task="form",
+                    form=form,
+                    title=config.TITLE,
+                    clientid=cid,
+                )
+            _lists_to_json(form)
             form.populate_obj(form_obj)
             form_obj.clientid = cid
             sa.session.commit()

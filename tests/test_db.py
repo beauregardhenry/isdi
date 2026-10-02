@@ -117,3 +117,13 @@ def test_create_report_for_client_without_scans(ctx):
 
 def test_new_client_id_format(ctx):
     assert re.fullmatch(r"\d{8}_\d{3}", db.new_client_id())
+
+
+def test_new_client_id_counts_up_and_ignores_other_ids(ctx):
+    first = db.new_client_id()
+    prefix, n = first.rsplit("_", 1)
+    db.insert("insert into clients_notes (clientid) values (?)", (first,))
+    # Ids in another format must neither crash nor reset the counter.
+    db.insert("insert into clients_notes (clientid) values (?)", ("other_format",))
+    db.insert("insert into clients_notes (clientid) values (?)", (prefix + "_x",))
+    assert db.new_client_id() == f"{prefix}_{int(n) + 1:03d}"
