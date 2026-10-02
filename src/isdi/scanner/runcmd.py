@@ -13,6 +13,33 @@ _APPID_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._\-]{0,254}")
 _HMAC_SERIAL_RE = re.compile(r"[0-9a-f]{64}")
 
 
+# Device serials are pseudonymised in the database; logs must not undo that.
+# adb takes the serial after -s, pymobiledevice3 after --udid.
+_DEVICE_ARG_RE = re.compile(r"(?<!\S)(-s|--udid)(\s+|=)(?:'[^']*'|\"[^\"]*\"|\S+)")
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+# Request lines in the web server's access log: query strings carry serials
+# and app ids (?serial=...&appId=...).
+_QUERY_RE = re.compile(r"(\s/[^\s?\"]*)\?[^\s\"]*")
+
+
+def redact(text: str) -> str:
+    """Remove device serials (as command arguments or in request query
+    strings) and email addresses."""
+    text = _DEVICE_ARG_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}<device>", text)
+    text = _QUERY_RE.sub(r"\1?<redacted>", text)
+    return _EMAIL_RE.sub("<email>", text)
+
+
+class RedactingFilter(logging.Filter):
+    """Applied to ISDi's log handlers as a safety net for messages that
+    still carry a command line or an email address."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = redact(record.getMessage())
+        record.args = None
+        return True
+
+
 def is_valid_serial(serial) -> bool:
     return isinstance(serial, str) and _SERIAL_RE.fullmatch(serial) is not None
 
@@ -58,8 +85,7 @@ def catch_err(
                 e = 'Error: Please set "USB For File Transfers" mode on your Android device.'
                 print(e)
                 return ""
-            # config.add_to_error(m)
-            print(f"Returning from catch_err: {m}")
+            logging.warning(redact(m))
             return m
         else:
             if large_output:
@@ -84,9 +110,7 @@ def catch_err(
                 logging.error("Need USB for Charging.")
                 return ""
             else:
-                # Device output can contain personal data; keep it out of
-                # the default (INFO) log.
-                logging.debug(s)
+                # Device output is personal data: never log it.
                 return s
     except Exception as ex:
         # config.add_to_error(ex)
@@ -107,7 +131,6 @@ def run_command(cmd: str, **kwargs) -> subprocess.Popen[bytes]:
         subprocess.Popen: The process object.
     """
     _cmd = cmd.format(**kwargs)
-    logging.debug(_cmd)
     p = subprocess.Popen(
         _cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
     )
@@ -118,8 +141,8 @@ def run_command(cmd: str, **kwargs) -> subprocess.Popen[bytes]:
         p.stdout, p.stderr = io.BytesIO(out), io.BytesIO(err)
         if p.returncode != 0:
             logging.error(
-                f"Error running command: {_cmd!r}. returncode: {p.returncode}"
+                "Error running command: %r. returncode: %s", redact(_cmd), p.returncode
             )
         else:
-            logging.info(f"Command {_cmd!r} executed successfully.")
+            logging.debug("Command %r executed successfully.", redact(_cmd))
     return p

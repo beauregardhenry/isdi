@@ -36,7 +36,7 @@ def complexparse(lines: list[str]) -> dict:
         pass
         # logging.error(f"IndentationError: {ex}")
     n = _find_length_of_valid_string(lines, 0, len(lines)) - 1
-    logging.info(f"Parsed {n} (out of {len(lines)}) lines. starting {lines[:2]}")
+    logging.info(f"Parsed {n} (out of {len(lines)}) lines.")
     d = simpleparse("".join(lines[:n]))
     if isinstance(d, list):
         d.append({"UNPARSED": lines[n:]})
@@ -290,13 +290,13 @@ class AndroidDump(PhoneDump):
                     r = complexparse(lines)
                     return r
             except Exception as ex:
-                logging.error(
-                    "Could not parse for {} service={}. Exception={}".format(
-                        fname, service, ex
-                    )
+                # One odd section (rsonlite raises on some indentation) must
+                # not lose the whole dump: keep it unparsed and move on.
+                # Only the type: the message can quote the dump.
+                logging.warning(
+                    "Could not parse service %r (%s)", service, type(ex).__name__
                 )
-                raise ex
-                return lines
+                return {"UNPARSED": lines}
 
         for i, l in enumerate(data):
             if l.startswith("----"):
@@ -495,7 +495,7 @@ class AndroidDump(PhoneDump):
             return {}
         a = self._get_apps()
         if appid not in a:
-            logging.error(f"AppId {appid} not found in apps={a}")
+            logging.error(f"AppId {appid} not found ({len(a)} apps in the dump)")
             return {}
         app = self._find_packages_section(d["package"])[a[appid]["packageKey"]]
         res = {
@@ -513,7 +513,7 @@ class AndroidDump(PhoneDump):
         }
 
         if "userId" not in res:
-            logging.error("UserID not found in res={}".format(res))
+            logging.error("UserID not found for %s", appid)
             return {}
         process_uid = res["userId"]
         # del res["userId"]

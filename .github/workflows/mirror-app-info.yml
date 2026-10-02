@@ -1,0 +1,40 @@
+name: Mirror app-info.db
+
+# Publishes the pinned app-info.db as an asset of this repository's
+# "app-info" release, so installs do not depend on upstream keeping theirs.
+# Run it once, and again whenever APP_INFO_DB_SHA256 in src/isdi/config.py
+# changes. Only the file with the pinned hash is ever uploaded.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Download and verify
+        run: |
+          set -euo pipefail
+          sha=$(python3 -c "import re; print(re.search(r'APP_INFO_DB_SHA256 = \"([0-9a-f]{64})\"', open('src/isdi/config.py').read())[1])")
+          curl -fsSL -o app-info.db \
+            https://github.com/stopipv/isdi/releases/download/app-info/app-info.db
+          echo "$sha  app-info.db" | sha256sum -c -
+
+      - name: Publish to this repository's app-info release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view app-info >/dev/null 2>&1; then
+            gh release create app-info --target "$GITHUB_SHA" --latest=false \
+              --title "app-info.db" \
+              --notes "Mirror of the app metadata database. ISDi downloads it on first run and accepts it only if its SHA-256 matches the hash pinned in src/isdi/config.py."
+          fi
+          gh release upload app-info app-info.db --clobber

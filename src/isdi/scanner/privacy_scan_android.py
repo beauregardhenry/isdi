@@ -30,6 +30,7 @@ Finally screen capture.
 """
 
 import base64
+import logging
 
 import shlex
 import time
@@ -39,6 +40,7 @@ from subprocess import Popen, PIPE, TimeoutExpired, run, CalledProcessError
 from pathlib import Path
 from flask import url_for
 from isdi.config import get_config
+from isdi.scanner.runcmd import redact
 
 config = get_config()
 adb = config.ADB_PATH
@@ -51,7 +53,7 @@ LEGACY_SCREENSHOT = (
 
 def run_command(cmd, **kwargs):
     _cmd = cmd.format(**kwargs)
-    print(_cmd)
+    logging.debug("Running %s", redact(_cmd))
     try:
         p = Popen(_cmd, stdout=PIPE, stderr=PIPE, shell=True)
         p.wait(4)
@@ -83,10 +85,10 @@ def open_activity(ser, activity_name):
     act = shlex.quote(shlex.quote(activity_name))
     out, err = run_command(cmd, cli=thiscli(ser), act=act)
     if err:
-        print("ERROR (open_activity): {!r}".format(err))
+        logging.error("open_activity failed: %s", redact(err))
         return False
     if "error" in out.lower():
-        print("ERROR (open_activity) stdout=: {!r}".format(out))
+        logging.error("open_activity failed (see the phone's screen)")
         return False
     return True
 
@@ -112,7 +114,7 @@ def take_screenshot(ser):
     try:
         result = run(argv, check=True, stdout=PIPE, stderr=PIPE, timeout=30)
     except CalledProcessError as e:
-        print(f"Command failed with exit code {e.returncode}: {e.stderr!r}")
+        logging.error("Screenshot failed with exit code %s", e.returncode)
         return "<div class='screenshotfail'>Screenshot failed with exit code {}</div>".format(
             e.returncode
         )
