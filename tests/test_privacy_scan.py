@@ -72,3 +72,35 @@ def test_screenshot_route_returns_inline_image(adb, client):
     r = client.get("/privacy/android/screenshot", query_string={"serial": "SER1"})
     assert r.status_code == 200
     assert b"data:image/png;base64," in r.data
+
+
+@pytest.mark.parametrize(
+    "activity",
+    [
+        "com.android.settings/.Settings$PrivacySettingsActivity",
+        "com.android.settings/.Settings$AccountsGroupSettingsActivity",
+        "com.google.android.apps.maps/com.google.android.maps.MapsActivity",
+    ],
+)
+def test_activity_name_survives_both_shells(monkeypatch, activity):
+    """Run the command through a real host shell, join the arguments after
+    `shell` the way adb does, and run that through a real sh (standing in
+    for the phone's), which expands $variables."""
+    seen = []
+    monkeypatch.setattr(
+        ps, "run_command", lambda cmd, **kw: seen.append(cmd.format(**kw)) or ("", "")
+    )
+    ps.open_activity("SER1", activity)
+
+    def argv_after_shell_word(command):
+        out = subprocess.run(
+            ["sh", "-c", 'f() { printf "%s\\n" "$@"; }; f ' + command],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines()
+        return out
+
+    host_argv = argv_after_shell_word(seen[0])
+    device_cmd = " ".join(host_argv[host_argv.index("shell") + 1 :])
+    assert argv_after_shell_word(device_cmd) == ["am", "start", activity]
