@@ -375,9 +375,6 @@ class AndroidScanner(AppScanner):
             "activity",
             "appops",
         ]
-        _email_re = re.compile(
-            r"(\s*)[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,4}\b"
-        )
 
         def _run(*args, timeout=120) -> str:
             try:
@@ -397,10 +394,8 @@ class AndroidScanner(AppScanner):
             with open(dumpf, "w", encoding="utf-8", errors="replace") as f:
                 for svc in services:
                     f.write(f"\nDUMP OF SERVICE {svc}\n")
-                    out = _email_re.sub(
-                        r"\1<email>", _run("shell", "dumpsys", *svc.split())
-                    )
-                    f.write(out)
+                    out = _run("shell", "dumpsys", *svc.split())
+                    f.write(parse_dump.normalize_dumpsys(parse_dump.redact_emails(out)))
 
                 f.write("\nDUMP OF SERVICE net_stats\n")
                 f.write(
@@ -411,7 +406,11 @@ class AndroidScanner(AppScanner):
 
                 for ns in ("secure", "system", "global"):
                     f.write(f"\nDUMP OF SETTINGS {ns}\n")
-                    f.write(_run("shell", "settings", "list", ns, timeout=30))
+                    f.write(
+                        parse_dump.normalize_dumpsys(
+                            _run("shell", "settings", "list", ns, timeout=30)
+                        )
+                    )
 
             size = os.path.getsize(dumpf)
             if size < 5000:
