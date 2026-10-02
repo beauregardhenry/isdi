@@ -21,8 +21,7 @@ config = get_config()
 # Load blocklist using lightweight DataFrame
 try:
     APP_FLAGS = (
-        LightDataFrame.read_csv(config.APP_FLAGS_FILE, encoding="latin1")
-        .fillna(
+        LightDataFrame.read_csv(config.APP_FLAGS_FILE, encoding="latin1").fillna(
             {
                 "title": "",
                 "store": "",
@@ -32,7 +31,9 @@ try:
                 "source": "",
             }
         )
-        .isin("flag", {"dual-use", "spyware", "co-occurrence"})
+        # "stalkerware" is what scripts/get-stalkerware-indicators.py writes
+        # for every package in the AssoEchap stalkerware-indicators list.
+        .isin("flag", {"dual-use", "spyware", "stalkerware", "co-occurrence"})
     )
 except FileNotFoundError as e:
     print(f"I can't find the blocklist file: {config.APP_FLAGS_FILE!r}.")
@@ -66,8 +67,9 @@ def dedup_app_flags(apps_list):
             result[appid]["title"] = title
         elif title and title != result[appid]["title"]:
             result[appid]["title"] = result[appid]["title"] + " -+- " + title
-        # Collect flags
-        flags = app.get("flag", [])
+        # Collect flags. app_title_and_flag passes them as "flags"; reading
+        # only "flag" silently dropped every app-flags.csv flag.
+        flags = app.get("flags", app.get("flag", []))
         if isinstance(flags, str):
             flags = [flags] if flags else []
         elif isinstance(flags, list):
@@ -98,6 +100,10 @@ def score(flags):
         "dual-use": 0.8,
         "onstore-spyware": 1.0,
         "offstore-spyware": 1.0,
+        # Flags as stored in app-flags.csv (app_title_and_flag uses them as-is).
+        "spyware": 1.0,
+        "stalkerware": 1.0,
+        "co-occurrence": 0.2,
         "offstore-app": 0.8,
         "regex-spy": 0.3,
         "odds-ratio": 0.2,
@@ -122,7 +128,7 @@ def flag_str(flags):
     def _add_class(flag):
         return (
             "primary"
-            if "spyware" in flag or flag == "device-owner"
+            if "spyware" in flag or flag in ("stalkerware", "device-owner")
             else "warning" if "dual-use" in flag else "info" if "spy" in flag else ""
         )
 
@@ -132,6 +138,11 @@ def flag_str(flags):
             "offstore-spyware": (
                 "This app is a spyware app, distributed outside official applicate stores, e.g., "
                 "Play Store or iTunes App Store"
+            ),
+            "spyware": "This app is a known spyware app.",
+            "stalkerware": (
+                "This app is listed as stalkerware in the Echap stalkerware-indicators "
+                "database."
             ),
             "co-occurrence": "This app appears very frequently with other offstore-spyware apps.",
             "onstore-dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",

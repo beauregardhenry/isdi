@@ -15,23 +15,6 @@ from isdi.scanner.runcmd import (
 INJECTION = "x; touch /tmp/isdi-pwned #"
 
 
-@pytest.fixture(scope="module")
-def app():
-    from isdi.app import create_app
-
-    app = create_app(get_config("test"))
-    app.config["TESTING"] = True
-    return app
-
-
-@pytest.fixture
-def client(app):
-    c = app.test_client()
-    with c.session_transaction() as s:
-        s["clientid"] = "20260101_001"
-    return c
-
-
 @pytest.fixture
 def no_subprocess(monkeypatch):
     """Fail the test if anything tries to spawn a process."""
