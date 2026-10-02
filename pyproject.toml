@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,8 +30,8 @@ dependencies = [
     "flask-wtf>=1.2",
     "pymobiledevice3>=4.0",
     "click>=8.0",
-    "pyyaml>=6.0",
     "rsonlite>=0.1.0",
+    "wtforms>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -40,9 +40,12 @@ dev = [
     "pytest-cov>=4.0",
     "black==26.5.1",  # keep in sync with .github/workflows/tests.yml
 ]
-termux = [
-    "pymobiledevice3>=4.0",
-]
+
+[project.urls]
+Homepage = "https://github.com/beauregardhenry/isdi"
+Issues = "https://github.com/beauregardhenry/isdi/issues"
+Security = "https://github.com/beauregardhenry/isdi/security/policy"
+Upstream = "https://github.com/stopipv/isdi"
 
 [project.scripts]
 isdi = "isdi.cli:main"
@@ -53,6 +56,8 @@ where = ["src"]
 [tool.setuptools.package-data]
 isdi = [
     "data/**/*",
+    "scripts/*.sh",
+    "web/schema.sql",
     "web/templates/**/*",
     "web/static/**/*",
 ]
