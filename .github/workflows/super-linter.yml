@@ -14,12 +14,11 @@ on:
       - "**/*.py"
       - "src/isdi/scripts/*.sh"
       - ".github/workflows/super-linter.yml"
+  # No paths filter on pull_request: run-lint is a required check, so it must
+  # report on every PR or auto-merge would wait forever. super-linter only lints
+  # changed files and passes when none are Python or shell.
   pull_request:
     branches: [ main ]
-    paths:
-      - "**/*.py"
-      - "src/isdi/scripts/*.sh"
-      - ".github/workflows/super-linter.yml"
 jobs:
   run-lint:
     runs-on: ubuntu-latest
