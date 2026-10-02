@@ -27,6 +27,34 @@ from .runcmd import catch_err, run_command
 cfg = get_config()
 
 
+def _jsonable(value):
+    """Sets and tuples as lists, anything else (dates, ...) as text."""
+    return list(value) if isinstance(value, (set, frozenset, tuple)) else str(value)
+
+
+def _remove_dump_files(dumpf: str) -> None:
+    """Delete a dump and any file derived from it (older versions cached the
+    parse as .json next to the .txt)."""
+    base = dumpf.rsplit(".", 1)[0]
+    for f in (dumpf, base + ".txt", base + ".json"):
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+
+
+def purge_raw_dumps() -> int:
+    """Delete every raw dump left in the dump directory (by a crash, or by
+    a version that kept them). Returns how many files were removed."""
+    removed = 0
+    for name in os.listdir(cfg.DUMP_DIR):
+        path = os.path.join(cfg.DUMP_DIR, name)
+        if os.path.isfile(path):
+            os.remove(path)
+            removed += 1
+    return removed
+
+
 def _pseudonym(serial: str) -> str:
     """How logs name a device: a prefix of the stored HMAC, never the serial."""
     return "device-" + cfg.hmac_serial(serial)[:12] if serial else "device-?"
@@ -87,25 +115,20 @@ class AppScanner:
         """Return dict of app package IDs and titles: {appId: title}."""
         return {}
 
-    def dump_path(self, serial: str, stored: bool = False) -> str:
-        """Get the file path for a device's dump. With stored=True, `serial`
-        is already the HMAC kept in the database (a saved scan)."""
-        hmac_serial = serial if stored else cfg.hmac_serial(serial)
+    def dump_path(self, serial: str) -> str:
+        """Where a device's raw dump is written while it is scanned. Dumps
+        are deleted when the scan ends (discard_dump)."""
         fkind = "json" if self.device_type == "ios" else "txt"
-        return os.path.join(cfg.DUMP_DIR, f"{hmac_serial}_{self.device_type}.{fkind}")
+        return os.path.join(
+            cfg.DUMP_DIR, f"{cfg.hmac_serial(serial)}_{self.device_type}.{fkind}"
+        )
 
-    def _load_dump(
-        self, serialno: str, stored: bool = False
-    ) -> Optional[parse_dump.PhoneDump]:
-        """Load device dump from file, creating it if needed. A stored dump
-        (saved scan) is only read, never re-created from the phone."""
-        dumpf = self.dump_path(serialno, stored=stored)
+    def _load_dump(self, serialno: str) -> Optional[parse_dump.PhoneDump]:
+        """Load this phone's dump, taking it from the phone if needed."""
+        dumpf = self.dump_path(serialno)
 
-        if stored:
-            if not os.path.exists(dumpf):
-                return None
         # Re-dump if file is missing or suspiciously small (a header-only empty dump is ~600B)
-        elif not os.path.exists(dumpf) or os.path.getsize(dumpf) < 5000:
+        if not os.path.exists(dumpf) or os.path.getsize(dumpf) < 5000:
             self.ddump = None
             if not self._dump_phone(serialno):
                 return None
@@ -122,18 +145,39 @@ class AppScanner:
                 self.ddump = parse_dump.IosDump(dumpf)
             return self.ddump
         except Exception as e:
-            logging.error(f"Error loading dump {dumpf}: {e}")
+            logging.error("Error loading the dump: %s", type(e).__name__)
             return None
+
+    def dump_details(self, appids) -> Dict[str, Dict]:
+        """What the current dump says about each app (install dates,
+        permissions, data usage), as plain JSON-able data, to be stored
+        with the scan in place of the dump itself."""
+        details = {}
+        for appid in appids:
+            try:
+                info = self.ddump.info(appid) if self.ddump else None
+            except Exception as e:
+                logging.warning("No dump details for an app: %s", type(e).__name__)
+                info = None
+            if info:
+                details[appid] = json.loads(json.dumps(info, default=_jsonable))
+        return details
+
+    def discard_dump(self, serial: str) -> None:
+        """Delete this phone's raw dump and forget the parsed copy. Called
+        when a scan ends, saved or not: raw dumps are never kept."""
+        if isinstance(self.ddump, parse_dump.PhoneDump) and self.ddump.dumpf == (
+            self.dump_path(serial)
+        ):
+            self.ddump = None
+        _remove_dump_files(self.dump_path(serial))
 
     def _dump_phone(self, serial: str) -> bool:
         """Dump device info by running shell script."""
         dumpf = self.dump_path(serial)
         os.makedirs(os.path.dirname(dumpf), exist_ok=True)
 
-        # Delete stale JSON cache so load_file re-parses the fresh txt dump
-        json_cache = dumpf.rsplit(".", 1)[0] + ".json"
-        if os.path.exists(json_cache):
-            os.unlink(json_cache)
+        _remove_dump_files(dumpf)
         self.ddump = None
 
         # Resolve script path
@@ -164,7 +208,8 @@ class AppScanner:
     def get_multiple_app_details(
         self, serialno: str, appids: List[str], stored: bool = False
     ) -> Dict[str, Tuple[Dict, Dict]]:
-        """Get details for multiple apps at once, returning dict keyed by appId."""
+        """Get details for multiple apps at once, returning dict keyed by appId.
+        With stored=True, serialno is the HMAC kept in the database."""
 
         def _process_app_row(appid: str, d: Dict) -> Tuple[Dict, Dict]:
             permissions = d.get("permissions")
@@ -198,21 +243,23 @@ class AppScanner:
             d["descriptionHTML"] = description
             d.setdefault("summary", d.get("title", ""))
 
-            info = self.ddump.info(appid) if self.ddump else None
-            return d, info or {}
+            return d, device.get(appid, {})
 
         if not appids:
             return {}
 
-        if not self._load_dump(serialno, stored=stored):
-            self.ddump = None
+        # What the phone's dump said, as saved with this phone's latest scan
+        # (the dump itself is not kept). Saved-scan links already carry the
+        # stored HMAC; live pages carry the serial.
+        from isdi.scanner import db
+
+        serial_hmac = serialno if stored else cfg.hmac_serial(serialno)
+        scanid = db.get_most_recent_scan_id(serial_hmac)
+        device = db.app_details_from_scan(scanid, appids) if scanid else {}
 
         if not AppScanner.app_info_conn:
             # No app metadata db: still show what the phone's dump says.
-            return {
-                appid: ({}, (self.ddump.info(appid) if self.ddump else None) or {})
-                for appid in appids
-            }
+            return {appid: ({}, device.get(appid, {})) for appid in appids}
 
         conn = AppScanner.app_info_conn
         if conn.row_factory is None:
@@ -232,8 +279,7 @@ class AppScanner:
         # ones) still get what the phone's dump says about them.
         for appid in appids:
             if appid not in details:
-                info = self.ddump.info(appid) if self.ddump else None
-                details[appid] = ({}, info or {})
+                details[appid] = ({}, device.get(appid, {}))
         return details
 
     def app_details(

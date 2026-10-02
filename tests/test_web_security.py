@@ -114,7 +114,7 @@ def test_default_host_is_loopback():
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")
 def test_secret_files_are_private():
     cfg = get_config()
-    for path in (cfg.pii_key_file, cfg.flask_secret_file):
+    for path in (cfg.keyfile, cfg.flask_secret_file):
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 

@@ -104,6 +104,18 @@ def _job_payload(job):
 
 
 def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
+    """Scan a connected phone and save the result. The raw dump is deleted
+    when the scan ends, whatever the outcome: only what the scan keeps
+    (encrypted, in the database) remains."""
+    sc = get_device(device)
+    try:
+        return _scan_and_save(clientid, device, device_owner, ser, job_id)
+    finally:
+        if sc and ser:
+            sc.discard_dump(ser)
+
+
+def _scan_and_save(clientid, device, device_owner, ser, job_id=None):
     def progress(percent, step, message):
         if job_id:
             _update_scan_job(
@@ -194,7 +206,8 @@ def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
         [
             (scanid, appid, json.dumps(info["flags"]), "", "<new>")
             for appid, info in apps.items()
-        ]
+        ],
+        details=sc.dump_details(apps),
     )
 
     apps_sorted = sorted(

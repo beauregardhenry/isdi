@@ -30,6 +30,7 @@ dependencies = [
     "flask-wtf>=1.2",
     "pymobiledevice3>=4.0",
     "click>=8.0",
+    "cryptography>=41",
     "rsonlite>=0.1.0",
     "wtforms>=3.0",
 ]
@@ -57,7 +58,6 @@ where = ["src"]
 isdi = [
     "data/**/*",
     "scripts/*.sh",
-    "web/schema.sql",
     "web/templates/**/*",
     "web/static/**/*",
 ]

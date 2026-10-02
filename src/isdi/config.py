@@ -84,8 +84,10 @@ class Config:
         # Ensure directories exist
         for dir_path in self.dirs.values():
             dir_path.mkdir(parents=True, exist_ok=True)
-        # The config dir holds the PII HMAC key and the session secret.
-        _restrict_permissions(self.dirs["config"], 0o700)
+        # The config dir holds the keyfile and the session secret; the data
+        # dir holds the (encrypted) database.
+        for d in ("config", "data", "local_data"):
+            _restrict_permissions(self.dirs[d], 0o700)
 
         # Setup paths
         self.setup_paths()
@@ -166,8 +168,9 @@ class Config:
         import hmac
         import hashlib
 
-        key = self.PII_KEY
-        return hmac.new(key, serial.encode(), hashlib.sha256).hexdigest()
+        from isdi import crypto
+
+        return hmac.new(crypto.pii_key(), serial.encode(), hashlib.sha256).hexdigest()
 
     def setup_paths(self):
         """Setup all application paths"""
@@ -194,6 +197,9 @@ class Config:
             self.logs_dir,
         ]:
             path.mkdir(parents=True, exist_ok=True)
+
+        # Raw dumps exist only during a scan, but are client data then.
+        _restrict_permissions(self.dumps_dir, 0o700)
 
         # Database
         self.database_path = self.dirs["local_data"] / "database.db"
@@ -242,9 +248,12 @@ class Config:
 
     def setup_secrets(self):
         """Setup encryption keys and secrets"""
-        # PII encryption key
-        self.pii_key_file = self.secrets_dir / "pii.key"
-        self.PII_KEY = _load_or_create_secret(self.pii_key_file)[:32]
+        # The data key and the serial-pseudonymisation key, both encrypted
+        # (see isdi/crypto.py). Unlocked with the passphrase at startup.
+        self.keyfile = self.secrets_dir / "datakey.json"
+        # Before encryption at rest, the pseudonymisation key was stored in
+        # the clear here; it is moved into the keyfile, then deleted.
+        self.legacy_pii_key_file = self.secrets_dir / "pii.key"
 
         # Flask secret
         self.flask_secret_file = self.secrets_dir / "flask.secret"

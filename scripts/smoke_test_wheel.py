@@ -3,7 +3,7 @@
 
 Run it with the interpreter of an environment where the wheel (not the
 source tree) is installed, from outside the repository. It catches files
-missing from the wheel: templates, static files, schema.sql, the iOS dump
+missing from the wheel: templates, static files, the iOS dump
 script and the data files.
 """
 
@@ -25,6 +25,10 @@ if "site-packages" not in pkg.parts:
     sys.exit(f"isdi is imported from {pkg}, not from an installed wheel")
 
 config = get_config("test")
+
+from isdi import crypto  # noqa: E402
+
+crypto.setup(config.keyfile, "smoke test passphrase")
 for f in (
     config.SCRIPT_DIR / "ios_scan.sh",
     config.APP_FLAGS_FILE,

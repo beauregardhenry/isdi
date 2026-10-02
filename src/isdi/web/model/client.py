@@ -5,8 +5,30 @@
 # if the migrations folder isn't present, run `flask db init` first.
 # _order in ClientForm should be modified .
 
-from isdi.web import sa
+from sqlalchemy.types import Text, TypeDecorator
 from wtforms.validators import InputRequired
+
+from isdi import crypto
+from isdi.web import sa
+
+
+class Encrypted(TypeDecorator):
+    """A column stored encrypted (AES-256-GCM, see isdi/crypto.py). The
+    column name is authenticated with the value, as in isdi/scanner/db.py,
+    so both read the same data."""
+
+    impl = Text
+    cache_ok = True
+
+    def __init__(self, column: str):
+        super().__init__()
+        self.column = column
+
+    def process_bind_param(self, value, dialect):
+        return crypto.encrypt(self.column, value)
+
+    def process_result_value(self, value, dialect):
+        return crypto.decrypt(self.column, value)
 
 
 class Client(sa.Model):
@@ -32,21 +54,21 @@ class Client(sa.Model):
     clientid = sa.Column(sa.String(100), nullable=False, **_d)
 
     consultant_initials = sa.Column(
-        sa.String(100),
+        Encrypted("consultant_initials"),
         nullable=False,
         info=_lr("Consultant Names (separate with commas)", "r"),
         **_d,
     )
 
     fjc = sa.Column(
-        sa.Enum("", "Brooklyn", "Queens", "The Bronx", "Manhattan", "Staten Island"),
+        Encrypted("fjc"),
         nullable=False,
         info=_lr("FJC", "r"),
         **_d,
     )
 
     preferred_language = sa.Column(
-        sa.String(100),
+        Encrypted("preferred_language"),
         nullable=False,
         info=_lr("Preferred language", "r"),
         default="English",
@@ -54,105 +76,117 @@ class Client(sa.Model):
     )
 
     referring_professional = sa.Column(
-        sa.String(100),
+        Encrypted("referring_professional"),
         nullable=False,
         info=_lr("Name of Referring Professional", "r"),
         **_d,
     )
 
     referring_professional_email = sa.Column(
-        sa.String(255),
+        Encrypted("referring_professional_email"),
         nullable=True,
         info={"label": "Email of Referring Professional (Optional)"},
     )
 
     referring_professional_phone = sa.Column(
-        sa.String(50),
+        Encrypted("referring_professional_phone"),
         nullable=True,
         info={"label": "Phone number of Referring Professional (Optional)"},
     )
 
     caseworker_present = sa.Column(
-        sa.Enum("", "For entire consult", "For part of the consult", "No"),
+        Encrypted("caseworker_present"),
         nullable=False,
         info=_lr("Caseworker present", "r"),
         **_d,
     )
 
     caseworker_present_safety_planning = sa.Column(
-        sa.Enum("", "Yes", "No"),
+        Encrypted("caseworker_present_safety_planning"),
         nullable=False,
         info=_lr("Caseworker present for safety planning", "r"),
         **_d,
     )
 
     caseworker_recorded = sa.Column(
-        sa.Enum("", "Yes", "No"),
+        Encrypted("caseworker_recorded"),
         nullable=False,
         info=_lr("If caseworker present, permission to audio-record them", "r"),
         **_d,
     )
 
     recorded = sa.Column(
-        sa.Enum("", "Yes", "No"),
+        Encrypted("recorded"),
         nullable=False,
         info=_lr("Permission to audio-record clinic", "r"),
         **_d,
     )
 
     chief_concerns = sa.Column(
-        sa.String(400), nullable=False, info=_lr("Chief concerns", "r"), **_d
+        Encrypted("chief_concerns"),
+        nullable=False,
+        info=_lr("Chief concerns", "r"),
+        **_d,
     )
 
     chief_concerns_other = sa.Column(
-        sa.Text,
+        Encrypted("chief_concerns_other"),
         nullable=False,
         info=_lr("Chief concerns if not listed above (Optional)", ""),
         **_d,
     )
 
     android_phones = sa.Column(
-        sa.Integer,
+        Encrypted("android_phones"),
         nullable=False,
         info=_lr("# of Android phones brought in", "r"),
         **_d0,
     )
 
     android_tablets = sa.Column(
-        sa.Integer,
+        Encrypted("android_tablets"),
         nullable=False,
         info=_lr("# of Android tablets brought in", "r"),
         **_d0,
     )
 
     iphone_devices = sa.Column(
-        sa.Integer, nullable=False, info=_lr("# of iPhones brought in", "r"), **_d0
+        Encrypted("iphone_devices"),
+        nullable=False,
+        info=_lr("# of iPhones brought in", "r"),
+        **_d0,
     )
 
     ipad_devices = sa.Column(
-        sa.Integer, nullable=False, info=_lr("# of iPads brought in", "r"), **_d0
+        Encrypted("ipad_devices"),
+        nullable=False,
+        info=_lr("# of iPads brought in", "r"),
+        **_d0,
     )
 
     macbook_devices = sa.Column(
-        sa.Integer, nullable=False, info=_lr("# of MacBooks brought in", "r"), **_d0
+        Encrypted("macbook_devices"),
+        nullable=False,
+        info=_lr("# of MacBooks brought in", "r"),
+        **_d0,
     )
 
     windows_devices = sa.Column(
-        sa.Integer,
+        Encrypted("windows_devices"),
         nullable=False,
         info=_lr("# of Windows laptops brought in", "r"),
         **_d0,
     )
 
     echo_devices = sa.Column(
-        sa.Integer,
+        Encrypted("echo_devices"),
         nullable=False,
         info=_lr("# of Amazon Echoes brought in", "r"),
         **_d0,
     )
 
     other_devices = sa.Column(
-        sa.String(400),
+        Encrypted("other_devices"),
         nullable=True,
         info=_lr("Other devices brought in if not listed above (Optional)", ""),
         **_d,
@@ -160,28 +194,28 @@ class Client(sa.Model):
 
     # consider adding checkboxes for this
     checkups = sa.Column(
-        sa.String(400),
+        Encrypted("checkups"),
         nullable=True,
         info=_lr("List apps/accounts manually checked (Optional)", ""),
         **_d,
     )
 
     checkups_other = sa.Column(
-        sa.String(400),
+        Encrypted("checkups_other"),
         nullable=True,
         info=_lr("Other apps/accounts manually checked (Optional)", ""),
         **_d,
     )
 
     vulnerabilities = sa.Column(
-        sa.String(600),
+        Encrypted("vulnerabilities"),
         nullable=False,
         info=_lr("Vulnerabilities discovered", "r"),
         **_d,
     )
 
     vulnerabilities_trusted_devices = sa.Column(
-        sa.Text,
+        Encrypted("vulnerabilities_trusted_devices"),
         nullable=True,
         info=_lr(
             "List accounts with unknown trusted devices if discovered (Optional)", ""
@@ -190,37 +224,49 @@ class Client(sa.Model):
     )
 
     vulnerabilities_other = sa.Column(
-        sa.Text,
+        Encrypted("vulnerabilities_other"),
         nullable=True,
         info=_lr("Other vulnerabilities discovered (Optional)", ""),
         **_d,
     )
 
     safety_planning_onsite = sa.Column(
-        sa.Enum("", "Yes", "No", "Not applicable"),
+        Encrypted("safety_planning_onsite"),
         nullable=False,
         info=_lr("Safety planning conducted onsite", "r"),
         **_d,
     )
 
     changes_made_onsite = sa.Column(
-        sa.Text, nullable=True, info=_lr("Changes made onsite (Optional)", ""), **_d
+        Encrypted("changes_made_onsite"),
+        nullable=True,
+        info=_lr("Changes made onsite (Optional)", ""),
+        **_d,
     )
 
     unresolved_issues = sa.Column(
-        sa.Text, nullable=True, info=_lr("Unresolved issues (Optional)", ""), **_d
+        Encrypted("unresolved_issues"),
+        nullable=True,
+        info=_lr("Unresolved issues (Optional)", ""),
+        **_d,
     )
 
     follow_ups_todo = sa.Column(
-        sa.Text, nullable=True, info=_lr("Follow-ups To-do (Optional)", ""), **_d
+        Encrypted("follow_ups_todo"),
+        nullable=True,
+        info=_lr("Follow-ups To-do (Optional)", ""),
+        **_d,
     )
 
     general_notes = sa.Column(
-        sa.Text, nullable=True, info=_lr("General notes (Optional)", ""), **_d
+        Encrypted("general_notes"),
+        nullable=True,
+        info=_lr("General notes (Optional)", ""),
+        **_d,
     )
 
     case_summary = sa.Column(
-        sa.Text,
+        Encrypted("case_summary"),
         nullable=True,
         info=_lr(
             'Case Summary (Can fill out after consult, see "Edit previous forms")', ""

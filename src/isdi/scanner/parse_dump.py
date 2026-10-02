@@ -318,32 +318,16 @@ class AndroidDump(PhoneDump):
             d[service] = _parse(join_lines)
         return _clean_dictionary(d)
 
-    def load_file(self, failed_before: str = False) -> dict:
+    def load_file(self) -> dict:
+        """Parse the dump. Nothing is written next to it: the dump is raw
+        client data, deleted once the scan is saved, and a cached copy of
+        its parse would outlive it."""
         fname = self.dumpf.rsplit(".", 1)[0] + ".txt"
-        json_fname = fname.rsplit(".", 1)[0] + ".json"
-        d = {}
-        if os.path.exists(json_fname):
-            logging.debug(f"Loading json file: {json_fname}")
-            with open(json_fname, "r") as f:
-                try:
-                    d = json.load(f)
-                except Exception as ex:
-                    logging.error(f">> AndroidDump.load_file(): {ex}")
-                    if not failed_before:
-                        os.unlink(json_fname)
-                        return self.load_file(failed_before=True)
-        else:
-            with open(json_fname, "w") as f:
-                try:
-                    d = self.new_parse_dump_file(fname)
-                    json.dump(d, f, indent=2)
-                except Exception as ex:
-                    logging.error(
-                        "File ({!r}) could not be opened or parsed.".format(fname)
-                    )
-                    logging.error("Exception: {}".format(ex))
-                    raise (ex)
-        return d
+        try:
+            return self.new_parse_dump_file(fname)
+        except Exception as ex:
+            logging.error("Dump %r could not be parsed: %s", fname, type(ex).__name__)
+            raise
 
     @staticmethod
     def get_data_usage(d, appid, process_uid):

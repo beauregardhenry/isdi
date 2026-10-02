@@ -19,6 +19,9 @@ stalkerware (see the [releases](https://github.com/beauregardhenry/isdi/releases
 It is distributed through GitHub releases, not PyPI: the `isdi-scanner`
 package on PyPI is upstream's.
 
+Client data is encrypted at rest and raw phone dumps are never kept; see
+[DATA_PROTECTION.md](DATA_PROTECTION.md).
+
 To report a security problem, see [SECURITY.md](SECURITY.md). For anything
 else, open an [issue](https://github.com/beauregardhenry/isdi/issues).
 
@@ -102,17 +105,24 @@ After ISDi is installed, with an Android or iOS device plugged in and unlocked, 
 isdi run
 ```
 
-ISDi will start a local web server on port 6200. Open your browser to `http://localhost:6200` for the ISDi UI. In debug mode, the server is on port 6202. 
+ISDi asks for its passphrase, then starts a local web server on port 6200. Open your browser to `http://localhost:6200` for the ISDi UI. In debug mode, the server is on port 6201, and in test mode (`--test`) on 6202.
+
+**First start:** ISDi encrypts all client data, and asks you to choose a
+passphrase (at least 12 characters). It then shows a **recovery key** once.
+Write it down and keep it safe, away from the computer: without the
+passphrase or the recovery key, nobody can read the data, including you.
 
 **Note:** On first run, ISDi will download the app information database (~47MB) from GitHub. This may take a minute depending on your internet connection. An internet connection is required for the first run.
 
 ### Command Options
 
 ```bash
-isdi run              # Normal mode
-isdi run --debug      # Debug mode (verbose logging)
-DEBUG=1 isdi run      # Alternative debug flag
-isdi --help           # Show all options
+isdi run                          # Normal mode
+isdi run --debug                  # Debug mode (verbose logging)
+isdi change-passphrase            # New passphrase (--recovery if it is lost)
+isdi export CLIENTID -o file.json # Everything stored about a client, decrypted
+isdi erase CLIENTID               # Delete everything stored about a client
+isdi --help                       # Show all options
 ```
 
 Then navigate to the URL shown in the terminal. Click on `"Scan Instructions"` and follow the instructions to prepare your device for the scan.
@@ -157,11 +167,10 @@ pymobiledevice3 usbmux list
 See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Termux-specific troubleshooting.
 
 ## Downloaded data ## 
-The data downloaded and stored in the study are the
-following.  1. A `sqlite` database containing the feedback and actions taken by
-the user.  2. `phone_dump/` folder will have dump of some services in the
-phone.  (For Android I have figured out what are these, for iOS I don't know
-how to get those information.)
+ISDi reads the following from a phone. The raw dump exists only while the
+phone is scanned; what the scan keeps (the app list, flags, and per-app
+details such as install dates) is stored encrypted in the database, with the
+consultation notes. See [DATA_PROTECTION.md](DATA_PROTECTION.md).
 
 ##### Android 
 The services that we can dump safely using `dumpsys` are the
@@ -194,7 +203,6 @@ to the application. I don't know how to get install date, resource usage, etc.
 - **`src/isdi/web/`** - Flask web application
   - `templates/` - HTML templates for the web UI
   - `static/` - CSS, JavaScript, and images
-  - `schema.sql` - Database schema
   - `forms/` - WTForms for consultation forms
   - `model/` - SQLAlchemy models
   - `view/` - Flask route handlers
