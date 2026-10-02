@@ -267,6 +267,10 @@ class Config:
             level=logging.DEBUG if self.DEBUG else logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
             handlers=handlers,
+            # Replace any handler already set up: the first logging.error()
+            # call (often before this runs) installs a plain stderr handler,
+            # and without force this call would then do nothing at all.
+            force=True,
         )
         _restrict_permissions(log_file, 0o600)
 
