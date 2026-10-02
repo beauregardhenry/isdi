@@ -300,7 +300,6 @@ def get_client_devices_from_db(clientid: str) -> list:
         args=(clientid,),
         one=False,
     )
-    print("<>get_client_devices_from_db<>", d)
     if d:
         return d
     else:

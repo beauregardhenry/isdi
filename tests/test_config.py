@@ -158,3 +158,36 @@ def test_suite_never_touches_the_users_isdi_data():
 def test_config_refuses_to_switch_environment():
     with pytest.raises(RuntimeError, match="cannot switch"):
         get_config("production")
+
+
+@pytest.mark.parametrize("first", ["missing", b"<html>wrong file</html>"])
+def test_download_falls_back_to_the_next_source(
+    cache_config, tmp_path, monkeypatch, first
+):
+    """The fork's mirror is tried first; if it is missing or serves anything
+    but the pinned file, upstream's copy is used."""
+    import urllib.error
+
+    monkeypatch.setattr(
+        config_mod, "APP_INFO_DB_SHA256", hashlib.sha256(FAKE_DB).hexdigest()
+    )
+    mirror, upstream = config_mod.APP_INFO_DB_URLS
+    asked = []
+
+    def urlopen(url, timeout):
+        asked.append(url)
+        if url == mirror and first == "missing":
+            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+        return _Response(first if url == mirror else FAKE_DB)
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    cache_config._ensure_app_info_db()
+    assert asked == [mirror, upstream]
+    assert (tmp_path / "app-info.db").read_bytes() == FAKE_DB
+
+
+def test_mirror_is_this_fork_and_upstream_is_last():
+    assert config_mod.APP_INFO_DB_URLS[0].startswith(
+        "https://github.com/beauregardhenry/isdi/"
+    )
+    assert config_mod.APP_INFO_DB_URLS[-1].startswith("https://github.com/stopipv/")

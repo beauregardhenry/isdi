@@ -27,6 +27,11 @@ from .runcmd import catch_err, run_command
 cfg = get_config()
 
 
+def _pseudonym(serial: str) -> str:
+    """How logs name a device: a prefix of the stored HMAC, never the serial."""
+    return "device-" + cfg.hmac_serial(serial)[:12] if serial else "device-?"
+
+
 class AppScanner:
     """Base class for device scanners (Android/iOS)."""
 
@@ -137,7 +142,7 @@ class AppScanner:
             logging.error(f"Script not found: {script_path}")
             return False
 
-        logging.info(f"Dumping {self.device_type} device {serial}...")
+        logging.info("Dumping %s device %s...", self.device_type, _pseudonym(serial))
 
         # Run script: bash script.sh <serial> <output_file>
         p = run_command(
@@ -363,7 +368,7 @@ class AndroidScanner(AppScanner):
             os.unlink(json_cache)
         self.ddump = None
 
-        logging.info(f"Dumping android device {serial}...")
+        logging.info("Dumping android device %s...", _pseudonym(serial))
 
         services = [
             "package",
@@ -393,7 +398,7 @@ class AndroidScanner(AppScanner):
                 )
                 return r.stdout
             except subprocess.TimeoutExpired:
-                logging.warning(f"adb timeout: {args}")
+                logging.warning("adb timeout: %s", args[:2])
                 return ""
 
         try:
@@ -422,7 +427,7 @@ class AndroidScanner(AppScanner):
             if size < 5000:
                 logging.error(
                     f"Android dump too small ({size} bytes) — "
-                    f"{self.cli} may not be reaching device {serial}"
+                    f"{self.cli} may not be reaching device {_pseudonym(serial)}"
                 )
                 return False
             logging.info(f"Dump completed: {dumpf} ({size} bytes)")
@@ -471,7 +476,7 @@ class AndroidScanner(AppScanner):
 
         result = self._load_dump(serialno)
         if not result or not self.ddump:
-            logging.error(f"Cannot load dump for {serialno}")
+            logging.error("Cannot load dump for %s", _pseudonym(serialno))
             return []
         return self.ddump.all_apps()
 
@@ -561,7 +566,7 @@ class IosScanner(AppScanner):
             data = json.loads(output[json_start:])
             return [d.get("Identifier", "") for d in data if "Identifier" in d]
         except json.JSONDecodeError as e:
-            logging.error(f"Failed to parse device list: {e}. output={output}")
+            logging.error("Failed to parse the iOS device list: %s", e)
             return []
 
     def get_apps(self, serialno: str) -> List[str]:

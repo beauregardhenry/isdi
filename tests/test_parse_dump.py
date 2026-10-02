@@ -195,3 +195,21 @@ def test_ios_model_names(tmp_path, product_type, model):
     d["devinfo"]["ProductType"] = product_type
     (tmp_path / "m.json").write_text(json.dumps(d))
     assert pdump.IosDump(str(tmp_path / "m.json")).device_info()[1]["model"] == model
+
+
+def test_an_unparseable_section_does_not_lose_the_dump(tmp_path):
+    """rsonlite raises on a section that starts indented; that used to
+    abort the whole parse, so the scan found no apps at all."""
+    text = (DATA / "android_dump.txt").read_text()
+    bad = "\nDUMP OF SERVICE oddservice\n   x\n  y\n z\n"
+    (tmp_path / "dump.txt").write_text(bad + text + bad.replace("odd", "odd2"))
+    with pytest.raises(TypeError):
+        pdump.complexparse(["   x\n", "  y\n", " z\n"])
+
+    dump = pdump.AndroidDump(str(tmp_path / "dump.txt"))
+    assert dump.all_apps() == [
+        "com.android.settings",
+        "com.example.spy",
+        "com.whatsapp",
+    ]
+    assert dump.df["oddservice"]["UNPARSED"][:3] == ["   x\n", "  y\n", " z\n"]

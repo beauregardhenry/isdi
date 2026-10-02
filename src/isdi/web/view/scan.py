@@ -45,6 +45,8 @@ def _isrooted_html(rooted, rooted_reason):
     else:
         s = "Not Detected"
     if rooted_reason:
+        if isinstance(rooted_reason, (list, tuple)):
+            rooted_reason = "; ".join(str(r) for r in rooted_reason)
         # Reasons include raw device output, so escape before rendering |safe.
         s += f". Reason(s): {escape(str(rooted_reason))}"
     return s

@@ -12,32 +12,32 @@ Flags added to them are from the following four classes
 5. "odds-ratio": Spyware based on high co-occurrence with other offstore-spyware
 """
 
+import csv
 import re
 from isdi.config import get_config
-from .lightweight_df import LightDataFrame
 
 config = get_config()
 
-# Load blocklist using lightweight DataFrame
-try:
-    APP_FLAGS = (
-        LightDataFrame.read_csv(config.APP_FLAGS_FILE, encoding="latin1").fillna(
-            {
-                "title": "",
-                "store": "",
-                "flag": "",
-                "human": 0,
-                "ml_score": 0.0,
-                "source": "",
-            }
-        )
-        # "stalkerware" is what scripts/get-stalkerware-indicators.py writes
-        # for every package in the AssoEchap stalkerware-indicators list.
-        .isin("flag", {"dual-use", "spyware", "stalkerware", "co-occurrence"})
-    )
-except FileNotFoundError as e:
-    print(f"I can't find the blocklist file: {config.APP_FLAGS_FILE!r}.")
-    exit(0)
+# Flags in app-flags.csv that the scanner uses. "stalkerware" is what
+# scripts/get-stalkerware-indicators.py writes for every package in the
+# AssoEchap stalkerware-indicators list.
+LOADED_FLAGS = {"dual-use", "spyware", "stalkerware", "co-occurrence"}
+
+
+def _load_app_flags(path) -> list:
+    """Blocklist rows with a flag the scanner uses. A missing file raises:
+    scanning without the blocklist would report stalkerware as harmless."""
+    with open(path, encoding="latin1", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r.get("flag") in LOADED_FLAGS]
+    for r in rows:
+        if r.get("title") in (None, "nan"):
+            r["title"] = ""
+    return rows
+
+
+APP_FLAGS = _load_app_flags(config.APP_FLAGS_FILE)
+# appId -> row, built once (lookups happen for every app on every scan).
+_FLAGS_BY_APPID = {r["appId"]: r for r in APP_FLAGS if r.get("appId")}
 
 SPY_REGEX = {
     "pos": re.compile(r"(?i)(spy|track|keylog|cheating)"),
@@ -168,7 +168,7 @@ def app_title_and_flag(apps_list, offstore_apps=None, system_apps=None):
     Gets app flags and title from app-flags data.
 
     Args:
-        apps_list: List of dicts with 'appId' key, LightDataFrame, or single dict
+        apps_list: List of dicts with 'appId' key, or a single dict
         offstore_apps: List of offstore app IDs
         system_apps: List of system app IDs
 
@@ -179,19 +179,12 @@ def app_title_and_flag(apps_list, offstore_apps=None, system_apps=None):
     system_apps = system_apps or []
 
     # Convert input to list of dicts
-    if isinstance(apps_list, LightDataFrame):
-        apps_data = apps_list.data
-    elif isinstance(apps_list, dict):
+    if isinstance(apps_list, dict):
         apps_data = [apps_list]
     else:
         apps_data = list(apps_list) if hasattr(apps_list, "__iter__") else [apps_list]
 
-    # Get APP_FLAGS as dict keyed by appId for fast lookup
-    flags_dict = {}
-    for row in APP_FLAGS.data:
-        appid = row.get("appId", "")
-        if appid:
-            flags_dict[appid] = row
+    flags_dict = _FLAGS_BY_APPID
 
     # Build result: merge with APP_FLAGS
     result = {}

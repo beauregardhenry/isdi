@@ -1,6 +1,6 @@
+import pytest
 import re
 from isdi.scanner.blocklist import _regex_blocklist, app_title_and_flag
-from isdi.scanner.lightweight_df import LightDataFrame
 import sys
 
 test_list = [
@@ -31,16 +31,32 @@ def test_blocklist():
 
 
 def test_app_title_and_flags():
-    d = LightDataFrame(
-        [
-            {"appId": "core.framework"},
-            {"appId": "com.android.system"},
-            {"appId": "LEM.TrackMe"},
-            {"appId": "com.spy2mobile.light"},
-        ]
-    )
+    d = [
+        {"appId": "core.framework"},
+        {"appId": "com.android.system"},
+        {"appId": "LEM.TrackMe"},
+        {"appId": "com.spy2mobile.light"},
+    ]
     ret = app_title_and_flag(d, ["core.framework", "com.android.system"])
     assert len(ret) == len({app.get("appId") for app in ret})
     appids = {app.get("appId") for app in ret}
     assert "core.framework" in appids
     assert "com.android.system" in appids
+
+
+def test_blocklist_loads_only_the_flags_the_scanner_uses():
+    from isdi.scanner import blocklist
+
+    flags = {r["flag"] for r in blocklist.APP_FLAGS}
+    # app-flags.csv also has "safe" rows; they are not loaded.
+    assert {"dual-use", "spyware", "stalkerware"} <= flags <= blocklist.LOADED_FLAGS
+    assert all(r["title"] != "nan" for r in blocklist.APP_FLAGS)
+
+
+def test_missing_blocklist_raises(tmp_path):
+    """Scanning without the blocklist would report stalkerware as harmless;
+    the old loader called exit(0), quitting with a success code."""
+    from isdi.scanner import blocklist
+
+    with pytest.raises(FileNotFoundError):
+        blocklist._load_app_flags(tmp_path / "missing.csv")

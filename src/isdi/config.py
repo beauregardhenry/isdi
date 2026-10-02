@@ -13,10 +13,39 @@ __all__ = ["Config", "get_config", "get_data_dir", "get_config_dir"]
 # detail pages. Descriptions are rendered as HTML, so only the exact file
 # whose hash is pinned here is accepted. If the release asset is updated
 # upstream, download it, check it, and update the hash in the same change.
-APP_INFO_DB_URL = (
-    "https://github.com/stopipv/isdi/releases/download/app-info/app-info.db"
+# Tried in order. The fork's copy (published by the mirror-app-info workflow)
+# keeps installs working if upstream removes its asset; the hash below
+# decides what is accepted, so where the file comes from does not matter.
+APP_INFO_DB_URLS = (
+    "https://github.com/beauregardhenry/isdi/releases/download/app-info/app-info.db",
+    "https://github.com/stopipv/isdi/releases/download/app-info/app-info.db",
 )
 APP_INFO_DB_SHA256 = "87ea193f41b35b94f7136560a8b570a2c97a81ccd45bd0dcac4ce4acaa456f38"
+
+
+def _download_verified(url: str, dst: Path, sha256: str) -> None:
+    """Stream url to dst.part and move it into place only if its SHA-256
+    matches; otherwise discard it and raise."""
+    import hashlib
+    import urllib.request
+
+    tmp = dst.with_name(dst.name + ".part")
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            if response.status != 200:
+                raise OSError(f"HTTP {response.status}")
+            digest = hashlib.sha256()
+            with open(tmp, "wb") as f:
+                for chunk in iter(lambda: response.read(1 << 20), b""):
+                    digest.update(chunk)
+                    f.write(chunk)
+        # A truncated, replaced or non-database file would otherwise be kept
+        # forever: later starts only check that the file is non-empty.
+        if digest.hexdigest() != sha256:
+            raise ValueError(f"checksum mismatch (got {digest.hexdigest()})")
+        os.replace(tmp, dst)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def get_platform_dirs():
@@ -189,77 +218,27 @@ class Config:
                 self.APP_FLAGS_FILE = old_location
 
     def _ensure_app_info_db(self) -> None:
-        """Download app-info.db from GitHub releases if missing or empty."""
-        try:
-            import time
-
-            start = time.perf_counter()
-            dst_db = Path(self.dirs["cache"]) / "app-info.db"
-
-            # If database exists and has content, skip download
-            if dst_db.exists() and dst_db.stat().st_size > 0:
-                return
-
-            # Try to download from GitHub releases
-            import urllib.request
-            import urllib.error
-
-            import hashlib
-
-            github_url = APP_INFO_DB_URL
-
-            print(f"Downloading app-info.db from GitHub...")
-            dst_db.parent.mkdir(parents=True, exist_ok=True)
-            tmp_db = dst_db.with_name(dst_db.name + ".part")
-
-            # Download with timeout
-            try:
-                with urllib.request.urlopen(github_url, timeout=30) as response:
-                    if response.status == 200:
-                        digest = hashlib.sha256()
-                        with open(tmp_db, "wb") as f:
-                            for chunk in iter(lambda: response.read(1 << 20), b""):
-                                digest.update(chunk)
-                                f.write(chunk)
-                        # A truncated, replaced or non-database download would
-                        # otherwise be kept forever: later starts only check
-                        # that the file is non-empty.
-                        if digest.hexdigest() != APP_INFO_DB_SHA256:
-                            raise ValueError(
-                                f"checksum mismatch (got {digest.hexdigest()}, "
-                                f"expected {APP_INFO_DB_SHA256})"
-                            )
-                        os.replace(tmp_db, dst_db)
-                        print(
-                            f"✓ Downloaded app-info.db ({dst_db.stat().st_size} bytes)"
-                        )
-                        print(
-                            f"app-info.db ready in {time.perf_counter() - start:.2f}s"
-                        )
-                        return
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    print(f"Warning: app-info.db not found in GitHub releases.")
-                else:
-                    print(f"Warning: Failed to download app-info.db: HTTP {e.code}")
-            except Exception as e:
-                print(f"Error: Failed to download app-info.db: {e}")
-                print("App information database is required for ISDi to function.")
-                print("Please check your internet connection and try again.")
-                print(f"If the problem persists, manually download from:")
-                print(f"  {github_url}")
-                print(f"And place it at: {dst_db}")
-                print(
-                    f"app-info.db download attempt took {time.perf_counter() - start:.2f}s"
-                )
-            finally:
-                tmp_db.unlink(missing_ok=True)
-
-        except Exception as e:
-            # Avoid failing config init if download fails
-            print(f"Error: Could not download app-info.db: {e}")
-            print("App information database is required for full functionality.")
+        """Download app-info.db if it is missing, from the first source that
+        serves the file with the pinned hash."""
+        dst_db = Path(self.dirs["cache"]) / "app-info.db"
+        if dst_db.exists() and dst_db.stat().st_size > 0:
             return
+        dst_db.parent.mkdir(parents=True, exist_ok=True)
+        print("Downloading app-info.db ...")
+        for url in APP_INFO_DB_URLS:
+            try:
+                _download_verified(url, dst_db, APP_INFO_DB_SHA256)
+            except Exception as e:
+                print(f"  {url}: {e}")
+                continue
+            print(f"✓ Downloaded app-info.db ({dst_db.stat().st_size} bytes)")
+            return
+        # Not fatal: scans still work, without app titles and descriptions.
+        print(
+            "Warning: could not download app-info.db; app details will be "
+            f"incomplete. You can place a copy at {dst_db} (SHA-256 "
+            f"{APP_INFO_DB_SHA256})."
+        )
 
     def setup_secrets(self):
         """Setup encryption keys and secrets"""
@@ -275,12 +254,21 @@ class Config:
         """Setup logging"""
         import logging
 
+        from isdi.scanner.runcmd import RedactingFilter
+
         log_file = self.logs_dir / "isdi.log"
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        # Debug output stays on the console: it is not written to disk.
+        file_handler.setLevel(logging.INFO)
+        handlers = [file_handler, logging.StreamHandler()]
+        for h in handlers:
+            h.addFilter(RedactingFilter())
         logging.basicConfig(
             level=logging.DEBUG if self.DEBUG else logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
-            handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
+            handlers=handlers,
         )
+        _restrict_permissions(log_file, 0o600)
 
     @property
     def host(self) -> str:
