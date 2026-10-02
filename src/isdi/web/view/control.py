@@ -1,4 +1,4 @@
-from isdi.web import app
+from isdi.web import bp
 from flask import request, jsonify, url_for, redirect
 import subprocess
 import json
@@ -7,7 +7,7 @@ import signal
 import threading
 
 
-@app.route("/kill", methods=["POST"])
+@bp.route("/kill", methods=["POST"])
 def killme():
     def _shutdown():
         import time
@@ -20,7 +20,7 @@ def killme():
     return "The app has been closed!"
 
 
-@app.route("/delete_device", methods=["POST"])
+@bp.route("/delete_device", methods=["POST"])
 def delete_device():
     """Delete all scan data and files for a device identified by its stored serial."""
     from isdi.scanner.db import delete_scan_data
@@ -35,10 +35,10 @@ def delete_device():
         return jsonify({"error": "Invalid serial"}), 400
 
     delete_scan_data(serial)
-    return redirect(url_for("index"))
+    return redirect(url_for("main.index"))
 
 
-@app.route("/termux-usb-permission", methods=["POST"])
+@bp.route("/termux-usb-permission", methods=["POST"])
 def request_termux_usb_permission():
     """Request USB permission for iOS device in Termux"""
     # Temporarily disabled for testing

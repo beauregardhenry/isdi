@@ -56,3 +56,8 @@ isdi = [
     "web/templates/**/*",
     "web/static/**/*",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+xfail_strict = true
+addopts = "--strict-markers"

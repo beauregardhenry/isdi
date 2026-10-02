@@ -179,3 +179,14 @@ def test_pages_only_use_nonced_scripts(client, url):
         assert "src=" in tag or f'nonce="{nonce}"' in tag, tag
     assert not re.search(r"\son[a-z]+\s*=", html, re.I)
     assert "javascript:" not in html
+
+
+def test_every_app_gets_all_routes(app):
+    """Routes live on a blueprint, so a second create_app() in the same
+    process (tests, the CLI, a WSGI server) is not left without pages."""
+    from isdi.app import create_app
+
+    other = create_app(get_config("test"))
+    rules = lambda a: {r.rule for r in a.url_map.iter_rules()}
+    assert rules(other) == rules(app)
+    assert {"/", "/scan", "/form/", "/kill"} <= rules(other)

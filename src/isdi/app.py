@@ -1,13 +1,15 @@
 """Flask application factory"""
 
+import logging
 import secrets
-from html import escape
 from pathlib import Path
 from time import perf_counter
 from flask import Flask, g
 from flask_wtf.csrf import CSRFProtect
 
 __all__ = ["create_app"]
+
+log = logging.getLogger(__name__)
 
 
 def create_app(config=None):
@@ -76,40 +78,15 @@ def create_app(config=None):
         )
         return resp
 
-    try:
-        from isdi.scanner.db import init_db
+    from isdi.scanner.db import init_db
 
-        init_db(app, sa, force=config.TEST)
-    except Exception as e:
-        print(f"Warning: Could not initialize database: {e}")
-    else:
-        print(f"Database init: {perf_counter() - db_init_started:.2f}s")
+    init_db(app, sa, force=config.TEST)
+    log.debug("Database init: %.2fs", perf_counter() - db_init_started)
 
-    # Register routes
-    routes_started = perf_counter()
-    try:
-        from isdi.web import init_routes
+    # A failure here is a bug; let it stop the server rather than serve a
+    # half-working scanner.
+    from isdi.web import init_routes
 
-        init_routes(app)
-    except Exception as e:
-        print(f"Warning: Could not register routes: {e}")
-
-        # Create a simple test route
-        @app.route("/")
-        def index():
-            return f"""
-            <html>
-            <head><title>ISDI</title></head>
-            <body>
-                <h1>ISDi - Stalkerware Scanner</h1>
-                <p>Server is running but web routes are not fully initialized.</p>
-                <p>Data directory: {escape(str(config.dirs['data']))}</p>
-                <p>Database: {escape(str(config.database_path))}</p>
-            </body>
-            </html>
-            """
-
-    else:
-        print(f"Route import/init: {perf_counter() - routes_started:.2f}s")
+    init_routes(app)
 
     return app

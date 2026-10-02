@@ -1,5 +1,5 @@
 from flask import request, render_template
-from isdi.web import app
+from isdi.web import bp
 from isdi.web.view.index import get_device
 from isdi.scanner.privacy_scan_android import do_privacy_check
 from isdi.config import get_config
@@ -9,7 +9,7 @@ import os
 config = get_config()
 
 
-@app.route("/privacy", methods=["GET"])
+@bp.route("/privacy", methods=["GET"])
 def privacy():
     """
     TODO: Privacy scan. Think how should it flow.
@@ -25,7 +25,7 @@ def privacy():
     )
 
 
-@app.route("/privacy/<device>/<cmd>", methods=["GET"])
+@bp.route("/privacy/<device>/<cmd>", methods=["GET"])
 def privacy_scan(device, cmd):
     sc = get_device(device)
     if sc is None:

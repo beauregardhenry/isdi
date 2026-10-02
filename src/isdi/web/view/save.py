@@ -1,6 +1,6 @@
 from flask import request, session
 from isdi.config import get_config
-from isdi.web import app
+from isdi.web import bp
 from isdi.scanner.db import (
     get_serial_from_db,
     save_note,
@@ -15,7 +15,7 @@ from isdi.scanner.runcmd import is_valid_appid, is_valid_serial
 config = get_config()
 
 
-@app.route("/saveapps/<scanid>", methods=["POST"])
+@bp.route("/saveapps/<scanid>", methods=["POST"])
 def record_applist(scanid):
     device = get_device_from_db(scanid)
     sc = get_device(device)
@@ -24,7 +24,7 @@ def record_applist(scanid):
     return "Success", 200
 
 
-@app.route("/savescan/<scanid>", methods=["POST"])
+@bp.route("/savescan/<scanid>", methods=["POST"])
 def record_scanres(scanid):
     device = get_device_from_db(scanid)
     sc = get_device(device)
@@ -37,7 +37,7 @@ def record_scanres(scanid):
     )
 
 
-@app.route("/delete/app/<scanid>", methods=["POST"])
+@bp.route("/delete/app/<scanid>", methods=["POST"])
 def delete_app(scanid):
     device = get_device_from_db(scanid)
     sc = get_device(device)

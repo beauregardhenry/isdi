@@ -1,7 +1,7 @@
-from isdi.web import app
+from isdi.web import bp
 
 
-@app.route("/error")
+@bp.route("/error")
 def get_nothing():
     """Route for intentional error."""
     return "foobar"  # intentional non-existent variable

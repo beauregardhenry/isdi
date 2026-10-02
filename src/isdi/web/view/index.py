@@ -1,5 +1,5 @@
 from isdi.config import get_config
-from isdi.web import app
+from isdi.web import bp
 from flask import render_template, request, session
 from isdi.scanner import AndroidScanner, IosScanner, TestScanner
 from isdi.scanner.db import get_client_devices_from_db, new_client_id
@@ -18,7 +18,7 @@ def get_device(k):
     return {"android": android, "ios": ios, "test": test}.get(k)
 
 
-@app.route("/", methods=["GET"])
+@bp.route("/", methods=["GET"])
 def index():
     # clientid = request.form.get('clientid', request.args.get('clientid'))
     # if not clientid: # if not coming from notes

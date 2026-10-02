@@ -4,7 +4,7 @@ import threading
 import time
 import uuid
 from isdi.config import get_config
-from isdi.web import app
+from isdi.web import bp
 from isdi.web.view.index import get_device
 from flask import jsonify, render_template, request, session, redirect, url_for
 from markupsafe import escape
@@ -97,7 +97,7 @@ def _job_payload(job):
         "step": job["step"],
         "message": job["message"],
         "error": job.get("error"),
-        "result_url": url_for("scan_result", job_id=job["job_id"]),
+        "result_url": url_for("main.scan_result", job_id=job["job_id"]),
     }
 
 
@@ -258,7 +258,7 @@ def get_param(key):
     return request.form.get(key, request.args.get(key))
 
 
-@app.route("/scan/start", methods=["POST"])
+@bp.route("/scan/start", methods=["POST"])
 def scan_start():
     if "clientid" not in session:
         return jsonify({"error": "Please start from the home page again."}), 401
@@ -303,13 +303,13 @@ def scan_start():
     return jsonify(
         {
             "job_id": job_id,
-            "status_url": url_for("scan_status", job_id=job_id),
-            "result_url": url_for("scan_result", job_id=job_id),
+            "status_url": url_for("main.scan_status", job_id=job_id),
+            "result_url": url_for("main.scan_result", job_id=job_id),
         }
     )
 
 
-@app.route("/scan/status/<job_id>", methods=["GET"])
+@bp.route("/scan/status/<job_id>", methods=["GET"])
 def scan_status(job_id):
     job = _get_scan_job(job_id)
     if not job:
@@ -317,11 +317,11 @@ def scan_status(job_id):
     return jsonify(_job_payload(job))
 
 
-@app.route("/scan/result/<job_id>", methods=["GET"])
+@bp.route("/scan/result/<job_id>", methods=["GET"])
 def scan_result(job_id):
     job = _get_scan_job(job_id)
     if not job or job["clientid"] != session.get("clientid"):
-        return redirect(url_for("index"))
+        return redirect(url_for("main.index"))
 
     if job.get("status") != "done" or not job.get("result"):
         return jsonify({"error": job.get("error") or "Scan is still running."}), 202
@@ -331,7 +331,7 @@ def scan_result(job_id):
     return render_template("main.html", **template_d), 200
 
 
-@app.route("/scan", methods=["POST", "GET"])
+@bp.route("/scan", methods=["POST", "GET"])
 def scan():
     """
     Needs three attribute for a device
@@ -342,7 +342,7 @@ def scan():
     """
     # clientid = request.form.get('clientid', request.args.get('clientid'))
     if "clientid" not in session:
-        return redirect(url_for("index"))
+        return redirect(url_for("main.index"))
 
     clientid = session["clientid"]
     device_primary_user = get_param("device_primary_user")

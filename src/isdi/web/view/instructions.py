@@ -1,12 +1,12 @@
 from isdi.config import get_config
 from flask import render_template, request, session
-from isdi.web import app
+from isdi.web import bp
 import os
 
 config = get_config()
 
 
-@app.route("/instruction", methods=["GET"])
+@bp.route("/instruction", methods=["GET"])
 def instruction():
     return render_template(
         "main.html",

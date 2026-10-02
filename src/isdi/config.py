@@ -307,12 +307,6 @@ class Config:
         self.flask_secret_file = self.secrets_dir / "flask.secret"
         self.FLASK_SECRET = _load_or_create_secret(self.flask_secret_file)
 
-    def set_test_mode(self, enabled: bool = True):
-        """Set test mode"""
-        self.TEST = enabled
-        if enabled:
-            self.DEBUG = True
-
     def setup_logger(self):
         """Setup logging"""
         import logging
@@ -360,11 +354,20 @@ def _load_or_create_secret(path: Path) -> bytes:
 _config: Optional[Config] = None
 
 
-def get_config(env: str = "production") -> Config:
-    """Get or create global config instance"""
+def get_config(env: str | None = None) -> Config:
+    """Get the global config, creating it for env (default "production").
+
+    Many modules call get_config() at import, so asking for a different env
+    after that would silently get the first one (for example, tests writing
+    to the real database). That is an error instead.
+    """
     global _config
     if _config is None:
-        _config = Config(env)
+        _config = Config(env or "production")
+    elif env is not None and env != _config.env:
+        raise RuntimeError(
+            f"config already created for {_config.env!r}; cannot switch to {env!r}"
+        )
     return _config
 
 
