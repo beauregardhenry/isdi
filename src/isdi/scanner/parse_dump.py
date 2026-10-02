@@ -261,7 +261,8 @@ class AndroidDump(PhoneDump):
         """Not used working using simple parse to parse the files."""
         if not Path(fname).exists():
             logging.error("File: {!r} does not exists".format(fname))
-        data = open(fname)
+        with open(fname) as fh:
+            data = fh.readlines()
         d = {}
         service = ""
         join_lines = []

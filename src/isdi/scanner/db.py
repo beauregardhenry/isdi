@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from isdi.config import get_config
 from flask import g
@@ -164,7 +165,7 @@ def get_db():
     try:
         db = getattr(g, "_database", None)
         if db is None:
-            print("Creating new db connection {}".format(DATABASE))
+            logging.debug("Opening database %s", DATABASE)
             db = g._database = sqlite3.connect(DATABASE)
             db.row_factory = make_dicts
             if _schema_needs_init(db):
@@ -172,7 +173,7 @@ def get_db():
         return db
     except RuntimeError:
         if not hasattr(_thread_local, "db") or _thread_local.db is None:
-            print("Creating fallback db connection {}".format(DATABASE))
+            logging.debug("Opening thread-local database %s", DATABASE)
             _thread_local.db = sqlite3.connect(DATABASE)
             _thread_local.db.row_factory = make_dicts
             if _schema_needs_init(_thread_local.db):
@@ -180,7 +181,15 @@ def get_db():
         return _thread_local.db
 
 
+def close_db(exc=None):
+    """Close this app context's connection (registered as a teardown)."""
+    db = g.pop("_database", None)
+    if db is not None:
+        db.close()
+
+
 def init_db(app, sa, force=False):
+    app.teardown_appcontext(close_db)
     with app.app_context():
         if force or not os.path.exists(DATABASE):
             db = get_db()

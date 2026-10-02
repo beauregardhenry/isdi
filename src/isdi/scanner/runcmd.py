@@ -1,3 +1,4 @@
+import io
 import re
 import logging
 import subprocess
@@ -40,7 +41,7 @@ def catch_err(
                     large_output_var += line
 
         p.wait(time)
-        print("Returncode: ", p.returncode)
+        logging.debug("Returncode: %s", p.returncode)
         if p.returncode != 0:
 
             if p.stderr:
@@ -111,7 +112,10 @@ def run_command(cmd: str, **kwargs) -> subprocess.Popen[bytes]:
         _cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
     )
     if not (kwargs.get("nowait", False) or kwargs.get("NOWAIT", False)):
-        p.wait()
+        # communicate() reads while waiting; wait() alone deadlocks once the
+        # output fills the pipe. Callers read p.stdout/p.stderr afterwards.
+        out, err = p.communicate()
+        p.stdout, p.stderr = io.BytesIO(out), io.BytesIO(err)
         if p.returncode != 0:
             logging.error(
                 f"Error running command: {_cmd!r}. returncode: {p.returncode}"
