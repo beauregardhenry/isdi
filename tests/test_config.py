@@ -57,7 +57,9 @@ def cache_config(tmp_path, monkeypatch):
 FAKE_DB = b"SQLite format 3\x00" + b"\x00" * 100
 
 
-def test_download_matching_pinned_hash_is_installed(cache_config, tmp_path, monkeypatch):
+def test_download_matching_pinned_hash_is_installed(
+    cache_config, tmp_path, monkeypatch
+):
     monkeypatch.setattr(
         config_mod, "APP_INFO_DB_SHA256", hashlib.sha256(FAKE_DB).hexdigest()
     )

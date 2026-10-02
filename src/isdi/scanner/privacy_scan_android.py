@@ -44,7 +44,9 @@ config = get_config()
 adb = config.ADB_PATH
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-LEGACY_SCREENSHOT = Path(__file__).parent.parent / "web" / "static" / "images" / "tmp.png"
+LEGACY_SCREENSHOT = (
+    Path(__file__).parent.parent / "web" / "static" / "images" / "tmp.png"
+)
 
 
 def run_command(cmd, **kwargs):

@@ -14,7 +14,9 @@ __all__ = ["Config", "get_config", "get_data_dir", "get_config_dir"]
 # detail pages. Descriptions are rendered as HTML, so only the exact file
 # whose hash is pinned here is accepted. If the release asset is updated
 # upstream, download it, check it, and update the hash in the same change.
-APP_INFO_DB_URL = "https://github.com/stopipv/isdi/releases/download/app-info/app-info.db"
+APP_INFO_DB_URL = (
+    "https://github.com/stopipv/isdi/releases/download/app-info/app-info.db"
+)
 APP_INFO_DB_SHA256 = "87ea193f41b35b94f7136560a8b570a2c97a81ccd45bd0dcac4ce4acaa456f38"
 
 
