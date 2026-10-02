@@ -478,6 +478,7 @@ def scan():
             scanid=scanid,
             sysapps=set(),
             serial=ser,
+            from_dump=True,
             currently_scanned=currently_scanned,
             error=config.error(),
         )

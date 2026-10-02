@@ -89,23 +89,32 @@ class AppScanner:
         """Return dict of app package IDs and titles: {appId: title}."""
         return {}
 
-    def dump_path(self, serial: str) -> str:
-        """Get the file path for a device's dump."""
-        hmac_serial = cfg.hmac_serial(serial)
+    def dump_path(self, serial: str, stored: bool = False) -> str:
+        """Get the file path for a device's dump. With stored=True, `serial`
+        is already the HMAC kept in the database (a saved scan)."""
+        hmac_serial = serial if stored else cfg.hmac_serial(serial)
         fkind = "json" if self.device_type == "ios" else "txt"
         return os.path.join(cfg.DUMP_DIR, f"{hmac_serial}_{self.device_type}.{fkind}")
 
-    def _load_dump(self, serialno: str) -> Optional[parse_dump.PhoneDump]:
-        """Load device dump from file, creating it if needed."""
-        dumpf = self.dump_path(serialno)
+    def _load_dump(
+        self, serialno: str, stored: bool = False
+    ) -> Optional[parse_dump.PhoneDump]:
+        """Load device dump from file, creating it if needed. A stored dump
+        (saved scan) is only read, never re-created from the phone."""
+        dumpf = self.dump_path(serialno, stored=stored)
 
+        if stored:
+            if not os.path.exists(dumpf):
+                return None
         # Re-dump if file is missing or suspiciously small (a header-only empty dump is ~600B)
-        if not os.path.exists(dumpf) or os.path.getsize(dumpf) < 5000:
+        elif not os.path.exists(dumpf) or os.path.getsize(dumpf) < 5000:
             self.ddump = None
             if not self._dump_phone(serialno):
                 return None
 
-        if isinstance(self.ddump, parse_dump.PhoneDump):
+        # The scanner is shared by all requests: only reuse the cached dump
+        # if it is this phone's.
+        if isinstance(self.ddump, parse_dump.PhoneDump) and self.ddump.dumpf == dumpf:
             return self.ddump
 
         try:
@@ -155,7 +164,7 @@ class AppScanner:
         return os.path.exists(dumpf)
 
     def get_multiple_app_details(
-        self, serialno: str, appids: List[str]
+        self, serialno: str, appids: List[str], stored: bool = False
     ) -> Dict[str, Tuple[Dict, Dict]]:
         """Get details for multiple apps at once, returning dict keyed by appId."""
 
@@ -197,11 +206,15 @@ class AppScanner:
         if not appids:
             return {}
 
-        if not self.ddump:
-            self._load_dump(serialno)
+        if not self._load_dump(serialno, stored=stored):
+            self.ddump = None
 
         if not AppScanner.app_info_conn:
-            return {appid: ({}, {}) for appid in appids}
+            # No app metadata db: still show what the phone's dump says.
+            return {
+                appid: ({}, (self.ddump.info(appid) if self.ddump else None) or {})
+                for appid in appids
+            }
 
         conn = AppScanner.app_info_conn
         if conn.row_factory is None:
@@ -217,13 +230,19 @@ class AppScanner:
             if appid:
                 details[appid] = _process_app_row(appid, d)
 
+        # Apps missing from the metadata db (often exactly the sideloaded
+        # ones) still get what the phone's dump says about them.
         for appid in appids:
-            details.setdefault(appid, ({}, {}))
+            if appid not in details:
+                info = self.ddump.info(appid) if self.ddump else None
+                details[appid] = ({}, info or {})
         return details
 
-    def app_details(self, serialno: str, appid: str) -> Tuple[Dict, Dict]:
+    def app_details(
+        self, serialno: str, appid: str, stored: bool = False
+    ) -> Tuple[Dict, Dict]:
         """Get detailed info for an app."""
-        details = self.get_multiple_app_details(serialno, [appid])
+        details = self.get_multiple_app_details(serialno, [appid], stored=stored)
         return details.get(appid, ({}, {}))
 
     def find_spyapps(self, serialno: str) -> Dict[str, Dict[str, Any]]:
