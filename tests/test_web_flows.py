@@ -11,9 +11,7 @@ from isdi.config import get_config
 from isdi.scanner import blocklist, db
 
 # A real entry from app-flags.csv, so the flow exercises the shipped blocklist.
-STALKER = next(
-    r["appId"] for r in blocklist.APP_FLAGS.data if r["flag"] == "stalkerware"
-)
+STALKER = next(r["appId"] for r in blocklist.APP_FLAGS if r["flag"] == "stalkerware")
 
 
 @pytest.fixture

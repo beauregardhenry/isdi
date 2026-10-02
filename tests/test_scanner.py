@@ -122,9 +122,7 @@ def android(monkeypatch):
 def _stalkerware_appid():
     from isdi.scanner import blocklist
 
-    return next(
-        r["appId"] for r in blocklist.APP_FLAGS.data if r["flag"] == "stalkerware"
-    )
+    return next(r["appId"] for r in blocklist.APP_FLAGS if r["flag"] == "stalkerware")
 
 
 def test_find_spyapps_no_apps(android):

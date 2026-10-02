@@ -188,7 +188,6 @@ to the application. I don't know how to get install date, resource usage, etc.
   - `root_check.py` - Root and jailbreak checks
   - `runcmd.py` - Shell command helpers and input validation
   - `blocklist.py` - Stalkerware/spyware blocklist management
-  - `lightweight_df.py` - CSV/data processing (pandas-free)
   - `db.py` - SQLite database operations
   - `pmd3_wrapper.py` - Termux-compatible pymobiledevice3 wrapper
 
