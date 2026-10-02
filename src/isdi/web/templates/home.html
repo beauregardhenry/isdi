@@ -50,8 +50,7 @@
                 (function() {
                     var btn = document.getElementById('btn-termux-usb');
                     if (!btn) {
-                        console.error('USB button not found');
-                        return;
+                        return;  // only rendered on Termux / in debug mode
                     }
                     
                     btn.addEventListener('click', function(e) {
