@@ -210,6 +210,19 @@ def pii_key() -> bytes:
     return _pii_key
 
 
+def derived_key(label: str) -> bytes:
+    """A 256-bit key for one purpose (e.g. "audit"), derived from the data
+    key with HKDF-SHA256, so it exists only while ISDi is unlocked."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+    if _data_key is None:
+        raise LockedError("ISDi is locked: unlock it with the passphrase first")
+    return HKDF(
+        algorithm=hashes.SHA256(), length=32, salt=None, info=b"isdi-" + label.encode()
+    ).derive(_data_key)
+
+
 def encrypt(column: str, value: Any) -> Optional[str]:
     """Encrypt a value (any JSON type) for the given column. None stays None
     so that missing values stay missing."""

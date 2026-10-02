@@ -3,6 +3,7 @@ import os
 import threading
 import time
 import uuid
+from isdi import audit
 from isdi.config import get_config
 from isdi.web import bp
 from isdi.web.view.index import get_device
@@ -200,6 +201,7 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None):
     scan_d["rooted_reasons"] = json.dumps(rooted_reason)
 
     progress(94, "Saving", "Writing scan results to the local database")
+    scan_d["operator"] = audit.operator()
     scanid = create_scan(scan_d)
 
     create_mult_appinfo(
@@ -208,6 +210,25 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None):
             for appid, info in apps.items()
         ],
         details=sc.dump_details(apps),
+    )
+    audit.record(
+        "scan_saved",
+        clientid=clientid,
+        scanid=scanid,
+        details={
+            "device": device,
+            "serial_hmac": scan_d["serial"],
+            "model": scan_d["device_model"],
+            "version": scan_d["device_version"],
+            "manufacturer": scan_d["device_manufacturer"],
+            "nickname": device_owner,
+            "rooted": rooted,
+            "rooted_reasons": rooted_reason,
+            "apps": len(apps),
+            "flagged": {a: i["flags"] for a, i in apps.items() if i["flags"]},
+            "isdi_version": config.VERSION,
+            "blocklist_sha256": blocklist.BLOCKLIST_SHA256,
+        },
     )
 
     apps_sorted = sorted(

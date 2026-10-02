@@ -22,6 +22,25 @@ def cli():
     pass
 
 
+def _operator_option(f):
+    return click.option(
+        "--operator",
+        envvar="ISDI_OPERATOR",
+        help="Your name, recorded with every scan and change (or ISDI_OPERATOR). "
+        "Asked for if not given.",
+    )(f)
+
+
+def _set_operator(name):
+    """Record who is using ISDi. There are no user accounts, so this is the
+    operator's own statement; it goes into every audit entry."""
+    from isdi import audit
+
+    while not (name or "").strip():
+        name = click.prompt("Your name (recorded with what you do in ISDi)")
+    audit.set_operator(name)
+
+
 @cli.command()
 @click.option(
     "--host",
@@ -33,7 +52,8 @@ def cli():
 @click.option("--debug/--no-debug", default=False, help="Enable debug mode")
 @click.option("--test", "test_mode", is_flag=True, help="Run in test mode")
 @click.option("--no-browser", is_flag=True, help="Do not open browser automatically")
-def run(host, port, debug, test_mode, no_browser):
+@_operator_option
+def run(host, port, debug, test_mode, no_browser, operator):
     """Run the ISDI web server"""
     from isdi.config import get_config
     from isdi.app import create_app
@@ -52,6 +72,7 @@ def run(host, port, debug, test_mode, no_browser):
     config = get_config(env)
     click.echo(f"⏱ Config init: {perf_counter() - config_started:.2f}s")
     _unlock(config)
+    _set_operator(operator)
 
     # Override from command line
     final_host = host or config.host
@@ -69,6 +90,12 @@ def run(host, port, debug, test_mode, no_browser):
     app_started = perf_counter()
     app = create_app(config)
     click.echo(f"⏱ App factory: {perf_counter() - app_started:.2f}s")
+    from isdi import audit
+
+    with app.app_context():
+        audit.record(
+            "session_started", details={"isdi_version": __version__, "env": env}
+        )
 
     # Open browser after short delay
     if not no_browser and not debug and not test_mode:
@@ -164,12 +191,13 @@ def _unlock(config):
     )
 
 
-def _data(config):
+def _data(config, operator=None):
     """Unlock, bring the data up to date (as `isdi run` does: migration,
     removal of plaintext leftovers) and give an app context to use it in."""
     from isdi.app import create_app
 
     _unlock(config)
+    _set_operator(operator)
     return create_app(config).app_context()
 
 
@@ -207,7 +235,8 @@ def change_passphrase(recovery):
     type=click.Path(dir_okay=False, writable=True),
     help="Write to this file (created owner-readable only) instead of the screen.",
 )
-def export(clientid, output):
+@_operator_option
+def export(clientid, output, operator):
     """Export everything stored about a client, decrypted, as JSON.
 
     For a data access or portability request. The export is not encrypted:
@@ -218,11 +247,16 @@ def export(clientid, output):
     from isdi.config import get_config
     from isdi.scanner import db
 
+    from isdi import audit
+
     config = get_config()
-    with _data(config):
+    with _data(config, operator):
         data = db.export_client(clientid)
-    if not data["notes"] and not data["scans"]:
-        raise click.ClickException(f"Nothing is stored for client {clientid!r}.")
+        if not data["notes"] and not data["scans"]:
+            raise click.ClickException(f"Nothing is stored for client {clientid!r}.")
+        audit.record(
+            "client_exported", clientid=clientid, details={"to_file": bool(output)}
+        )
     text = json.dumps(data, indent=2, default=str)
     if output:
         fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -241,21 +275,66 @@ def export(clientid, output):
 @click.confirmation_option(
     prompt="Permanently delete everything stored about this client?"
 )
-def erase(clientid):
+@_operator_option
+def erase(clientid, operator):
     """Delete everything stored about a client: notes, scans and apps."""
     from isdi.config import get_config
     from isdi.scanner import db
 
+    from isdi import audit
+
     config = get_config()
-    with _data(config):
+    with _data(config, operator):
         counts = db.erase_client(clientid)
-    if not any(counts.values()):
-        raise click.ClickException(f"Nothing is stored for client {clientid!r}.")
+        if not any(counts.values()):
+            raise click.ClickException(f"Nothing is stored for client {clientid!r}.")
+        # The entry records that, when and by whom, not what was erased.
+        audit.record("client_erased", clientid=clientid, details=counts)
     click.echo(
         "✓ Deleted "
         + ", ".join(f"{n} {table}" for table, n in counts.items() if n)
         + " row(s)."
     )
+
+
+@cli.group("audit")
+def audit_group():
+    """The audit log: who did what, and when."""
+
+
+@audit_group.command("verify")
+@_operator_option
+def audit_verify(operator):
+    """Check that no audit entry was altered, inserted or removed."""
+    from isdi import audit
+    from isdi.config import get_config
+
+    with _data(get_config(), operator):
+        result = audit.verify()
+        head = audit.head()
+    if not result["ok"]:
+        raise click.ClickException(f"Audit log check FAILED: {result['problem']}")
+    click.echo(
+        f"✓ Audit log intact: {result['entries']} entries"
+        + (f" ({result['erased']} with erased details)" if result["erased"] else "")
+    )
+    if head:
+        click.echo(f"  Newest entry: {head['id']}, MAC {head['mac']}")
+
+
+@audit_group.command("show")
+@click.argument("clientid", required=False)
+@_operator_option
+def audit_show(clientid, operator):
+    """List audit entries (all, or one client's), decrypted, as JSON."""
+    import json
+
+    from isdi import audit
+    from isdi.config import get_config
+
+    with _data(get_config(), operator):
+        rows = audit.entries(clientid)
+    click.echo(json.dumps(rows, indent=2, default=str))
 
 
 @cli.command()

@@ -53,10 +53,14 @@ def test_value_cannot_be_moved_to_another_column(keyfile):
 def test_tampered_value_is_rejected(keyfile):
     crypto.setup(keyfile, "a long passphrase")
     token = crypto.encrypt("c", "value")
-    body = token[len(crypto.PREFIX) :]
-    flipped = body[:-2] + ("A" if body[-2] != "A" else "B") + body[-1]
-    with pytest.raises(ValueError):
-        crypto.decrypt("c", crypto.PREFIX + flipped)
+    import base64
+
+    raw = bytearray(base64.b64decode(token[len(crypto.PREFIX) :]))
+    for i in (0, 12, len(raw) - 1):  # nonce, ciphertext, tag
+        tampered = bytearray(raw)
+        tampered[i] ^= 0x01
+        with pytest.raises(ValueError):
+            crypto.decrypt("c", crypto.PREFIX + base64.b64encode(tampered).decode())
 
 
 def test_plaintext_from_before_encryption_reads_unchanged(keyfile):

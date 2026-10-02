@@ -96,11 +96,16 @@ LEGACY_PLAINTEXT = "Legacy plaintext note 7f3a"
 def test_migration_encrypts_an_old_plaintext_database(tmp_path):
     """A database from before encryption: CHECK constraints, no details
     column, plaintext values."""
-    legacy_schema = db.SCHEMA_SQL.replace(
-        "\tPRIMARY KEY (id)\n);",
-        "\tPRIMARY KEY (id),\n\tCHECK (recorded IN ('', 'Yes', 'No'))\n);",
-        1,
-    ).replace("  details TEXT,\n", "")
+    legacy_schema = (
+        db.SCHEMA_SQL[: db.SCHEMA_SQL.index("-- Append-only record")]
+        .replace(
+            "\tPRIMARY KEY (id)\n);",
+            "\tPRIMARY KEY (id),\n\tCHECK (recorded IN ('', 'Yes', 'No'))\n);",
+            1,
+        )
+        .replace("  details TEXT,\n", "")
+        .replace("  operator TEXT,\n", "")
+    )
     path = tmp_path / "old.db"
     conn = sqlite3.connect(path)
     conn.executescript(legacy_schema)
