@@ -8,7 +8,7 @@ version = "1.0.9"
 description = "ISDi - Stalkerware Scanner"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "GPL-3.0-only"
+license = "MIT"
 authors = [
     {name = "ISDI Contributors"}
 ]
