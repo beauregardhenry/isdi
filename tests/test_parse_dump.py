@@ -257,3 +257,18 @@ def test_ios_unreadable_dump(tmp_path):
     (tmp_path / "bad.json").write_text("{not json")
     d = pdump.IosDump(str(tmp_path / "bad.json"))
     assert d.installed_apps() == [] and len(d) == 0
+
+
+def test_ios_unknown_permission_is_named_without_touching_package_data(tmp_path):
+    from isdi.config import get_config
+
+    shipped = Path(get_config().STATIC_DATA) / "ios_permissions.json"
+    before = shipped.read_bytes()
+    d = json.loads((DATA / "ios_dump.json").read_text())
+    d["apps"]["com.example.tracker"]["Entitlements"]["com.apple.private.tcc.allow"] = [
+        "kTCCServiceSomethingNew"
+    ]
+    (tmp_path / "new.json").write_text(json.dumps(d))
+    info = pdump.IosDump(str(tmp_path / "new.json")).info("com.example.tracker")
+    assert ("Somethingnew", "permission granted by system") in info["permissions"]
+    assert shipped.read_bytes() == before
