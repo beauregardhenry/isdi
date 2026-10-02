@@ -1,5 +1,6 @@
 """Secrets on disk, the app-info.db download, and the CLI's bind address."""
 
+import hashlib
 import io
 import os
 import stat
@@ -53,21 +54,39 @@ def cache_config(tmp_path, monkeypatch):
     return cfg
 
 
-def test_valid_download_is_installed(cache_config, tmp_path):
-    cache_config.body = b"SQLite format 3\x00" + b"\x00" * 100
+FAKE_DB = b"SQLite format 3\x00" + b"\x00" * 100
+
+
+def test_download_matching_pinned_hash_is_installed(cache_config, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        config_mod, "APP_INFO_DB_SHA256", hashlib.sha256(FAKE_DB).hexdigest()
+    )
+    cache_config.body = FAKE_DB
     cache_config._ensure_app_info_db()
-    assert (tmp_path / "app-info.db").read_bytes() == cache_config.body
+    assert (tmp_path / "app-info.db").read_bytes() == FAKE_DB
     assert not (tmp_path / "app-info.db.part").exists()
 
 
-@pytest.mark.parametrize("body", [b"<html>rate limited</html>", b"SQLite"])
-def test_bad_download_is_discarded(cache_config, tmp_path, body):
-    """A non-database or truncated file must not be kept, or every later
-    start would skip the download because the file is non-empty."""
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"<html>rate limited</html>",  # not a database
+        FAKE_DB[:20],  # truncated
+        FAKE_DB,  # a valid SQLite file, but not the pinned one
+    ],
+)
+def test_download_not_matching_pinned_hash_is_discarded(cache_config, tmp_path, body):
+    """Must not be kept, or every later start would skip the download
+    because the file is non-empty."""
     cache_config.body = body
     cache_config._ensure_app_info_db()
     assert not (tmp_path / "app-info.db").exists()
     assert not (tmp_path / "app-info.db.part").exists()
+
+
+def test_pinned_hash_is_a_sha256():
+    assert len(config_mod.APP_INFO_DB_SHA256) == 64
+    int(config_mod.APP_INFO_DB_SHA256, 16)
 
 
 def test_existing_db_is_not_redownloaded(cache_config, tmp_path, monkeypatch):

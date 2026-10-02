@@ -10,6 +10,13 @@ import secrets
 
 __all__ = ["Config", "get_config", "get_data_dir", "get_config_dir"]
 
+# The app metadata database (titles, descriptions, permissions) shown on app
+# detail pages. Descriptions are rendered as HTML, so only the exact file
+# whose hash is pinned here is accepted. If the release asset is updated
+# upstream, download it, check it, and update the hash in the same change.
+APP_INFO_DB_URL = "https://github.com/stopipv/isdi/releases/download/app-info/app-info.db"
+APP_INFO_DB_SHA256 = "87ea193f41b35b94f7136560a8b570a2c97a81ccd45bd0dcac4ce4acaa456f38"
+
 
 def get_platform_dirs():
     """Get platform-specific directories (XDG-compliant)"""
@@ -231,10 +238,9 @@ class Config:
             import urllib.request
             import urllib.error
 
-            # github_url = "https://github.com/rchatterjee/isdi/raw/refs/heads/main/static_data/app-info.db"
-            github_url = (
-                "https://github.com/stopipv/isdi/releases/download/app-info/app-info.db"
-            )
+            import hashlib
+
+            github_url = APP_INFO_DB_URL
 
             print(f"Downloading app-info.db from GitHub...")
             dst_db.parent.mkdir(parents=True, exist_ok=True)
@@ -244,13 +250,19 @@ class Config:
             try:
                 with urllib.request.urlopen(github_url, timeout=30) as response:
                     if response.status == 200:
+                        digest = hashlib.sha256()
                         with open(tmp_db, "wb") as f:
-                            shutil.copyfileobj(response, f)
-                        # A truncated or non-SQLite download would otherwise
-                        # be kept forever, since only size > 0 is checked.
-                        with open(tmp_db, "rb") as f:
-                            if f.read(16) != b"SQLite format 3\x00":
-                                raise ValueError("downloaded file is not a SQLite db")
+                            for chunk in iter(lambda: response.read(1 << 20), b""):
+                                digest.update(chunk)
+                                f.write(chunk)
+                        # A truncated, replaced or non-database download would
+                        # otherwise be kept forever: later starts only check
+                        # that the file is non-empty.
+                        if digest.hexdigest() != APP_INFO_DB_SHA256:
+                            raise ValueError(
+                                f"checksum mismatch (got {digest.hexdigest()}, "
+                                f"expected {APP_INFO_DB_SHA256})"
+                            )
                         os.replace(tmp_db, dst_db)
                         print(
                             f"✓ Downloaded app-info.db ({dst_db.stat().st_size} bytes)"
