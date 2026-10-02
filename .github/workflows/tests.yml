@@ -60,7 +60,7 @@ jobs:
           python -m build
 
       # Installs the wheel, not the source tree, so files missing from the
-      # package (templates, schema.sql, scripts, data) fail here.
+      # package (templates, static files, scripts, data) fail here.
       - name: Install the wheel in a clean environment and start the app
         run: |
           python -m venv "$RUNNER_TEMP/wheel-env"

@@ -51,6 +51,7 @@ def run(host, port, debug, test_mode, no_browser):
     config_started = perf_counter()
     config = get_config(env)
     click.echo(f"⏱ Config init: {perf_counter() - config_started:.2f}s")
+    _unlock(config)
 
     # Override from command line
     final_host = host or config.host
@@ -103,6 +104,160 @@ def run(host, port, debug, test_mode, no_browser):
     )
 
 
+def _unlock(config):
+    """Unlock the data key with the passphrase, setting up encryption the
+    first time. ISDI_PASSPHRASE is used instead of asking, if set (handy for
+    automation, but other programs run by the same user can read it)."""
+    import os
+
+    from isdi import crypto
+    from isdi.data_protection import read_legacy_pii_key
+
+    env = os.environ.get("ISDI_PASSPHRASE")
+    if not crypto.is_set_up(config.keyfile):
+        click.secho("\nISDi encrypts all client data.", bold=True)
+        click.echo(
+            "Choose a passphrase. ISDi asks for it every time it starts, and "
+            "without it (or the recovery key shown next) the data cannot be "
+            "read by anyone, including you."
+        )
+        while True:
+            passphrase = env or click.prompt(
+                "New passphrase", hide_input=True, confirmation_prompt=True
+            )
+            try:
+                crypto.check_passphrase(passphrase)
+                break
+            except ValueError as e:
+                if env:
+                    raise click.ClickException(f"ISDI_PASSPHRASE: {e}")
+                click.echo(str(e))
+        recovery = crypto.setup(
+            config.keyfile, passphrase, pii_key=read_legacy_pii_key(config)
+        )
+        click.secho(f"\nRecovery key: {recovery}\n", bold=True)
+        click.echo(
+            "Write it down and keep it somewhere safe, away from this computer. "
+            "It is the only way to reach the data if the passphrase is lost, and "
+            "it will not be shown again."
+        )
+        if not env:
+            while not click.confirm("Have you stored the recovery key?", default=False):
+                pass
+        return
+    if env:
+        try:
+            crypto.unlock(config.keyfile, passphrase=env)
+        except crypto.UnlockError:
+            raise click.ClickException("ISDI_PASSPHRASE is not the passphrase.")
+        return
+    for _ in range(3):
+        try:
+            crypto.unlock(
+                config.keyfile, passphrase=click.prompt("Passphrase", hide_input=True)
+            )
+            return
+        except crypto.UnlockError:
+            click.echo("Wrong passphrase.")
+    raise click.ClickException(
+        "Wrong passphrase. If it is lost: isdi change-passphrase --recovery"
+    )
+
+
+def _data(config):
+    """Unlock, bring the data up to date (as `isdi run` does: migration,
+    removal of plaintext leftovers) and give an app context to use it in."""
+    from isdi.app import create_app
+
+    _unlock(config)
+    return create_app(config).app_context()
+
+
+@cli.command("change-passphrase")
+@click.option(
+    "--recovery",
+    is_flag=True,
+    help="Prove access with the recovery key instead of the current passphrase.",
+)
+def change_passphrase(recovery):
+    """Change the passphrase (the data and the recovery key stay the same)."""
+    from isdi import crypto
+    from isdi.config import get_config
+
+    config = get_config()
+    if not crypto.is_set_up(config.keyfile):
+        raise click.ClickException("Encryption is not set up yet; run `isdi run`.")
+    if recovery:
+        proof = {"recovery_key": click.prompt("Recovery key")}
+    else:
+        proof = {"passphrase": click.prompt("Current passphrase", hide_input=True)}
+    new = click.prompt("New passphrase", hide_input=True, confirmation_prompt=True)
+    try:
+        crypto.change_passphrase(config.keyfile, new, **proof)
+    except (crypto.UnlockError, ValueError) as e:
+        raise click.ClickException(str(e))
+    click.echo("✓ Passphrase changed.")
+
+
+@cli.command()
+@click.argument("clientid")
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Write to this file (created owner-readable only) instead of the screen.",
+)
+def export(clientid, output):
+    """Export everything stored about a client, decrypted, as JSON.
+
+    For a data access or portability request. The export is not encrypted:
+    hand it over securely and delete it afterwards."""
+    import json
+    import os
+
+    from isdi.config import get_config
+    from isdi.scanner import db
+
+    config = get_config()
+    with _data(config):
+        data = db.export_client(clientid)
+    if not data["notes"] and not data["scans"]:
+        raise click.ClickException(f"Nothing is stored for client {clientid!r}.")
+    text = json.dumps(data, indent=2, default=str)
+    if output:
+        fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text + "\n")
+        click.echo(
+            f"✓ Wrote {output}. It is not encrypted: delete it once handed over.",
+            err=True,
+        )
+    else:
+        click.echo(text)
+
+
+@cli.command()
+@click.argument("clientid")
+@click.confirmation_option(
+    prompt="Permanently delete everything stored about this client?"
+)
+def erase(clientid):
+    """Delete everything stored about a client: notes, scans and apps."""
+    from isdi.config import get_config
+    from isdi.scanner import db
+
+    config = get_config()
+    with _data(config):
+        counts = db.erase_client(clientid)
+    if not any(counts.values()):
+        raise click.ClickException(f"Nothing is stored for client {clientid!r}.")
+    click.echo(
+        "✓ Deleted "
+        + ", ".join(f"{n} {table}" for table, n in counts.items() if n)
+        + " row(s)."
+    )
+
+
 @cli.command()
 def info():
     """Show configuration and directory information"""
@@ -119,7 +274,6 @@ def info():
     click.echo(f"\nData Locations:")
     click.echo(f"  Database: {config.database_path}")
     click.echo(f"  Scans: {config.scans_dir}")
-    click.echo(f"  Reports: {config.reports_dir}")
     click.echo(f"  Dumps: {config.dumps_dir}")
     click.echo(f"  Logs: {config.logs_dir}")
     click.echo(f"\nPackage Data:")
@@ -177,7 +331,6 @@ def paths():
         "data": {
             "database": str(config.database_path),
             "scans": str(config.scans_dir),
-            "reports": str(config.reports_dir),
             "dumps": str(config.dumps_dir),
             "logs": str(config.logs_dir),
         },
@@ -186,7 +339,7 @@ def paths():
             "stalkerware": str(config.stalkerware_path),
         },
         "secrets": {
-            "pii_key": str(config.pii_key_file),
+            "keyfile": str(config.keyfile),
             "flask_secret": str(config.flask_secret_file),
         },
     }

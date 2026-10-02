@@ -1,7 +1,6 @@
 """Scan storage: what gets deleted, what gets reported, which scan is shown.
 Deleting a device must remove all of its data and nothing else."""
 
-import csv
 import os
 import re
 import uuid
@@ -95,24 +94,27 @@ def test_delete_treats_glob_characters_literally(ctx):
     os.remove(victim)
 
 
-def test_create_report_writes_client_scans(ctx):
+def test_export_client_returns_everything_decrypted(ctx):
     cid = _new_client()
     _scan(cid, _hmac(f"R-{cid}"), apps=("org.example.a", "org.example.b"))
-    path = db.create_report(cid)
-    assert path == os.path.join(get_config().REPORT_PATH, f"{cid}.csv")
-    with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    assert sorted(r["appid"] for r in rows) == ["org.example.a", "org.example.b"]
-    assert {r["clientid"] for r in rows} == {cid}
-    os.remove(path)
+    data = db.export_client(cid)
+    assert data["clientid"] == cid
+    [scan] = data["scans"]
+    assert scan["device_model"] == "Pixel"
+    assert sorted(a["appid"] for a in scan["apps"]) == [
+        "org.example.a",
+        "org.example.b",
+    ]
 
 
-def test_create_report_for_client_without_scans(ctx):
-    cid = _new_client()
-    db.create_report(cid)
-    path = os.path.join(get_config().REPORT_PATH, f"{cid}.csv")
-    assert os.path.getsize(path) == 0
-    os.remove(path)
+def test_erase_client_deletes_only_that_client(ctx):
+    cid, other = _new_client(), _new_client()
+    _scan(cid, _hmac(f"R-{cid}"))
+    _scan(other, _hmac(f"R-{other}"))
+    counts = db.erase_client(cid)
+    assert counts["scan_res"] == 1 and counts["app_info"] == 1
+    assert db.export_client(cid)["scans"] == []
+    assert len(db.export_client(other)["scans"]) == 1
 
 
 def test_new_client_id_format(ctx):

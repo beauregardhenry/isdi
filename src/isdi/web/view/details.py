@@ -15,8 +15,8 @@ def app_details(device):
         return "Unknown device type", 400
     appid = request.args.get("appId")
     ser = request.args.get("serial")
-    # Saved scans only know the HMAC of the serial; read their stored dump
-    # instead of trying to run adb/pymobiledevice3 with it.
+    # Saved-scan links only carry the HMAC of the serial; their details
+    # come from the database, never from adb/pymobiledevice3.
     stored = request.args.get("from_dump") == "1"
     valid_serial = is_valid_hmac_serial(ser) if stored else is_valid_serial(ser)
     if not is_valid_appid(appid) or not valid_serial:

@@ -104,7 +104,7 @@ def test_existing_db_is_not_redownloaded(cache_config, tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run_cli(monkeypatch):
+def run_cli(monkeypatch, passphrase):
     """Invoke `isdi run --test` without starting a server; return
     (output, host)."""
     from flask import Flask
@@ -115,6 +115,7 @@ def run_cli(monkeypatch):
     monkeypatch.setattr(
         Flask, "run", lambda self, host, port, **kw: bound.update(host=host)
     )
+    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
 
     def invoke(*args):
         res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", *args])

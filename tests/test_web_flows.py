@@ -187,7 +187,7 @@ def test_uninstall_unknown_scan(no_csrf, client):
     assert r.status_code == 404
 
 
-def test_save_notes_writes_report(no_csrf, client, stored_scan):
+def test_save_notes(no_csrf, client, stored_scan):
     r = client.post(f"/savescan/{stored_scan}", data={"notes": "checked with client"})
     assert r.status_code == 200
 

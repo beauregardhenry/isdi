@@ -53,8 +53,10 @@ In scope:
 - scanning: commands run on the computer or phone, stalkerware or root
   and jailbreak indicators that are missed or can be hidden, wrong
   results shown for a device;
-- data handling: scan data, notes, secrets or screenshots stored or
-  logged where they should not be.
+- data handling: client data readable from disk without the passphrase
+  (see [DATA_PROTECTION.md](DATA_PROTECTION.md)), raw dumps kept after a
+  scan, or scan data, notes, secrets or screenshots stored or logged
+  where they should not be.
 
 Out of scope here (please report them upstream instead):
 

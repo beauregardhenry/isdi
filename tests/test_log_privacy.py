@@ -73,6 +73,9 @@ def test_log_file_redacts_and_never_gets_debug_records(monkeypatch, tmp_path):
     before = list(root.handlers)
     monkeypatch.setattr(root, "handlers", [])
     try:
+        # As at startup: a module-level logging call before setup_logger()
+        # installs a default stderr handler (logging.basicConfig()).
+        logging.error("usbmuxd not running")
         cfg.setup_logger()
         logging.getLogger("werkzeug").info(
             '"GET /privacy/android/account?serial=%s HTTP/1.1" 200 -', SERIAL

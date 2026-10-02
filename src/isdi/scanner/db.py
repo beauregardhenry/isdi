@@ -1,18 +1,20 @@
 import logging
 import sqlite3
-from isdi.config import get_config
+from isdi import crypto
+from isdi.config import _restrict_permissions, get_config
 from flask import g
 from datetime import datetime as dt
 import os
-import csv
 import threading
+from pathlib import Path
 
 config = get_config()
 DATABASE = config.SQL_DB_PATH.replace("sqlite:///", "").strip()
 # CONSULTS_DATABASE = config.SQL_DB_CONSULT_PATH.replace('sqlite:///', '')
 _thread_local = threading.local()
 
-# Database schema embedded as string for .pyz compatibility
+# The only copy of the schema. Client data columns hold encrypted values
+# (isdi/crypto.py), so they carry no CHECK constraints.
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS clients_notes (
 	id INTEGER NOT NULL,
@@ -49,13 +51,7 @@ CREATE TABLE IF NOT EXISTS clients_notes (
 	follow_ups_todo TEXT DEFAULT '',
 	general_notes TEXT DEFAULT '',
 	case_summary TEXT DEFAULT '',
-	PRIMARY KEY (id),
-	CHECK (fjc IN ('', 'Brooklyn', 'Queens', 'The Bronx', 'Manhattan', 'Staten Island')),
-	CHECK (caseworker_present IN ('', 'For entire consult', 'For part of the consult', 'No')),
-	CHECK (caseworker_present_safety_planning IN ('', 'Yes', 'No')),
-	CHECK (caseworker_recorded IN ('', 'Yes', 'No')),
-	CHECK (recorded IN ('', 'Yes', 'No')),
-	CHECK (safety_planning_onsite IN ('', 'Yes', 'No', 'Not applicable'))
+	PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS clients (
@@ -104,6 +100,7 @@ CREATE TABLE IF NOT EXISTS app_info (
   permissions_used DATETIME,
   data_usage INTEGER,
   battery_usage INTEGER,
+  details TEXT,
   time DATETIME DEFAULT (datetime('now', 'localtime')),
   FOREIGN KEY(scanid) REFERENCES scan_res(id)
 );
@@ -114,6 +111,41 @@ CREATE INDEX IF NOT EXISTS idx_app_info_scanid on app_info (scanid);
 """
 
 
+# Columns holding client data, encrypted at rest. Everything else is an id,
+# the non-identifying client counter (YYYYMMDD_NNN), the HMAC of a serial,
+# the device type (android/ios) or a timestamp, which queries need.
+ENCRYPTED_COLUMNS = {
+    "clients_notes": (
+        "consultant_initials fjc preferred_language referring_professional "
+        "referring_professional_email referring_professional_phone "
+        "caseworker_present caseworker_present_safety_planning "
+        "caseworker_recorded recorded chief_concerns chief_concerns_other "
+        "android_phones android_tablets iphone_devices ipad_devices "
+        "macbook_devices windows_devices echo_devices other_devices checkups "
+        "checkups_other vulnerabilities vulnerabilities_trusted_devices "
+        "vulnerabilities_other safety_planning_onsite changes_made_onsite "
+        "unresolved_issues follow_ups_todo general_notes case_summary"
+    ).split(),
+    "clients": "location issues assessment plan the_rest".split(),
+    "scan_res": (
+        "note device_model device_manufacturer device_version is_rooted "
+        "rooted_reasons last_full_charge device_primary_user device_access "
+        "how_obtained"
+    ).split(),
+    "app_info": (
+        "appid flags remark action_taken apk_path install_date last_updated "
+        "app_version permissions permissions_reason permissions_used "
+        "data_usage battery_usage details"
+    ).split(),
+}
+# Bumped by migrate(); stored in the database's PRAGMA user_version.
+SCHEMA_VERSION = 1
+
+
+def _enc(column, value):
+    return crypto.encrypt(column, value)
+
+
 def _schema_needs_init(db) -> bool:
     cur = db.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='clients_notes'"
@@ -121,17 +153,8 @@ def _schema_needs_init(db) -> bool:
     return cur.fetchone() is None
 
 
-def _load_schema_sql() -> str:
-    """Return embedded schema SQL for .pyz compatibility."""
-    return SCHEMA_SQL
-
-
 def _init_schema(db) -> None:
-    try:
-        schema_sql = _load_schema_sql()
-    except Exception as exc:
-        raise RuntimeError(f"Failed to load schema.sql: {exc}") from exc
-    db.executescript(schema_sql)
+    db.executescript(SCHEMA_SQL)
     db.commit()
 
 
@@ -158,7 +181,21 @@ def new_client_id():
 
 
 def make_dicts(cursor, row):
-    return dict((cursor.description[idx][0], value) for idx, value in enumerate(row))
+    """Rows as dicts, with encrypted values decrypted."""
+    return {
+        col[0]: crypto.decrypt(col[0], value)
+        for col, value in zip(cursor.description, row)
+    }
+
+
+def _connect():
+    db = sqlite3.connect(DATABASE)
+    _restrict_permissions(Path(DATABASE), 0o600)
+    db.row_factory = make_dicts
+    # Overwrite deleted rows instead of leaving them in free pages, so that
+    # erased client data is gone from the file.
+    db.execute("PRAGMA secure_delete = ON")
+    return db
 
 
 def get_db():
@@ -166,16 +203,14 @@ def get_db():
         db = getattr(g, "_database", None)
         if db is None:
             logging.debug("Opening database %s", DATABASE)
-            db = g._database = sqlite3.connect(DATABASE)
-            db.row_factory = make_dicts
+            db = g._database = _connect()
             if _schema_needs_init(db):
                 _init_schema(db)
         return db
     except RuntimeError:
         if not hasattr(_thread_local, "db") or _thread_local.db is None:
             logging.debug("Opening thread-local database %s", DATABASE)
-            _thread_local.db = sqlite3.connect(DATABASE)
-            _thread_local.db.row_factory = make_dicts
+            _thread_local.db = _connect()
             if _schema_needs_init(_thread_local.db):
                 _init_schema(_thread_local.db)
         return _thread_local.db
@@ -191,19 +226,71 @@ def close_db(exc=None):
 def init_db(app, sa, force=False):
     app.teardown_appcontext(close_db)
     with app.app_context():
-        if force or not os.path.exists(DATABASE):
-            db = get_db()
-            with app.open_resource("web/schema.sql", mode="r") as f:
-                db.cursor().executescript(f.read())
-            db.commit()
-            # sa.create_all() # TODO replace in schema.sql
-            # TODO how to repopulate?
-        # if not os.path.exists(CONSULTS_DATABASE):
-        #    sa.create_all()
-        # add with sqlachemy the new models stuff
-        # can it get the schema sql // make a table
-        else:
-            db = get_db()
+        db = get_db()
+        if force or _schema_needs_init(db):
+            _init_schema(db)
+        migrate(db)
+
+
+def _columns(db, table):
+    return [r[1] for r in db.execute(f"PRAGMA table_info({table})").fetchall()]
+
+
+def migrate(db) -> None:
+    """Bring a database from before encryption at rest up to date:
+    encrypt existing client data, drop the CHECK constraints that encrypted
+    values cannot meet, and rewrite the file so no plaintext pages remain.
+    Safe to run on every start."""
+    # Raw tuples here: the usual row factory decrypts, which is not wanted.
+    factory, db.row_factory = db.row_factory, None
+    try:
+        _migrate(db)
+    finally:
+        db.row_factory = factory
+
+
+def _migrate(db) -> None:
+    (version,) = db.execute("PRAGMA user_version").fetchone()
+    if version >= SCHEMA_VERSION:
+        return
+    if "details" not in _columns(db, "app_info"):
+        db.execute("ALTER TABLE app_info ADD COLUMN details TEXT")
+    sql = db.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='clients_notes'"
+    ).fetchone()[0]
+    if "CHECK" in sql:
+        # SQLite cannot drop a constraint: rebuild the table, same columns.
+        create = SCHEMA_SQL[
+            SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS clients_notes") :
+        ]
+        create = create[: create.index(");") + 2]
+        db.execute("ALTER TABLE clients_notes RENAME TO clients_notes_old")
+        db.execute(create)
+        db.execute("INSERT INTO clients_notes SELECT * FROM clients_notes_old")
+        db.execute("DROP TABLE clients_notes_old")
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_clients_notes_clientid "
+            "ON clients_notes (clientid)"
+        )
+    for table, cols in ENCRYPTED_COLUMNS.items():
+        rows = db.execute(f"SELECT id, {', '.join(cols)} FROM {table}").fetchall()
+        for row in rows:
+            plain = {
+                c: v
+                for c, v in zip(cols, row[1:])
+                if v is not None and not crypto.is_encrypted(v)
+            }
+            if plain:
+                sets = ", ".join(f"{c}=?" for c in plain)
+                db.execute(
+                    f"UPDATE {table} SET {sets} WHERE id=?",
+                    [_enc(c, v) for c, v in plain.items()] + [row[0]],
+                )
+    db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    db.commit()
+    # The old plaintext is still in the file's free pages until rewritten.
+    db.execute("VACUUM")
+    logging.info("Database migrated: client data is encrypted")
 
 
 def insert(query, args):
@@ -233,7 +320,7 @@ def query_db(query, args=(), one=False):
 
 
 def save_note(scanid, note):
-    insert("update scan_res set note=? where id=?", args=(note, scanid))
+    insert("update scan_res set note=? where id=?", args=(_enc("note", note), scanid))
     return True
 
 
@@ -249,40 +336,77 @@ def create_scan(scan_d):
             scan_d["clientid"],
             scan_d["serial"],
             scan_d["device"],
-            scan_d["device_model"],
-            scan_d["device_version"],
-            scan_d["device_manufacturer"],
-            scan_d["last_full_charge"],
-            scan_d["device_primary_user"],
-            scan_d["is_rooted"],
-            scan_d["rooted_reasons"],
+            _enc("device_model", scan_d["device_model"]),
+            _enc("device_version", scan_d["device_version"]),
+            _enc("device_manufacturer", scan_d["device_manufacturer"]),
+            _enc("last_full_charge", scan_d["last_full_charge"]),
+            _enc("device_primary_user", scan_d["device_primary_user"]),
+            _enc("is_rooted", scan_d["is_rooted"]),
+            _enc("rooted_reasons", scan_d["rooted_reasons"]),
         ),
     )
 
 
+def _app_row_ids(scanid) -> dict:
+    """appid -> row id for one scan. App ids are encrypted (with a random
+    nonce), so rows are matched after decrypting, not in SQL."""
+    rows = query_db("select id, appid from app_info where scanid=?", (scanid,))
+    return {r["appid"]: r["id"] for r in rows}
+
+
 def update_appinfo(scanid, appid, remark, action):
-    return (
-        insert(
-            "update app_info set "
-            "remark=?, action_taken=? where scanid=? and appid=?",
-            args=(remark, action, scanid, appid),
-        )
-        == 0
+    rowid = _app_row_ids(scanid).get(appid)
+    if rowid is None:
+        return False
+    insert(
+        "update app_info set remark=?, action_taken=? where id=?",
+        args=(_enc("remark", remark), _enc("action_taken", action), rowid),
     )
+    return True
 
 
 def update_mul_appinfo(args):
+    """args: (remark, scanid, appid) tuples."""
+    ids = {}
+    updates = []
+    for remark, scanid, appid in args:
+        if scanid not in ids:
+            ids[scanid] = _app_row_ids(scanid)
+        rowid = ids[scanid].get(appid)
+        if rowid is not None:
+            updates.append((_enc("remark", remark), rowid))
+    return insert_many("update app_info set remark=? where id=?", updates)
+
+
+def create_mult_appinfo(args, details=None):
+    """args: (scanid, appid, flags, remark, action_taken) tuples. details:
+    appid -> what the phone's dump said about the app, kept so the dump
+    itself need not be."""
+    details = details or {}
     return insert_many(
-        "update app_info set " "remark=? where scanid=? and appid=?", args
+        "insert into app_info (scanid, appid, flags, remark, action_taken, details) "
+        "values (?,?,?,?,?,?)",
+        [
+            (
+                scanid,
+                _enc("appid", appid),
+                _enc("flags", flags),
+                _enc("remark", remark),
+                _enc("action_taken", action),
+                _enc("details", details.get(appid)),
+            )
+            for scanid, appid, flags, remark, action in args
+        ],
     )
 
 
-def create_mult_appinfo(args):
-    """ """
-    return insert_many(
-        "insert into app_info (scanid, appid, flags, remark, action_taken) values (?,?,?,?,?)",
-        args,
+def app_details_from_scan(scanid, appids) -> dict:
+    """appid -> the dump details stored with that scan."""
+    wanted = set(appids)
+    rows = query_db(
+        "select appid, details from app_info where scanid=?", args=(scanid,)
     )
+    return {r["appid"]: r["details"] or {} for r in rows if r["appid"] in wanted}
 
 
 def get_client_devices_from_db(clientid: str) -> list:
@@ -385,24 +509,46 @@ def delete_scan_data(serial: str) -> bool:
     return True
 
 
-def create_report(clientid):
-    """
-    Creates a report for a clientid
-    """
-    reportf = os.path.join(config.REPORT_PATH, clientid + ".csv")
-    rows = query_db(
-        "select * from scan_res inner join app_info on "
-        "scan_res.id=app_info.scanid where scan_res.clientid=?",
-        args=(clientid,),
+def export_client(clientid) -> dict:
+    """Everything stored about one client, decrypted (for a GDPR access or
+    portability request): consultation notes, and each scan with its apps."""
+    scans = query_db(
+        "select * from scan_res where clientid=? order by id", args=(clientid,)
     )
-    if not rows:
-        with open(reportf, "w", encoding="utf-8") as fh:
-            fh.write("")
-        return
-    fieldnames = list(rows[0].keys())
-    with open(reportf, "w", encoding="utf-8", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({k: row.get(k, "") for k in fieldnames})
-    return reportf
+    for scan in scans:
+        scan["apps"] = query_db(
+            "select * from app_info where scanid=? order by id", args=(scan["id"],)
+        )
+    return {
+        "clientid": clientid,
+        "notes": query_db(
+            "select * from clients_notes where clientid=? order by id", (clientid,)
+        ),
+        "scans": scans,
+    }
+
+
+def erase_client(clientid) -> dict:
+    """Delete everything stored about one client (GDPR erasure). Returns
+    how many rows were deleted from each table."""
+    db = get_db()
+    scanids = [
+        r["id"]
+        for r in query_db("select id from scan_res where clientid=?", (clientid,))
+    ]
+    counts = {"app_info": 0}
+    for scanid in scanids:
+        counts["app_info"] += db.execute(
+            "DELETE FROM app_info WHERE scanid=?", (scanid,)
+        ).rowcount
+    counts["scan_res"] = db.execute(
+        "DELETE FROM scan_res WHERE clientid=?", (clientid,)
+    ).rowcount
+    counts["clients_notes"] = db.execute(
+        "DELETE FROM clients_notes WHERE clientid=?", (clientid,)
+    ).rowcount
+    counts["clients"] = db.execute(
+        "DELETE FROM clients WHERE clientid=?", (clientid,)
+    ).rowcount
+    db.commit()
+    return counts

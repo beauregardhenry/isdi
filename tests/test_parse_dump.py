@@ -112,9 +112,11 @@ def test_data_usage_uid_forms(android, uid, expected):
     assert usage["data_used"] == expected
 
 
-def test_parse_is_cached_as_json(android, tmp_path):
-    cached = json.loads((tmp_path / "dump.json").read_text())
-    assert cached == android.df
+def test_parsing_writes_nothing_next_to_the_dump(android, tmp_path):
+    """The dump is raw client data, deleted after the scan; a cached copy
+    of its parse used to be written beside it and outlive it."""
+    assert android.all_apps()
+    assert [p.name for p in tmp_path.iterdir()] == ["dump.txt"]
 
 
 @pytest.fixture

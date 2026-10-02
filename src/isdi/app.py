@@ -19,6 +19,15 @@ def create_app(config=None):
     if config is None:
         config = get_config()
 
+    from isdi import crypto
+
+    if not crypto.is_unlocked():
+        # Client data is encrypted; nothing can be read or saved without
+        # the data key. `isdi run` asks for the passphrase first.
+        raise crypto.LockedError(
+            "ISDi is locked: start it with `isdi run`, which asks for the passphrase"
+        )
+
     # Create Flask app
     app = Flask(
         __name__,
@@ -60,6 +69,8 @@ def create_app(config=None):
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("X-Frame-Options", "DENY")
         resp.headers.setdefault("Referrer-Policy", "no-referrer")
+        # Pages show client data: keep them out of the browser's disk cache.
+        resp.headers.setdefault("Cache-Control", "no-store")
         # Pages show text that came from the phone and from the app-info db,
         # so only same-origin files and our own nonce'd blocks may run script.
         # Inline style attributes are still used throughout the templates.
@@ -82,6 +93,10 @@ def create_app(config=None):
 
     init_db(app, sa, force=config.TEST)
     log.debug("Database init: %.2fs", perf_counter() - db_init_started)
+
+    from isdi.data_protection import purge_plaintext_files
+
+    purge_plaintext_files(config)
 
     # A failure here is a bug; let it stop the server rather than serve a
     # half-working scanner.

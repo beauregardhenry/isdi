@@ -6,7 +6,6 @@ from isdi.scanner.db import (
     save_note,
     update_appinfo,
     update_mul_appinfo,
-    create_report,
     get_device_from_db,
 )
 from isdi.web.view.index import get_device
@@ -30,8 +29,6 @@ def record_scanres(scanid):
     sc = get_device(device)
     note = request.form.get("notes")
     r = save_note(scanid, note)
-    create_report(session["clientid"])
-    # create_report(request.form.get('clientid'))
     return is_success(
         r, "Success!", "Could not save the form. See logs in the terminal."
     )

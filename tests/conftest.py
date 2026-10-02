@@ -18,9 +18,19 @@ os.environ["XDG_CACHE_HOME"] = str(
 )
 os.environ.pop("PREFIX", None)  # Termux paths ignore the XDG variables
 
+from isdi import crypto  # noqa: E402
 from isdi.config import get_config  # noqa: E402
 
-get_config("test")
+TEST_PASSPHRASE = "correct horse battery staple"
+# Cheap key derivation, for speed only; the keyfile records the parameters.
+crypto.SCRYPT_N = 2**10
+crypto.setup(get_config("test").keyfile, TEST_PASSPHRASE)
+
+
+@pytest.fixture
+def passphrase():
+    """The test keyfile's passphrase."""
+    return TEST_PASSPHRASE
 
 
 def pytest_sessionfinish(session, exitstatus):
