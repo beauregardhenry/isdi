@@ -104,19 +104,19 @@ def _job_payload(job):
     }
 
 
-def _run_live_scan(clientid, device, device_owner, ser, job_id=None):
+def _run_live_scan(clientid, device, device_owner, ser, job_id=None, preserve=False):
     """Scan a connected phone and save the result. The raw dump is deleted
     when the scan ends, whatever the outcome: only what the scan keeps
     (encrypted, in the database) remains."""
     sc = get_device(device)
     try:
-        return _scan_and_save(clientid, device, device_owner, ser, job_id)
+        return _scan_and_save(clientid, device, device_owner, ser, job_id, preserve)
     finally:
         if sc and ser:
             sc.discard_dump(ser)
 
 
-def _scan_and_save(clientid, device, device_owner, ser, job_id=None):
+def _scan_and_save(clientid, device, device_owner, ser, job_id=None, preserve=False):
     def progress(percent, step, message):
         if job_id:
             _update_scan_job(
@@ -230,6 +230,11 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None):
             "blocklist_sha256": blocklist.BLOCKLIST_SHA256,
         },
     )
+    if preserve:
+        from isdi import evidence
+
+        progress(97, "Saving", "Keeping an encrypted evidence copy")
+        template_d["evidence_sha256"] = evidence.preserve(sc, ser, scanid, clientid)
 
     apps_sorted = sorted(
         apps.items(),
@@ -255,10 +260,10 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None):
     return template_d, 200
 
 
-def _scan_worker(job_id, clientid, device, device_owner, ser):
+def _scan_worker(job_id, clientid, device, device_owner, ser, preserve=False):
     try:
         template_d, status_code = _run_live_scan(
-            clientid, device, device_owner, ser, job_id=job_id
+            clientid, device, device_owner, ser, job_id=job_id, preserve=preserve
         )
         if status_code == 200:
             _update_scan_job(
@@ -330,7 +335,14 @@ def scan_start():
     job_id = _create_scan_job(session["clientid"], device, device_owner, ser)
     worker = threading.Thread(
         target=_scan_worker,
-        args=(job_id, session["clientid"], device, device_owner, ser),
+        args=(
+            job_id,
+            session["clientid"],
+            device,
+            device_owner,
+            ser,
+            get_param("preserve_evidence") == "1",
+        ),
         daemon=True,
     )
     worker.start()
@@ -493,7 +505,13 @@ def scan():
 
     else:
         # Live scan — device must be connected
-        result_d, status_code = _run_live_scan(clientid, device, device_owner, ser)
+        result_d, status_code = _run_live_scan(
+            clientid,
+            device,
+            device_owner,
+            ser,
+            preserve=get_param("preserve_evidence") == "1",
+        )
         result_d["device_primary_user_sel"] = device_primary_user
         return render_template("main.html", **result_d), status_code
 

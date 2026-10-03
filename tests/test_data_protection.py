@@ -195,13 +195,13 @@ def test_pages_are_not_cached_by_the_browser(client):
 def test_app_will_not_start_locked():
     from isdi.app import create_app
 
-    saved = (crypto._data_key, crypto._pii_key)
+    saved = crypto._state()
     crypto.lock()
     try:
         with pytest.raises(crypto.LockedError):
             create_app(get_config())
     finally:
-        crypto._set_keys(*saved)
+        crypto._restore(saved)
 
 
 @pytest.fixture
@@ -209,9 +209,9 @@ def cli_runner(monkeypatch):
     from isdi import cli
 
     monkeypatch.delenv("ISDI_PASSPHRASE", raising=False)
-    saved = (crypto._data_key, crypto._pii_key)
+    saved = crypto._state()
     yield lambda *args, **kw: CliRunner().invoke(cli.cli, list(args), **kw)
-    crypto._set_keys(*saved)
+    crypto._restore(saved)
 
 
 def test_first_start_sets_up_a_passphrase_and_shows_the_recovery_key(

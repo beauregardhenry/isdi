@@ -19,8 +19,9 @@ stalkerware (see the [releases](https://github.com/beauregardhenry/isdi/releases
 It is distributed through GitHub releases, not PyPI: the `isdi-scanner`
 package on PyPI is upstream's.
 
-Client data is encrypted at rest and raw phone dumps are never kept; see
-[DATA_PROTECTION.md](DATA_PROTECTION.md).
+Client data is encrypted at rest and raw phone dumps are not kept unless an
+evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
+For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md).
 
 To report a security problem, see [SECURITY.md](SECURITY.md). For anything
 else, open an [issue](https://github.com/beauregardhenry/isdi/issues).
@@ -127,6 +128,9 @@ isdi export CLIENTID -o file.json # Everything stored about a client, decrypted
 isdi erase CLIENTID               # Delete everything stored about a client
 isdi audit verify                 # Check the audit log for tampering
 isdi audit show [CLIENTID]        # Who did what, and when
+isdi evidence export SCANID -o DIR # Signed evidence package for one scan
+isdi verify PATH                  # Check a signed export or package
+isdi signing-key                  # This installation's signing-key fingerprint
 isdi --help                       # Show all options
 ```
 
