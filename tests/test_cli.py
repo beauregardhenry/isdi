@@ -76,16 +76,17 @@ def test_anchor_is_signed_private_and_holds_no_client_data(
     app, cli, fresh_log, tmp_path
 ):
     _three_entries()
+    audit.record("note_saved", clientid="20260101_042", details={"x": "secret"})
     out = tmp_path / "anchor.json"
     res = cli("audit", "anchor", "-o", str(out))
     assert res.exit_code == 0, res.output
-    assert "entry 4" in res.output
+    assert "entry 5" in res.output
     assert stat.S_IMODE(out.stat().st_mode) == 0o600
     anchor = json.loads(out.read_text())
     assert anchor["format"] == audit.ANCHOR_FORMAT
-    assert anchor["entries"] == 4 and anchor["newest_entry"]["id"] == 4
+    assert anchor["entries"] == 5 and anchor["newest_entry"]["id"] == 5
     assert set(anchor["newest_entry"]) == {"id", "time", "mac"}
-    assert "c1" not in out.read_text()  # the client id of the entries
+    assert "20260101_042" not in out.read_text() and "secret" not in out.read_text()
     assert audit.entries()[-1]["action"] == "audit_anchored"
     assert cli("verify", str(out)).exit_code == 0  # signature
 
