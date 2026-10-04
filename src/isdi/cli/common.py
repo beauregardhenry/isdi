@@ -103,3 +103,55 @@ def _data(config, operator=None):
     _unlock(config)
     _set_operator(operator)
     return create_app(config).app_context()
+
+
+def _server_pid_file(config):
+    return config.secrets_dir / "isdi-run.pid"
+
+
+def mark_server_running(config) -> None:
+    """Note that `isdi run` is serving this data (removed at exit), so
+    commands that replace or delete the database can refuse meanwhile."""
+    import atexit
+    import os
+
+    path = _server_pid_file(config)
+    path.write_text(str(os.getpid()))
+
+    def remove():
+        try:
+            if path.read_text().strip() == str(os.getpid()):
+                path.unlink()
+        except OSError:
+            pass
+
+    atexit.register(remove)
+
+
+def server_pid(config):
+    """The pid of a running `isdi run` on this data, or None (a file left by
+    a crash, whose process is gone, does not count)."""
+    import os
+
+    try:
+        pid = int(_server_pid_file(config).read_text().strip())
+    except (OSError, ValueError):
+        return None
+    if pid == os.getpid():
+        return None
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return None
+    except PermissionError:
+        return pid  # alive, run by someone else
+    return pid
+
+
+def refuse_while_serving(config) -> None:
+    pid = server_pid(config)
+    if pid:
+        raise click.ClickException(
+            f"ISDi is running (process {pid}): stop it (Ctrl-C) first. The "
+            "database must not change under a running server."
+        )

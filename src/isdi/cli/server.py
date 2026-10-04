@@ -7,7 +7,7 @@ from time import perf_counter
 import click
 
 from isdi import __version__
-from isdi.cli.common import _unlock, cli
+from isdi.cli.common import _unlock, cli, mark_server_running
 from isdi.cli.accounts import _add_user_interactively
 
 ANCHOR_REMINDER_DAYS = 7
@@ -134,6 +134,7 @@ def run(host, port, debug, test_mode, no_browser):
     # Setup logging
     config.setup_logger()
 
+    mark_server_running(config)
     # Run the app
     app.run(
         host=final_host,

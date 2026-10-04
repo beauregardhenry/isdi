@@ -251,7 +251,10 @@ def verify() -> dict:
         elif _entry_mac(row) != row["mac"]:
             problem = f"entry {row['id']} was altered"
         elif row["details"] is None:
-            erased += 1
+            # Entries recorded without details (a sign-in, say) have the
+            # MAC of None; erased ones keep the MAC of what was erased.
+            if row["details_mac"] != _mac(None):
+                erased += 1
         elif _mac(row["details"]) != row["details_mac"]:
             problem = f"the details of entry {row['id']} were altered"
         if problem:

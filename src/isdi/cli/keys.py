@@ -2,7 +2,13 @@
 
 import click
 
-from isdi.cli.common import _data, _operator_option, _set_operator, cli
+from isdi.cli.common import (
+    _data,
+    _operator_option,
+    _set_operator,
+    cli,
+    refuse_while_serving,
+)
 
 
 @cli.command("change-passphrase")
@@ -98,6 +104,8 @@ def restore_cmd(path, recovery, replace, operator):
     config = get_config()
     database, keyfile = Path(config.database_path), Path(config.keyfile)
     existing = [p for p in (database, keyfile) if p.exists()]
+    if existing:
+        refuse_while_serving(config)
     if existing and not replace:
         raise click.ClickException(
             "ISDi already has data on this computer. Use --replace to replace "
@@ -235,6 +243,7 @@ def reset(backup_file, no_backup, operator):
         raise click.ClickException(f"{backup_file} already exists")
 
     config = get_config()
+    refuse_while_serving(config)
     with _data(config, operator):
         click.secho(
             "This deletes every client, scan, evidence copy, account and the "

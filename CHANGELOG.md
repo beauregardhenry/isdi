@@ -11,6 +11,11 @@ have no section here.
   passphrase, a backup first (`-o FILE`, or `--no-backup` to skip it), and
   typing `DELETE EVERYTHING`. The reset is recorded in the audit log, which
   the backup keeps. To delete one client's data, use `isdi erase`.
+  `isdi reset` and `isdi restore --replace` refuse while `isdi run` is
+  running: stop it first.
+- `isdi audit verify` no longer counts entries recorded without details
+  (a sign-in, for example) as "with erased details"; only entries whose
+  details were erased are counted.
 - Scans parse each phone dump once instead of twice, which roughly halves
   that part of an Android scan.
 - An app's details page no longer shows an empty highlighted summary: it

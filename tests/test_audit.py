@@ -222,3 +222,11 @@ def test_uninstall_warns_about_evidence_and_safety(app):
     js = (Path(app.static_folder) / "myjscript.js").read_text()
     assert "Removing an app can destroy evidence" in js
     assert "alert the person who installed it" in js
+
+
+def test_entries_without_details_are_not_counted_as_erased(fresh_log):
+    audit.record("login")
+    audit.record("note_saved", clientid="c9", details={"x": 1})
+    assert audit.verify()["erased"] == 0
+    audit.erase_client_details("c9")
+    assert audit.verify() == {"ok": True, "entries": 2, "erased": 1, "problem": None}
