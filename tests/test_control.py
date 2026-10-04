@@ -43,9 +43,11 @@ def stored_device(app):
             os.remove(f)
 
 
-def test_delete_device_removes_its_scans_and_dumps(app, client, no_csrf, stored_device):
+def test_delete_device_removes_its_scans_and_dumps(
+    app, client_of, no_csrf, stored_device
+):
     scanid, dumps, other = stored_device
-    r = client.post("/delete_device", data={"serial": SERIAL})
+    r = client_of("control_test").post("/delete_device", data={"serial": SERIAL})
     assert r.status_code == 302
     with app.app_context():
         assert db.get_most_recent_scan_id(SERIAL) is None

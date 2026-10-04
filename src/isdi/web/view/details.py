@@ -1,5 +1,6 @@
-from flask import render_template, session
+from flask import render_template
 from isdi.web import bp
+from isdi.web.access import session_scan
 from isdi.web.view.index import get_device
 from isdi.config import get_config
 from isdi.scanner import db
@@ -13,8 +14,8 @@ def app_details(scanid, row):
     """One app of a scan. The URL holds only ids: a serial or app id in it
     would be kept in the browser's history. Details come from the database,
     never from the phone."""
-    scan_res = db.get_scan_res_from_db(scanid)
-    if not scan_res or scan_res.get("clientid") != session.get("clientid"):
+    scan_res = session_scan(scanid)
+    if not scan_res:
         return "Unknown scan", 404
     appid = next(
         (r["appid"] for r in db.get_app_info_from_db(scanid) if r["id"] == row), None

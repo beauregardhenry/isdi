@@ -133,9 +133,9 @@ def test_note_edits_keep_old_and_new_values(app, no_csrf):
     }
 
 
-def test_scan_note_changes_are_recorded(app, no_csrf, phone):  # noqa: F811
+def test_scan_note_changes_are_recorded(app, no_csrf, phone, client_of):  # noqa: F811
     clientid, result, _ = _live_scan(app, "Owner")
-    c = app.test_client()
+    c = client_of(clientid)
     sid = result["scanid"]
     c.post(f"/savescan/{sid}", data={"notes": "photographed the app list"})
     c.post(f"/savescan/{sid}", data={"notes": "photographed the app list"})  # no change
@@ -146,9 +146,9 @@ def test_scan_note_changes_are_recorded(app, no_csrf, phone):  # noqa: F811
     ]
 
 
-def test_uninstall_attempts_are_recorded(app, no_csrf, phone):  # noqa: F811
+def test_uninstall_attempts_are_recorded(app, no_csrf, phone, client_of):  # noqa: F811
     clientid, result, _ = _live_scan(app, "Owner")
-    c = app.test_client()
+    c = client_of(clientid)
     sid = result["scanid"]
     # The fake adb uninstalls com.whatsapp and refuses anything else.
     c.post(f"/delete/app/{sid}", data={"serial": SERIAL, "appid": "com.whatsapp"})
@@ -170,13 +170,13 @@ def test_non_numeric_scan_ids_are_not_routed(client, no_csrf):
 
 
 def test_deleting_a_device_blanks_its_entries_and_is_recorded(
-    app, client, no_csrf, phone  # noqa: F811
+    app, client_of, no_csrf, phone  # noqa: F811
 ):
     from isdi.config import get_config
 
     clientid, result, _ = _live_scan(app, "Owner")
     serial_hmac = get_config().hmac_serial(SERIAL)
-    client.post("/delete_device", data={"serial": serial_hmac})
+    client_of(clientid).post("/delete_device", data={"serial": serial_hmac})
     with app.app_context():
         mine = audit.entries(clientid)
         deleted = [e for e in audit.entries() if e["action"] == "device_data_deleted"]

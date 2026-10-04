@@ -194,14 +194,16 @@ def test_export_refuses_a_stored_dump_that_no_longer_matches_its_hash(
 
 
 def test_erasing_a_client_or_device_deletes_its_evidence(
-    app, phone, client, no_csrf
+    app, phone, client_of, no_csrf
 ):  # noqa: F811
     cid, scanid, _ = _scan(app, preserve=True)
     with app.app_context():
         assert db.erase_client(cid)["evidence"] == 1
         assert evidence.evidence_for_scan(scanid) is None
     cid, scanid, _ = _scan(app, preserve=True)
-    client.post("/delete_device", data={"serial": get_config().hmac_serial(SERIAL)})
+    client_of(cid).post(
+        "/delete_device", data={"serial": get_config().hmac_serial(SERIAL)}
+    )
     with app.app_context():
         assert evidence.evidence_for_scan(scanid) is None
 

@@ -6,6 +6,7 @@ import uuid
 from isdi import audit
 from isdi.config import get_config
 from isdi.web import bp
+from isdi.web.access import session_scan
 from isdi.web.view.index import get_device
 from flask import jsonify, render_template, request, session, redirect, url_for
 from markupsafe import escape
@@ -499,22 +500,14 @@ def scan():
     return render_template("main.html", **result_d), status_code
 
 
-def _client_scan(scanid):
-    """The scan record if it belongs to this session's client, else None.
-    Scan ids are sequential: without this check, any id could be opened."""
-    scan_res = db.get_scan_res_from_db(scanid)
-    if not scan_res or scan_res.get("clientid") != session.get("clientid"):
-        return None
-    return scan_res
-
-
 @bp.route("/scan/saved/<int:scanid>", methods=["GET"])
 def saved_scan(scanid):
     """A saved scan, read from the database. The URL carries only the scan
     id: serials, nicknames and app ids in URLs end up in browser history."""
     if "clientid" not in session:
         return redirect(url_for("main.index"))
-    scan_res = _client_scan(scanid)
+    # Scan ids are sequential: without this check, any id could be opened.
+    scan_res = session_scan(scanid)
     if not scan_res:
         return "Unknown scan", 404
     device = scan_res.get("device")

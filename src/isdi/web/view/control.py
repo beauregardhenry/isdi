@@ -1,6 +1,6 @@
 from isdi.config import get_config
 from isdi.web import bp
-from flask import request, jsonify, url_for, redirect
+from flask import request, jsonify, session, url_for, redirect
 import subprocess
 import json
 import os
@@ -35,7 +35,9 @@ def delete_device():
     if not is_valid_hmac_serial(serial):
         return jsonify({"error": "Invalid serial"}), 400
 
-    delete_scan_data(serial)
+    # Only this client's scans of the device: the same phone may also have
+    # been scanned for another client.
+    delete_scan_data(serial, clientid=session.get("clientid"))
     return redirect(url_for("main.index"))
 
 
