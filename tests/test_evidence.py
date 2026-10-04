@@ -8,7 +8,6 @@ import uuid
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
 from isdi import audit, crypto, evidence
 from isdi.config import get_config
@@ -206,14 +205,6 @@ def test_erasing_a_client_or_device_deletes_its_evidence(
     )
     with app.app_context():
         assert evidence.evidence_for_scan(scanid) is None
-
-
-@pytest.fixture
-def cli(monkeypatch, passphrase):
-    from isdi import cli as cli_mod
-
-    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    return lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
 
 
 def test_cli_evidence_export_and_verify(app, kept, cli, tmp_path, monkeypatch):

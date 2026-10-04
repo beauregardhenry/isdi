@@ -886,55 +886,91 @@ def info():
 
     click.echo("ISDI Configuration:")
     click.echo(f"  Environment: {config.env}")
-    click.echo(f"\nDirectories:")
+    click.echo("\nDirectories:")
     click.echo(f'  Data: {config.dirs["data"]}')
     click.echo(f'  Config: {config.dirs["config"]}')
     click.echo(f'  Cache: {config.dirs["cache"]}')
-    click.echo(f"\nData Locations:")
+    click.echo("\nData Locations:")
     click.echo(f"  Database: {config.database_path}")
-    click.echo(f"  Scans: {config.scans_dir}")
     click.echo(f"  Dumps: {config.dumps_dir}")
     click.echo(f"  Logs: {config.logs_dir}")
-    click.echo(f"\nPackage Data:")
+    click.echo("\nPackage Data:")
     click.echo(f"  Location: {config.package_data}")
-    click.echo(f"  Stalkerware DB: {config.stalkerware_path}")
+    click.echo(f"  Blocklist: {config.APP_FLAGS_FILE}")
+
+
+RESET_PHRASE = "DELETE EVERYTHING"
 
 
 @cli.command()
-@click.confirmation_option(prompt="Are you sure you want to reset all data?")
-def reset():
-    """Reset all user data (scans, reports, database)"""
+@click.option(
+    "-o",
+    "--backup",
+    "backup_file",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Write an encrypted backup here first (a new file).",
+)
+@click.option(
+    "--no-backup",
+    is_flag=True,
+    help="Delete without a backup. The data cannot be recovered.",
+)
+@_operator_option
+def reset(backup_file, no_backup, operator):
+    """Delete ALL client data: every client, scan, evidence copy, account
+    and the audit log.
+
+    Needs the passphrase, a backup first (-o FILE) unless --no-backup is
+    given, and typing the confirmation phrase. The keys stay, so a backup
+    can be restored later with `isdi restore`. To delete one client's data,
+    use `isdi erase CLIENTID` instead."""
+    import os
     import shutil
+
+    from isdi import audit, backup
     from isdi.config import get_config
 
+    if bool(backup_file) == no_backup:
+        raise click.ClickException(
+            "Give either -o FILE (a backup is written first) or --no-backup."
+        )
+    if backup_file and os.path.exists(backup_file):
+        raise click.ClickException(f"{backup_file} already exists")
+
     config = get_config()
+    with _data(config, operator):
+        click.secho(
+            "This deletes every client, scan, evidence copy, account and the "
+            "audit log.",
+            fg="red",
+            bold=True,
+        )
+        if click.prompt(f"Type {RESET_PHRASE} to confirm") != RESET_PHRASE:
+            raise click.ClickException("Not confirmed; nothing was deleted.")
+        audit.record(
+            "data_reset", details={"backup": os.path.basename(backup_file or "")}
+        )
+        if backup_file:
+            summary = backup.write(backup_file, config.database_path, config.keyfile)
+            click.echo(f"✓ Wrote the backup {backup_file} ({summary['size']} bytes)")
+        from isdi.scanner import db
 
-    click.echo("Resetting data...")
+        db.close_db()
 
-    # Remove data directories
-    for dir_path in [
-        config.scans_dir,
+    for dir_path in (
         config.reports_dir,
         config.dumps_dir,
-        config.phone_dumps_dir,
-    ]:
+        config.logs_dir,
+        config.temp_dir,
+    ):
         if dir_path.exists():
             shutil.rmtree(dir_path)
             dir_path.mkdir(parents=True)
-            click.echo(f"  ✓ Cleared {dir_path.name}/")
-
-    # Remove database
-    if config.database_path.exists():
-        config.database_path.unlink()
-        click.echo(f"  ✓ Deleted database")
-
-    # Remove cache
-    if config.dirs["cache"].exists():
-        shutil.rmtree(config.dirs["cache"])
-        config.dirs["cache"].mkdir(parents=True)
-        click.echo(f"  ✓ Cleared cache")
-
-    click.echo("\n✓ All data has been reset")
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        path = config.database_path.with_name(config.database_path.name + suffix)
+        if path.exists():
+            path.unlink()
+    click.echo("✓ All client data has been deleted. The keys are kept.")
 
 
 @cli.command()
@@ -949,13 +985,12 @@ def paths():
         "directories": {k: str(v) for k, v in config.dirs.items()},
         "data": {
             "database": str(config.database_path),
-            "scans": str(config.scans_dir),
             "dumps": str(config.dumps_dir),
             "logs": str(config.logs_dir),
         },
         "package": {
             "data": str(config.package_data),
-            "stalkerware": str(config.stalkerware_path),
+            "blocklist": str(config.APP_FLAGS_FILE),
         },
         "secrets": {
             "keyfile": str(config.keyfile),

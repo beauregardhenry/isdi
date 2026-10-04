@@ -12,6 +12,11 @@ name: Release
 # weekly indicators PR bumps the patch version, so merging it publishes a
 # release and installed copies can pick up the new list. A push whose
 # version is already released is skipped, not failed.
+#
+# Besides the wheel and sdist, each release carries constraints.txt: the
+# exact dependency versions that were installed and smoke-tested on each
+# supported Python, so a clinic can reinstall what was tested
+# (pip install -c constraints.txt <wheel>).
 
 on:
   workflow_dispatch:
@@ -28,10 +33,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -67,7 +75,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          notes="$RUNNER_TEMP/notes.md"
+          mkdir -p release
+          notes=release/notes.md
           if python scripts/release_notes.py "$VERSION" > "$notes"; then
             cat "$notes"
           elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
@@ -89,18 +98,87 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         run: |
           python -m pip install build
-          rm -rf dist
-          python -m build
-          cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+          python -m build --outdir release/dist
+
+      - name: Keep the build for the next jobs
+        if: steps.version.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release/
+
+  # Install the wheel on each supported Python, smoke-test it, and record
+  # the dependency versions that were installed.
+  pin:
+    needs: build
+    if: needs.build.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release/
+
+      - name: Install, smoke-test and pin
+        env:
+          PY: ${{ matrix.python-version }}
+        run: |
+          python -m venv "$RUNNER_TEMP/env"
+          "$RUNNER_TEMP/env/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/env/bin/pip" install release/dist/*.whl
+          "$RUNNER_TEMP/env/bin/pip" freeze --exclude isdi-scanner > "freeze-$PY.txt"
+          cat "freeze-$PY.txt"
+          (cd "$RUNNER_TEMP" && "$RUNNER_TEMP/env/bin/python" "$GITHUB_WORKSPACE/scripts/smoke_test_wheel.py")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freeze-${{ matrix.python-version }}
+          path: freeze-${{ matrix.python-version }}.txt
+
+  publish:
+    needs: [build, pin]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release/
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: freeze-*
+          path: freezes/
+          merge-multiple: true
+
+      - name: Write constraints.txt and checksums
+        run: |
+          python3 scripts/merge_constraints.py release/dist/constraints.txt freezes/freeze-*.txt
+          cat release/dist/constraints.txt
+          cd release/dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
 
       - name: Create GitHub release
-        if: steps.version.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
-          gh release create "v$VERSION" dist/* \
+          gh release create "v$VERSION" release/dist/* \
             --target "$GITHUB_SHA" \
             --title "ISDi v$VERSION" \
-            --notes-file "$RUNNER_TEMP/notes.md" \
+            --notes-file release/notes.md \
             --generate-notes

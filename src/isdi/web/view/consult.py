@@ -6,7 +6,6 @@ from isdi.web import access, bp, sa
 from isdi.web.model import Client
 from isdi.web.forms import ClientForm
 from flask import render_template, request, session, redirect, url_for
-from isdi.scanner.db import get_client_devices_from_db, new_client_id
 
 config = get_config()
 

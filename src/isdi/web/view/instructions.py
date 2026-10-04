@@ -1,5 +1,5 @@
 from isdi.config import get_config
-from flask import render_template, request, session
+from flask import render_template
 from isdi.web import bp
 import os
 

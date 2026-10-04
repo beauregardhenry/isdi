@@ -6,12 +6,10 @@ import json
 import os
 import stat
 import sys
-import textwrap
 
 import pytest
 
 import isdi.scanner as scanner
-from isdi.config import get_config
 
 SERIAL = "R58M12ABCDE"
 STALKER = "com.example.stalker"

@@ -397,7 +397,6 @@ def insert_many(query, argss):
 def query_db(query, args=(), one=False):
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
-    lrowid = cur.lastrowid
     cur.close()
     return (rv[0] if rv else None) if one else rv
 
@@ -538,14 +537,6 @@ def get_app_info_from_db(scanid):
 def get_clientid_for_scan(scanid):
     d = query_db("select clientid from scan_res where id=?", args=(scanid,), one=True)
     return d["clientid"] if d else None
-
-
-def get_device_from_db(scanid):
-    d = query_db("select device from scan_res where id=?", args=(scanid,), one=True)
-    if d:
-        return d["device"]
-    else:
-        return ""
 
 
 def get_serial_from_db(scanid):

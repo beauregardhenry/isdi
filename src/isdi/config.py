@@ -173,8 +173,8 @@ class Config:
 
     def setup_paths(self):
         """Setup all application paths"""
-        # Data directories
-        self.scans_dir = self.dirs["data"] / "scans"
+        # Where versions before 1.3 wrote plaintext CSV reports; any left
+        # there are deleted at start (data_protection.py).
         self.reports_dir = self.dirs["data"] / "reports"
         # Raw dumps hold client data while a phone is scanned: keep them in
         # private storage. On Termux the data dir is shared storage, which
@@ -185,7 +185,6 @@ class Config:
         self.legacy_dumps_dirs = [
             d for d in (self.dirs["data"] / "dumps",) if d != self.dumps_dir
         ]
-        self.phone_dumps_dir = self.dirs["data"] / "phone_dumps"
 
         # Config directory
         self.secrets_dir = self.dirs["config"]
@@ -196,10 +195,8 @@ class Config:
 
         # Create all directories
         for path in [
-            self.scans_dir,
             self.reports_dir,
             self.dumps_dir,
-            self.phone_dumps_dir,
             self.temp_dir,
             self.logs_dir,
         ]:
@@ -214,21 +211,12 @@ class Config:
 
         # Bundled data (read-only, in package)
         self.package_data = Path(__file__).parent / "data"
-        self.stalkerware_path = self.package_data / "stalkerware"
 
         # Legacy compatibility - point to user data dirs
-        self.REPORT_PATH = str(self.reports_dir)
         self.SQL_DB_PATH = f"sqlite:///{self.database_path}"
 
-        # App flags file
+        # The stalkerware blocklist
         self.APP_FLAGS_FILE = self.package_data / "app-flags.csv"
-        if not self.APP_FLAGS_FILE.exists():
-            # Fallback to old location temporarily
-            old_location = (
-                Path(__file__).parent.parent.parent / "static_data" / "app-flags.csv"
-            )
-            if old_location.exists():
-                self.APP_FLAGS_FILE = old_location
 
     def _ensure_app_info_db(self) -> None:
         """Download app-info.db if it is missing, from the first source that
