@@ -157,7 +157,17 @@ CREATE TABLE IF NOT EXISTS users (
   created TEXT NOT NULL,
   password_changed TEXT,
   last_login TEXT,
-  signed_out_at REAL
+  signed_out_at REAL,
+  role TEXT NOT NULL DEFAULT 'staff'
+);
+
+-- Which clients a staff account may open (users.py): the clients it
+-- started. Supervisors may open every client.
+CREATE TABLE IF NOT EXISTS client_access (
+  user_id INTEGER NOT NULL,
+  clientid TEXT NOT NULL,
+  granted TEXT NOT NULL,
+  PRIMARY KEY (user_id, clientid)
 );
 """
 
@@ -193,7 +203,7 @@ ENCRYPTED_COLUMNS = {
     "users": ["name"],
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 def _enc(column, value):
@@ -220,11 +230,16 @@ def new_client_id():
     """Today's date and a counter: 20260101_001, 20260101_002, ...
 
     Counts only today's ids in that format, so an id written some other way
-    (or a created_at in another time zone) cannot break or repeat it."""
+    (or a created_at in another time zone) cannot break or repeat it. Ids
+    already given to a session (client_access) or used by a scan count too,
+    so two people never get the same id before either saves notes."""
     prefix = today() + "_"
     rows = query_db(
-        "select clientid from clients_notes where substr(clientid, 1, ?) = ?",
-        (len(prefix), prefix),
+        " UNION ".join(
+            f"SELECT clientid FROM {table} WHERE substr(clientid, 1, ?) = ?"
+            for table in ("clients_notes", "scan_res", "client_access")
+        ),
+        (len(prefix), prefix) * 3,
     )
     counters = [
         int(r["clientid"][len(prefix) :])
@@ -318,6 +333,10 @@ def _migrate(db) -> None:
         db.execute(
             "ALTER TABLE evidence ADD COLUMN unredacted INTEGER NOT NULL DEFAULT 0"
         )
+    if "role" not in _columns(db, "users"):
+        db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'staff'")
+        # Accounts made before roles could open every client: keep that.
+        db.execute("UPDATE users SET role='supervisor'")
     sql = db.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='clients_notes'"
     ).fetchone()[0]
@@ -542,33 +561,36 @@ def first_element_or_none(l):
         return l[0]
 
 
-def delete_scan_data(serial: str) -> bool:
+def delete_scan_data(serial: str, clientid: str) -> bool:
     """
-    Delete all data for a scanned device identified by its stored serial.
-    Removes app_info rows, scan_res rows, and any dump files on disk.
-    Returns True on success.
+    Delete one client's data for a scanned device identified by its stored
+    serial: its scans, their apps and evidence copies, and any dump files
+    on disk. Returns True on success.
     """
     import glob
     import shutil
 
     db_conn = get_db()
 
-    # Get all scan IDs for this serial
     scan_ids = query_db(
-        "SELECT id FROM scan_res WHERE serial=?", args=(serial,), one=False
+        "SELECT id FROM scan_res WHERE serial=? AND clientid=?",
+        args=(serial, clientid),
+        one=False,
     )
     if scan_ids:
         for row in scan_ids:
             db_conn.execute("DELETE FROM app_info WHERE scanid=?", (row["id"],))
             db_conn.execute("DELETE FROM evidence WHERE scanid=?", (row["id"],))
-        db_conn.execute("DELETE FROM scan_res WHERE serial=?", (serial,))
+            db_conn.execute("DELETE FROM scan_res WHERE id=?", (row["id"],))
         db_conn.commit()
         from isdi import audit
 
         ids = [row["id"] for row in scan_ids]
         audit.erase_scan_details(ids)
         audit.record(
-            "device_data_deleted", details={"serial_hmac": serial, "scans": ids}
+            "device_data_deleted",
+            clientid=clientid,
+            details={"serial_hmac": serial, "scans": ids},
         )
 
     # Remove dump files: stored as <serial>_<device_type>.<ext> inside DUMP_DIR

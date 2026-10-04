@@ -73,7 +73,7 @@ def test_delete_removes_only_that_device(ctx):
         with open(path, "w") as f:
             f.write("dump")
 
-    assert db.delete_scan_data(gone) is True
+    assert db.delete_scan_data(gone, cid) is True
 
     for scanid in gone_ids:
         assert db.get_scan_res_from_db(scanid) is None
@@ -89,7 +89,7 @@ def test_delete_treats_glob_characters_literally(ctx):
     victim = os.path.join(get_config().DUMP_DIR, f"{_hmac(uuid.uuid4().hex)}_ios.json")
     with open(victim, "w") as f:
         f.write("{}")
-    db.delete_scan_data("*")
+    db.delete_scan_data("*", "c1")
     assert os.path.exists(victim)
     os.remove(victim)
 

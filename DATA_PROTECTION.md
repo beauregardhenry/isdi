@@ -49,6 +49,15 @@ your compliance officer to decide.
   limit), when the user signs out, when the account is disabled, or when
   its password changes. Signing out also stops copies of the session
   cookie from working.
+- **Roles.** A staff account opens only the clients it started; a
+  supervisor account opens every client. The first account is a
+  supervisor; others are staff unless created with `isdi user add
+  --supervisor` (change it with `isdi user role USERNAME staff|supervisor`).
+  Accounts made before 1.6 become supervisors, as they could open every
+  client before.
+- Scans are opened and changed only within their own client's session, and
+  deleting a device's data deletes only that client's scans of it.
+  Refused attempts are recorded in the audit log.
 - Sign-ins (failed ones too), sign-outs and account changes are in the
   audit log.
 - ISDi only listens on this computer (127.0.0.1). It serves plain HTTP, so
@@ -138,9 +147,8 @@ them.
 These are gaps you need to cover with how ISDi is run, or that would need
 changes to ISDi.
 
-- **Every account sees everything.** There are no roles: each signed-in
-  user can see all clients and scans. Give accounts only to people who need
-  them, and disable them (`isdi user disable`) when they leave.
+- **Supervisors see every client.** Give the supervisor role only to
+  people who need it.
 - **The command line has no accounts.** Commands such as `isdi export` and
   `isdi erase` need the passphrase, and record the name given with
   `--operator` (or asked for): the operator's own statement. Keep the

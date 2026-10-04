@@ -198,11 +198,12 @@ def _ensure_an_account():
         return
     click.secho("\nEach person using ISDi signs in with an account.", bold=True)
     click.echo("Create the first one now; add others with `isdi user add`.")
+    click.echo("It is a supervisor account: it can open every client.")
     with audit.acting_as("isdi run (first account)"):
-        _add_user_interactively()
+        _add_user_interactively(role=users.SUPERVISOR)
 
 
-def _add_user_interactively(username=None, name=None):
+def _add_user_interactively(username=None, name=None, role="staff"):
     from isdi import users
 
     while True:
@@ -218,8 +219,10 @@ def _add_user_interactively(username=None, name=None):
     while not (name or "").strip():
         name = click.prompt("Full name")
     password = _new_password()
-    user = users.create(username, name, password)
-    click.echo(f"✓ Created account {user['username']} for {user['name']}")
+    user = users.create(username, name, password, role=role)
+    click.echo(
+        f"✓ Created {user['role']} account {user['username']} for {user['name']}"
+    )
     return user
 
 
@@ -562,15 +565,23 @@ def user_group():
 @user_group.command("add")
 @click.argument("username", required=False)
 @click.option("--name", help="The person's full name (asked for if not given).")
+@click.option(
+    "--supervisor",
+    is_flag=True,
+    help="Can open every client. Without it, a staff account opens only the "
+    "clients it started.",
+)
 @_operator_option
-def user_add(username, name, operator):
+def user_add(username, name, supervisor, operator):
     """Create an account. The password is asked for."""
     from isdi import users
     from isdi.config import get_config
 
     with _data(get_config(), operator):
         try:
-            _add_user_interactively(username, name)
+            _add_user_interactively(
+                username, name, role=users.SUPERVISOR if supervisor else users.STAFF
+            )
         except users.AccountError as e:
             raise click.ClickException(str(e))
 
@@ -594,7 +605,7 @@ def user_list(operator):
             else "locked" if locked[r["username"]] else "active"
         )
         click.echo(
-            f"{r['username']:<20} {r['name']:<30} {state:<9} "
+            f"{r['username']:<20} {r['name']:<30} {r['role']:<11} {state:<9} "
             f"last sign-in {r['last_login'] or 'never'}"
         )
 
@@ -626,6 +637,17 @@ def user_enable(username, operator):
     """Enable a disabled or locked account."""
     _user_change(username, operator, lambda u: u.set_disabled(username, False))
     click.echo(f"✓ Enabled {username}")
+
+
+@user_group.command("role")
+@click.argument("username")
+@click.argument("role", type=click.Choice(["staff", "supervisor"]))
+@_operator_option
+def user_role(username, role, operator):
+    """Set an account's role: staff (opens only the clients it started) or
+    supervisor (opens every client)."""
+    _user_change(username, operator, lambda u: u.set_role(username, role))
+    click.echo(f"✓ {username} is now {role}")
 
 
 @user_group.command("reset-password")

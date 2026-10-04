@@ -1,6 +1,7 @@
 from isdi.config import get_config
 from isdi.web import bp
-from flask import render_template, request, session
+from flask import g, render_template, request, session
+from isdi import users
 from isdi.scanner import AndroidScanner, IosScanner, TestScanner
 from isdi.scanner.db import get_client_devices_from_db, new_client_id
 import os
@@ -29,6 +30,9 @@ def index():
     # ask the DB for a new client ID (additional checks in DB).
     if "clientid" not in session or (newid is not None):
         session["clientid"] = new_client_id()
+        # The client this account started: a staff account may reopen its
+        # notes later (isdi/web/access.py).
+        users.grant(g.user["id"], session["clientid"])
 
     return render_template(
         "main.html",

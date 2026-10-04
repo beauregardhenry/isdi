@@ -341,10 +341,10 @@ def test_cli_user_add_list_disable_enable(app, cli):
         input=f"short\nshort\n{PASSWORD}\n{PASSWORD}\n",
     )
     assert res.exit_code == 0, res.output
-    assert "at least 12" in res.output and f"Created account {name}" in res.output
+    assert "at least 12" in res.output and f"Created staff account {name}" in res.output
     with app.app_context():
         created = [(a, d) for a, _, d in _actions(app) if a == "user_created"]
-    assert ("user_created", {"username": name}) in created
+    assert ("user_created", {"username": name, "role": "staff"}) in created
 
     res = cli("user", "list")
     line = next(x for x in res.output.splitlines() if x.startswith(name))
@@ -402,7 +402,7 @@ def test_cli_user_list_with_no_accounts(cli, fresh_log):  # noqa: F811
 
 def test_run_creates_the_first_account(run_cli, fresh_log):  # noqa: F811
     output, _ = run_cli(input=f"first\nFirst Person\n{PASSWORD}\n{PASSWORD}\n")
-    assert "Created account first for First Person" in output
+    assert "Created supervisor account first for First Person" in output
     assert users.by_username("first")["name"] == "First Person"
     created = [e for e in audit.entries() if e["action"] == "user_created"]
     assert created[0]["operator"] == "isdi run (first account)"

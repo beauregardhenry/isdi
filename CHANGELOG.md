@@ -13,6 +13,15 @@ have no section here.
   last backup is more than 7 days old. Keep backups away from the computer.
 - **ISDi only runs on this computer.** `isdi run --host` now refuses any
   address other than 127.0.0.1, ::1 or localhost.
+- **Roles.** New accounts are staff: they open only the clients they
+  started. Supervisors open every client. Existing accounts become
+  supervisors, so nothing changes for them until you choose; use
+  `isdi user role USERNAME staff` for anyone who should not see other
+  clients, and `isdi user add --supervisor` for new supervisors.
+- Scans can only be changed within their own client's session, and
+  "Delete" on a device removes only the current client's scans of it.
+  Two people starting new clients at the same time no longer get the same
+  client id.
 - **Termux:** raw phone dumps are now kept in Termux's private storage
   during a scan, not in shared storage. Any left in shared storage by an
   older version are deleted at the next start.

@@ -8,6 +8,10 @@ period of inactivity (automatic logoff, 164.312(a)(2)(iii)).
 Accounts are managed from the command line (`isdi user ...`) by whoever
 holds the passphrase; there is no administrator role in the web interface.
 
+Roles decide which clients an account can open:
+- staff: only the clients it started (client_access);
+- supervisor: every client.
+
 - Passwords are hashed with scrypt and a random salt; only the hash is
   stored. They must be at least 12 characters, like the passphrase.
 - After MAX_FAILED wrong passwords in a row, the account is locked for
@@ -32,6 +36,10 @@ PASSWORD_SCRYPT_N = 2**15
 MAX_FAILED = 5
 LOCKOUT_MINUTES = 15
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,31}$")
+
+
+STAFF, SUPERVISOR = "staff", "supervisor"
+ROLES = (STAFF, SUPERVISOR)
 
 
 class AccountError(ValueError):
@@ -127,8 +135,8 @@ def list_users() -> list:
     from isdi.scanner.db import query_db
 
     return query_db(
-        "SELECT id, username, name, disabled, locked_until, created, last_login "
-        "FROM users ORDER BY username"
+        "SELECT id, username, name, role, disabled, locked_until, created, "
+        "last_login FROM users ORDER BY username"
     )
 
 
@@ -148,9 +156,10 @@ def label(user: dict) -> str:
     return f"{user['name']} ({user['username']})"
 
 
-def create(username: str, name: str, password: str) -> dict:
+def create(username: str, name: str, password: str, role: str = STAFF) -> dict:
     from isdi import audit
 
+    check_role(role)
     username = check_username(username)
     name = (name or "").strip()
     if not name:
@@ -162,11 +171,18 @@ def create(username: str, name: str, password: str) -> dict:
     now = _iso(_now())
     db.execute(
         "INSERT INTO users (username, name, password_hash, created, "
-        "password_changed) VALUES (?,?,?,?,?)",
-        (username, crypto.encrypt("name", name), hash_password(password), now, now),
+        "password_changed, role) VALUES (?,?,?,?,?,?)",
+        (
+            username,
+            crypto.encrypt("name", name),
+            hash_password(password),
+            now,
+            now,
+            role,
+        ),
     )
     db.commit()
-    audit.record("user_created", details={"username": username})
+    audit.record("user_created", details={"username": username, "role": role})
     return by_username(username)
 
 
@@ -215,6 +231,50 @@ def sign_out_everywhere(user_id: int, at: float) -> None:
     db = _db()
     db.execute("UPDATE users SET signed_out_at=? WHERE id=?", (at, user_id))
     db.commit()
+
+
+def check_role(role: str) -> None:
+    if role not in ROLES:
+        raise AccountError(f"A role is {' or '.join(ROLES)}.")
+
+
+def set_role(username: str, role: str) -> None:
+    from isdi import audit
+
+    check_role(role)
+    user = require(username)
+    db = _db()
+    db.execute("UPDATE users SET role=? WHERE id=?", (role, user["id"]))
+    db.commit()
+    audit.record(
+        "user_role_changed",
+        details={"username": user["username"], "role": [user["role"], role]},
+    )
+
+
+def grant(user_id: int, clientid: str) -> None:
+    """Let a staff account open a client (one it started)."""
+    db = _db()
+    db.execute(
+        "INSERT OR IGNORE INTO client_access (user_id, clientid, granted) "
+        "VALUES (?,?,?)",
+        (user_id, clientid, _iso(_now())),
+    )
+    db.commit()
+
+
+def can_open(user: dict, clientid: str) -> bool:
+    if user["role"] == SUPERVISOR:
+        return True
+    row = (
+        _db()
+        .execute(
+            "SELECT 1 FROM client_access WHERE user_id=? AND clientid=?",
+            (user["id"], clientid),
+        )
+        .fetchone()
+    )
+    return row is not None
 
 
 def is_locked(user: dict, now: Optional[datetime] = None) -> bool:

@@ -2,7 +2,7 @@ import json
 import logging
 from isdi import audit
 from isdi.config import get_config
-from isdi.web import bp, sa
+from isdi.web import access, bp, sa
 from isdi.web.model import Client
 from isdi.web.forms import ClientForm
 from flask import render_template, request, session, redirect, url_for
@@ -70,10 +70,13 @@ def edit_forms():
         clientnote = request.form.get("clientnote", request.args.get("clientnote"))
 
         if clientnote:  # if requesting a form to edit
-            session["form_edit_pk"] = clientnote  # set session cookie
             form_obj = sa.session.get(Client, clientnote)
             if form_obj is None:
                 return redirect(url_for("main.edit_forms"))
+            if not access.can_open(form_obj.clientid):
+                access.refused(form_obj.clientid)
+                return "You cannot open this client's notes.", 403
+            session["form_edit_pk"] = clientnote  # set session cookie
             form = ClientForm(obj=form_obj)
             for field in form:
                 if field.type == "SelectMultipleField":
@@ -89,6 +92,9 @@ def edit_forms():
             form_obj = sa.session.get(Client, session.get("form_edit_pk"))
             if form_obj is None:
                 return redirect(url_for("main.edit_forms"))
+            if not access.can_open(form_obj.clientid):
+                access.refused(form_obj.clientid)
+                return "You cannot open this client's notes.", 403
             cid = form_obj.clientid  # preserve before populate_obj
             form = ClientForm(request.form)
             if not form.validate():
@@ -119,7 +125,8 @@ def edit_forms():
                 "main.html", task="form", formdone="yes", title=config.TITLE
             )
 
-    clients = Client.query.all()
+    # Staff see only the clients they started; supervisors see all.
+    clients = [c for c in Client.query.all() if access.can_open(c.clientid)]
     return render_template(
         "main.html", clients=clients, task="formedit", title=config.TITLE
     )

@@ -1,4 +1,4 @@
-from flask import request, session
+from flask import request
 from isdi.config import get_config
 from isdi.web import bp
 from isdi import audit
@@ -10,8 +10,8 @@ from isdi.scanner.db import (
     save_note,
     update_appinfo,
     update_mul_appinfo,
-    get_device_from_db,
 )
+from isdi.web.access import session_scan
 from isdi.web.view.index import get_device
 from isdi.scanner.runcmd import is_valid_appid, is_valid_serial
 
@@ -20,8 +20,8 @@ config = get_config()
 
 @bp.route("/saveapps/<int:scanid>", methods=["POST"])
 def record_applist(scanid):
-    device = get_device_from_db(scanid)
-    sc = get_device(device)
+    if not session_scan(scanid):
+        return "Unknown scan", 404
     d = request.form
     update_mul_appinfo([(remark, scanid, appid) for appid, remark in d.items()])
     audit.record(
@@ -35,8 +35,8 @@ def record_applist(scanid):
 
 @bp.route("/savescan/<int:scanid>", methods=["POST"])
 def record_scanres(scanid):
-    device = get_device_from_db(scanid)
-    sc = get_device(device)
+    if not session_scan(scanid):
+        return "Unknown scan", 404
     note = request.form.get("notes")
     before = (get_scan_res_from_db(scanid) or {}).get("note")
     r = save_note(scanid, note)
@@ -54,8 +54,8 @@ def record_scanres(scanid):
 
 @bp.route("/delete/app/<int:scanid>", methods=["POST"])
 def delete_app(scanid):
-    device = get_device_from_db(scanid)
-    sc = get_device(device)
+    scan = session_scan(scanid)
+    sc = get_device(scan.get("device")) if scan else None
     if sc is None:
         return "Unknown scan", 404
     # The DB stores only the HMAC of the serial, so the page sends the raw

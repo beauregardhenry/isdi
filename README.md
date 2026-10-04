@@ -132,8 +132,9 @@ passphrase or the recovery key, nobody can read the data, including you.
 isdi run                          # Normal mode
 isdi run --debug                  # Debug mode (verbose logging)
 isdi change-passphrase            # New passphrase (--recovery if it is lost)
-isdi user add USERNAME            # Create an account (also: list, disable,
-                                  #   enable, reset-password)
+isdi user add USERNAME            # Create a staff account (--supervisor to
+                                  #   open every client; also: list, role,
+                                  #   disable, enable, reset-password)
 isdi backup -o FILE               # Encrypted backup of all ISDi data
 isdi restore FILE                 # Restore it (here or on a new computer)
 isdi export CLIENTID -o file.json # Everything stored about a client, decrypted

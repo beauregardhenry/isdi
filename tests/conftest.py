@@ -77,7 +77,9 @@ def app():
     app.test_client_class = SignedInClient
     with app.app_context():
         if not users.by_username(TEST_USERNAME):
-            users.create(TEST_USERNAME, TEST_OPERATOR, TEST_PASSWORD)
+            users.create(
+                TEST_USERNAME, TEST_OPERATOR, TEST_PASSWORD, role=users.SUPERVISOR
+            )
     return app
 
 
@@ -87,6 +89,20 @@ def client(app):
     with c.session_transaction() as s:
         s["clientid"] = "20260101_001"
     return c
+
+
+@pytest.fixture
+def client_of(app):
+    """A signed-in test client working with a given client: scans are
+    opened and changed only in their own client's session."""
+
+    def make(clientid):
+        c = app.test_client()
+        with c.session_transaction() as s:
+            s["clientid"] = clientid
+        return c
+
+    return make
 
 
 @pytest.fixture
