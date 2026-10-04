@@ -128,6 +128,8 @@ isdi change-passphrase            # New passphrase (--recovery if it is lost)
 isdi export CLIENTID -o file.json # Everything stored about a client, decrypted
 isdi erase CLIENTID               # Delete everything stored about a client
 isdi audit verify                 # Check the audit log for tampering
+isdi audit anchor -o FILE         # Signed record of the log, to send off-site
+isdi audit verify --anchor FILE   # Check the log still matches that record
 isdi audit show [CLIENTID]        # Who did what, and when
 isdi evidence export SCANID -o DIR # Signed evidence package for one scan
 isdi verify PATH                  # Check a signed export or package

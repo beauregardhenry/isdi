@@ -150,6 +150,26 @@ def test_migration_encrypts_an_old_plaintext_database(tmp_path):
     assert "details" in [r["name"] for r in conn.execute("PRAGMA table_info(app_info)")]
 
 
+def test_migration_adds_the_unredacted_flag_to_kept_evidence(tmp_path):
+    """A version 3 database: evidence table without the unredacted column.
+    Copies kept then were all redacted."""
+    v3 = db.SCHEMA_SQL.replace("  unredacted INTEGER NOT NULL DEFAULT 0,\n", "")
+    assert v3 != db.SCHEMA_SQL
+    path = tmp_path / "v3.db"
+    conn = sqlite3.connect(path)
+    conn.executescript(v3)
+    conn.execute(
+        "INSERT INTO evidence (scanid, created, dump_sha256) VALUES (1, 't', 'h')"
+    )
+    conn.execute("PRAGMA user_version = 3")
+    conn.commit()
+
+    db.migrate(conn)
+    db.migrate(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
+    assert conn.execute("SELECT unredacted FROM evidence").fetchone()[0] == 0
+
+
 def test_plaintext_leftovers_are_removed(tmp_path, monkeypatch):
     from isdi.data_protection import purge_plaintext_files
 

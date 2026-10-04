@@ -127,7 +127,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_log_clientid on audit_log (clientid);
 
 -- Raw dumps kept, encrypted, when the operator asks for an evidence copy
--- (isdi/evidence.py). dump_sha256 is the hash at the time of the scan.
+-- (isdi/evidence.py). dump_sha256 is the hash at the time of the scan;
+-- unredacted is 1 when account email addresses were not blanked out.
 CREATE TABLE IF NOT EXISTS evidence (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   scanid INTEGER NOT NULL,
@@ -137,6 +138,7 @@ CREATE TABLE IF NOT EXISTS evidence (
   dump_sha256 TEXT NOT NULL,
   size INTEGER,
   data TEXT,
+  unredacted INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY(scanid) REFERENCES scan_res(id)
 );
 CREATE INDEX IF NOT EXISTS idx_evidence_scanid on evidence (scanid);
@@ -173,7 +175,7 @@ ENCRYPTED_COLUMNS = {
     "evidence": "dump_name data".split(),
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def _enc(column, value):
@@ -294,6 +296,10 @@ def _migrate(db) -> None:
         db.execute("ALTER TABLE scan_res ADD COLUMN operator TEXT")
     audit = SCHEMA_SQL[SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS audit_log") :]
     db.executescript(audit)
+    if "unredacted" not in _columns(db, "evidence"):
+        db.execute(
+            "ALTER TABLE evidence ADD COLUMN unredacted INTEGER NOT NULL DEFAULT 0"
+        )
     sql = db.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='clients_notes'"
     ).fetchone()[0]

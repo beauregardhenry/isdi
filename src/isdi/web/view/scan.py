@@ -104,19 +104,45 @@ def _job_payload(job):
     }
 
 
-def _run_live_scan(clientid, device, device_owner, ser, job_id=None, preserve=False):
+def _run_live_scan(
+    clientid,
+    device,
+    device_owner,
+    ser,
+    job_id=None,
+    preserve=False,
+    unredacted=False,
+):
     """Scan a connected phone and save the result. The raw dump is deleted
     when the scan ends, whatever the outcome: only what the scan keeps
-    (encrypted, in the database) remains."""
+    (encrypted, in the database) remains.
+
+    With preserve, an encrypted evidence copy of the dump is kept; with
+    unredacted as well, for Android, it is the adb output as received,
+    account email addresses included."""
     sc = get_device(device)
+    unredacted = bool(preserve and unredacted and sc and device == "android")
+    if unredacted:
+        sc.unredacted_serials.add(ser)
     try:
-        return _scan_and_save(clientid, device, device_owner, ser, job_id, preserve)
+        return _scan_and_save(
+            clientid, device, device_owner, ser, job_id, preserve, unredacted
+        )
     finally:
         if sc and ser:
+            sc.unredacted_serials.discard(ser)
             sc.discard_dump(ser)
 
 
-def _scan_and_save(clientid, device, device_owner, ser, job_id=None, preserve=False):
+def _scan_and_save(
+    clientid,
+    device,
+    device_owner,
+    ser,
+    job_id=None,
+    preserve=False,
+    unredacted=False,
+):
     def progress(percent, step, message):
         if job_id:
             _update_scan_job(
@@ -235,7 +261,9 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None, preserve=Fa
         from isdi import evidence
 
         progress(97, "Saving", "Keeping an encrypted evidence copy")
-        template_d["evidence_sha256"] = evidence.preserve(sc, ser, scanid, clientid)
+        template_d["evidence_sha256"] = evidence.preserve(
+            sc, ser, scanid, clientid, unredacted=unredacted
+        )
 
     apps_sorted = sorted(
         apps.items(),
@@ -261,10 +289,18 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None, preserve=Fa
     return template_d, 200
 
 
-def _scan_worker(job_id, clientid, device, device_owner, ser, preserve=False):
+def _scan_worker(
+    job_id, clientid, device, device_owner, ser, preserve=False, unredacted=False
+):
     try:
         template_d, status_code = _run_live_scan(
-            clientid, device, device_owner, ser, job_id=job_id, preserve=preserve
+            clientid,
+            device,
+            device_owner,
+            ser,
+            job_id=job_id,
+            preserve=preserve,
+            unredacted=unredacted,
         )
         if status_code == 200:
             _update_scan_job(
@@ -343,6 +379,7 @@ def scan_start():
             device_owner,
             ser,
             get_param("preserve_evidence") == "1",
+            get_param("evidence_unredacted") == "1",
         ),
         daemon=True,
     )
@@ -442,6 +479,7 @@ def scan():
         device_owner,
         ser,
         preserve=get_param("preserve_evidence") == "1",
+        unredacted=get_param("evidence_unredacted") == "1",
     )
     result_d["device_primary_user_sel"] = device_primary_user
     return render_template("main.html", **result_d), status_code

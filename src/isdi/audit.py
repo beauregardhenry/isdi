@@ -14,6 +14,13 @@ Two limits, stated in DATA_PROTECTION.md and COURT_RECORDS.md:
 - Removing the newest entries leaves a shorter chain that still verifies;
   again, an earlier export shows that entries are missing.
 
+Anchors close both gaps when kept outside the clinic's control: `isdi
+audit anchor` writes a small signed statement of the newest entry (its id,
+time and MAC; no client data), to send to someone else, such as counsel.
+`isdi audit verify --anchor FILE` then checks that the log still contains
+that entry unchanged, so a log rebuilt or cut short after the anchor was
+sent no longer matches it.
+
 Details (old and new values of an edit, app ids, ...) are client data:
 they are encrypted, and erasing a client blanks them. The entry itself, and
 a MAC of its details, remain, so the chain still verifies and shows that
@@ -137,6 +144,58 @@ def head() -> Optional[dict]:
 
     row = query_db("SELECT id, mac FROM audit_log ORDER BY id DESC LIMIT 1", one=True)
     return {"id": row["id"], "mac": row["mac"]} if row else None
+
+
+ANCHOR_FORMAT = "isdi-audit-anchor/1"
+
+
+def last_anchor() -> Optional[dict]:
+    """The newest anchor made, as recorded in the log (id and time)."""
+    from isdi.scanner.db import query_db
+
+    return query_db(
+        "SELECT id, time FROM audit_log WHERE action='audit_anchored' "
+        "ORDER BY id DESC LIMIT 1",
+        one=True,
+    )
+
+
+def make_anchor() -> dict:
+    """Record that an anchor is being made, then describe the newest entry
+    (that record). Holds no client data: ids, times and MACs only."""
+    from isdi import __version__
+    from isdi.scanner.db import query_db
+
+    record("audit_anchored")
+    newest = query_db(
+        "SELECT id, time, mac FROM audit_log ORDER BY id DESC LIMIT 1", one=True
+    )
+    return {
+        "format": ANCHOR_FORMAT,
+        "made_by": f"ISDi {__version__} (https://github.com/beauregardhenry/isdi)",
+        "made_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "entries": newest["id"],
+        "newest_entry": dict(newest),
+    }
+
+
+def check_anchor(anchor: dict) -> Optional[str]:
+    """Whether the log still holds the anchored entry, unchanged. Returns
+    the problem, or None. Run verify() too: an anchor covers the chain up
+    to its entry only if the chain itself verifies."""
+    from isdi.scanner.db import query_db
+
+    if anchor.get("format") != ANCHOR_FORMAT:
+        return "not an ISDi audit anchor"
+    want = anchor["newest_entry"]
+    row = query_db(
+        "SELECT id, time, mac FROM audit_log WHERE id=?", (want["id"],), one=True
+    )
+    if row is None:
+        return f"entry {want['id']} is no longer in the log"
+    if row["mac"] != want["mac"] or row["time"] != want["time"]:
+        return f"entry {want['id']} is not the one anchored: the log was rewritten"
+    return None
 
 
 def verify() -> dict:

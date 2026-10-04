@@ -62,7 +62,8 @@ All are stored encrypted on the clinic's computer (see
 | Scan | Time; operator's name; device type, model and OS version; a pseudonym of the serial number (HMAC); root or jailbreak findings; each app with its flags; per app, what the phone reported (install and update times, permissions, data use) |
 | Consultation notes | The clinic's intake form |
 | Audit log | Every scan, note, edit (old and new values), uninstall attempt, export and erasure, with time (UTC) and operator |
-| Evidence copy (optional) | When "Keep an encrypted evidence copy" is ticked: the raw dump of the phone, and its SHA-256 recorded at the time of the scan |
+| Evidence copy (optional) | When "Keep an encrypted evidence copy" is ticked: the raw dump of the phone, and its SHA-256 recorded at the time of the scan. For Android, either with email addresses blanked out (the default) or, if "keep it unredacted" is ticked, the output as received |
+| Audit anchors | Signed records of the audit log's newest entry, made with `isdi audit anchor` and kept outside the clinic |
 
 Exports:
 
@@ -81,8 +82,9 @@ Exports:
 |---|---|---|
 | Operator name | Who says they ran the scan | Typed by the operator at startup; ISDi has no user accounts or logins |
 | Timestamps (UTC) | When the scan or change was recorded | Taken from the computer's clock, which ISDi does not check |
-| SHA-256 of the raw dump, recorded at scan time and in the audit log | The kept dump is the one taken during the scan | For Android, the dump is ISDi's record of the phone's output, with account email addresses redacted and whitespace normalised. It is not a byte-for-byte copy of what the phone sent, and not a forensic image |
-| Audit log chained with HMAC-SHA256 | Entries were not altered, inserted or removed (`isdi audit verify`) | Anyone with the passphrase could rebuild the whole log. Removing the newest entries is detectable only against an earlier export, which records the newest entry |
+| SHA-256 of the raw dump, recorded at scan time and in the audit log | The kept dump is the one taken during the scan | For Android, the default copy is ISDi's record of the phone's output, with email addresses redacted and whitespace normalised. An unredacted copy is the output as ISDi received it from `adb`, as text. Neither is a forensic image |
+| Audit log chained with HMAC-SHA256 | Entries were not altered, inserted or removed (`isdi audit verify`) | Anyone with the passphrase could rebuild the whole log, or remove the newest entries. Both are detectable against an anchor or export made earlier, but only for entries up to the one it recorded |
+| Audit anchors (`isdi audit anchor`) | The log held a given entry, unchanged, when the anchor was made (`isdi audit verify --anchor FILE`) | Only as strong as where the anchor is kept: it must be somewhere the clinic cannot change, for example an email to counsel, which records when it arrived. Entries after the anchor are covered only by a later one |
 | Ed25519 signature on exports | Files were not changed since export, and were signed by the key with the fingerprint shown (`isdi verify`) | Anyone can sign with a key of their own: the fingerprint must match the one the clinic published beforehand (`isdi signing-key`). The key is only as trustworthy as its custody |
 | Encryption at rest | Records were not readable or changeable without the passphrase | People who know the passphrase can change records (the audit log shows changes made through ISDi) |
 
@@ -92,6 +94,13 @@ Practices that make these stronger:
   later, for example in a dated letter to counsel.
 - Export early: give counsel the signed package soon after the scan, so
   later changes would not match it.
+- Anchor the audit log regularly (`isdi audit anchor -o FILE`; `isdi run`
+  reminds you after 7 days) and send each anchor and its `.sig` file
+  outside the clinic, for example by email to counsel. An anchor holds no
+  client data: only an entry number, its time and its MAC.
+- Decide, with counsel, when an unredacted Android copy is needed. The
+  email addresses of accounts on the phone can matter, but they may belong
+  to someone other than the client.
 - Keep the passphrase to a small, named group, and run ISDi under a
   dedicated computer account.
 - Keep the computer's clock synchronised.

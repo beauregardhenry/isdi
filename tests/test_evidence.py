@@ -262,3 +262,109 @@ def test_keyfiles_from_before_signing_get_a_key_at_unlock(tmp_path):
         assert stat.S_IMODE(os.stat(keyfile).st_mode) == 0o600
     finally:
         crypto._restore(saved)
+
+
+ACCOUNT = "survivor.account@example.com"
+
+
+@pytest.fixture
+def phone_with_account(tmp_path, monkeypatch, phone):  # noqa: F811
+    """The fake phone, with a signed-in account in its dumpsys output."""
+    from tests.test_scanner_pipeline import FAKE_ADB, _fake_tool
+
+    body = FAKE_ADB.replace(
+        'sys.stdout.write("x=1\\n" * 400)',
+        f'sys.stdout.write("  Account {{name={ACCOUNT}, type=com.google}}\\n"'
+        ' + "x=1\\n" * 400)',
+    )
+    assert body != FAKE_ADB
+    monkeypatch.setattr(phone, "cli", _fake_tool(tmp_path, "adb2", body))
+    return phone
+
+
+def _scan_unredacted(app, unredacted):
+    from isdi.web.view import scan as scan_view
+
+    clientid = f"ev_{uuid.uuid4().hex[:8]}"
+    with app.test_request_context():
+        result, status = scan_view._run_live_scan(
+            clientid,
+            "android",
+            "Owner",
+            SERIAL,
+            preserve=True,
+            unredacted=unredacted,
+        )
+    assert status == 200
+    return clientid, result["scanid"]
+
+
+def test_evidence_copies_are_redacted_unless_asked(app, phone_with_account):
+    _, scanid = _scan_unredacted(app, unredacted=False)
+    with app.app_context():
+        row = evidence.evidence_for_scan(scanid)
+    assert row["unredacted"] == 0
+    raw = base64.b64decode(row["data"])
+    assert ACCOUNT.encode() not in raw and b"<email>" in raw
+
+
+def test_unredacted_evidence_copy_keeps_the_output_as_received(
+    app, phone_with_account, tmp_path
+):
+    clientid, scanid = _scan_unredacted(app, unredacted=True)
+    assert _phone_dump_files() == [], "no dump file, redacted or not, may remain"
+    assert ACCOUNT.encode() not in _database_bytes()
+    with app.app_context():
+        row = evidence.evidence_for_scan(scanid)
+        listed = evidence.list_evidence(clientid)
+        kept = [
+            e for e in audit.entries(clientid) if e["action"] == "evidence_preserved"
+        ]
+        evidence.export_package(scanid, tmp_path / "pkg", _public())
+    assert row["unredacted"] == 1 and listed[0]["unredacted"] == 1
+    assert row["dump_name"] == "android-unredacted.txt"
+    raw = base64.b64decode(row["data"])
+    assert ACCOUNT.encode() in raw and b"<email>" not in raw
+    assert kept[0]["details"]["unredacted"] is True
+
+    manifest = json.loads((tmp_path / "pkg" / "manifest.json").read_text())
+    assert manifest["raw_dump"]["unredacted"] is True
+    assert "unredacted" in manifest["raw_dump"]["note"]
+    assert (tmp_path / "pkg" / f"scan-{scanid}-android-unredacted.txt").exists()
+    assert evidence.verify(tmp_path / "pkg")["ok"]
+
+
+def test_unredacted_without_an_evidence_copy_keeps_nothing(app, phone_with_account):
+    from isdi.web.view import scan as scan_view
+
+    with app.test_request_context():
+        result, _ = scan_view._run_live_scan(
+            f"ev_{uuid.uuid4().hex[:8]}",
+            "android",
+            "Owner",
+            SERIAL,
+            preserve=False,
+            unredacted=True,
+        )
+    assert _phone_dump_files() == []
+    assert phone_with_account.unredacted_serials == set()
+    with app.app_context():
+        assert evidence.evidence_for_scan(result["scanid"]) is None
+
+
+def test_the_unredacted_dump_only_exists_during_the_scan(
+    app, phone_with_account, monkeypatch
+):
+    from isdi.scanner import blocklist, raw_path
+
+    seen = []
+    real = blocklist.app_title_and_flag
+
+    def spy(*a, **k):
+        seen.append(os.path.exists(raw_path(phone_with_account.dump_path(SERIAL))))
+        return real(*a, **k)
+
+    monkeypatch.setattr(blocklist, "app_title_and_flag", spy)
+    _scan_unredacted(app, unredacted=True)
+    assert seen and all(seen)
+    assert _phone_dump_files() == []

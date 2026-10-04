@@ -7,6 +7,7 @@ Phone scanner module - handles Android and iOS device scanning.
 - catch_err(): Takes Popen object, waits & returns string output
 """
 
+import contextlib
 import os
 import json
 import re
@@ -36,11 +37,17 @@ def _remove_dump_files(dumpf: str) -> None:
     """Delete a dump and any file derived from it (older versions cached the
     parse as .json next to the .txt)."""
     base = dumpf.rsplit(".", 1)[0]
-    for f in (dumpf, base + ".txt", base + ".json"):
+    for f in (dumpf, raw_path(dumpf), base + ".txt", base + ".json"):
         try:
             os.remove(f)
         except FileNotFoundError:
             pass
+
+
+def raw_path(dumpf: str) -> str:
+    """Where the unredacted copy of an Android dump is written, only when an
+    unredacted evidence copy was asked for. Deleted with the dump."""
+    return dumpf + ".raw"
 
 
 def purge_raw_dumps() -> int:
@@ -77,6 +84,9 @@ class AppScanner:
         self.device_type: str = dev_type
         self.cli: str = cli
         self.ddump: Optional[parse_dump.PhoneDump] = None
+        # Phones whose next dump also keeps the unredacted output, for an
+        # unredacted evidence copy (Android only).
+        self.unredacted_serials: set = set()
 
         # Initialize database connection once
         if AppScanner.app_info_conn is None:
@@ -413,6 +423,8 @@ class AndroidScanner(AppScanner):
         if os.path.exists(json_cache):
             os.unlink(json_cache)
         self.ddump = None
+        # Only for an unredacted evidence copy: the adb output as received.
+        keep_raw = serial in self.unredacted_serials
 
         logging.info("Dumping android device %s...", _pseudonym(serial))
 
@@ -448,25 +460,36 @@ class AndroidScanner(AppScanner):
                 return ""
 
         try:
-            with open(dumpf, "w", encoding="utf-8", errors="replace") as f:
-                for svc in services:
-                    f.write(f"\nDUMP OF SERVICE {svc}\n")
-                    out = _run("shell", "dumpsys", *svc.split())
-                    f.write(parse_dump.normalize_dumpsys(parse_dump.redact_emails(out)))
+            raw = (
+                open(raw_path(dumpf), "w", encoding="utf-8", errors="replace")
+                if keep_raw
+                else contextlib.nullcontext()
+            )
+            with open(dumpf, "w", encoding="utf-8", errors="replace") as f, raw as r:
 
-                f.write("\nDUMP OF SERVICE net_stats\n")
-                f.write(
-                    _run(
-                        "shell", "cat", "/proc/net/xt_qtaguid/stats", timeout=30
-                    ).replace(" ", ",")
-                )
+                def write(header, out, processed):
+                    # Email addresses are redacted from every section.
+                    f.write(header + parse_dump.redact_emails(processed))
+                    if r:
+                        r.write(header + out)
+
+                for svc in services:
+                    out = _run("shell", "dumpsys", *svc.split())
+                    write(
+                        f"\nDUMP OF SERVICE {svc}\n",
+                        out,
+                        parse_dump.normalize_dumpsys(out),
+                    )
+
+                out = _run("shell", "cat", "/proc/net/xt_qtaguid/stats", timeout=30)
+                write("\nDUMP OF SERVICE net_stats\n", out, out.replace(" ", ","))
 
                 for ns in ("secure", "system", "global"):
-                    f.write(f"\nDUMP OF SETTINGS {ns}\n")
-                    f.write(
-                        parse_dump.normalize_dumpsys(
-                            _run("shell", "settings", "list", ns, timeout=30)
-                        )
+                    out = _run("shell", "settings", "list", ns, timeout=30)
+                    write(
+                        f"\nDUMP OF SETTINGS {ns}\n",
+                        out,
+                        parse_dump.normalize_dumpsys(out),
                     )
 
             size = os.path.getsize(dumpf)

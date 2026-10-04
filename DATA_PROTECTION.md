@@ -21,7 +21,7 @@ compliant with either.
 | Device serials | database | pseudonymised (HMAC-SHA256 with a secret key) |
 | Client ids (`YYYYMMDD_NNN`), device type (android/ios), row ids, timestamps | database | **not encrypted**: queries need them. They reveal when consultations and scans took place, and how many. |
 | Raw phone dumps | dump directory | exist only while the phone is scanned (see below) |
-| Evidence copies (only when "Keep an encrypted evidence copy" is ticked) | database | encrypted, with the SHA-256 recorded at the scan |
+| Evidence copies (only when "Keep an encrypted evidence copy" is ticked) | database | encrypted, with the SHA-256 recorded at the scan. Android copies have account email addresses blanked out, unless "keep it unredacted" is also ticked |
 | Encryption keys | `datakey.json` in the config directory | encrypted with the passphrase and the recovery key |
 | Audit log: who did what, when (scans, notes and their edits, uninstalls, exports, erasures) | database | entries chained with HMAC-SHA256; details encrypted, and blanked when a client is erased |
 | Log file `isdi.log` | cache directory | no serials, device output, app lists or email addresses |
@@ -58,6 +58,13 @@ compliant with either.
   the dump is also kept, encrypted, for use in court. See
   [COURT_RECORDS.md](COURT_RECORDS.md). The copy is deleted with the client
   (`isdi erase`) or the device's data.
+- Android dumps have every email address blanked out. For an evidence copy,
+  the operator can also tick "keep it unredacted": the copy is then the
+  phone's output as received, with the email addresses of the accounts on
+  the phone, which can matter in court. That output is written to the dump
+  directory during the scan, like the dump, and deleted with it. Keep only
+  what the case needs: an unredacted copy holds more personal data, about
+  the client and possibly others.
 - Screenshots from the privacy checks are only sent to the browser, never
   saved.
 - The parser no longer caches dumps as JSON.
@@ -109,8 +116,10 @@ changes to ISDi.
     audit entry, but it is the operator's own statement, not a login.
   - The audit log (`isdi audit verify`, `isdi audit show`) records actions
     and detects altered, inserted or removed entries. Someone with the
-    passphrase could still rebuild the whole log; an earlier export, which
-    records the newest entry, would then no longer match.
+    passphrase could still rebuild the whole log; an anchor sent off-site
+    earlier (`isdi audit anchor`), or an earlier export, would then no
+    longer match. `isdi run` reminds you when the last anchor is more than
+    7 days old.
   - HIPAA's unique user identification requirement (45 CFR
     164.312(a)(2)(i)) is therefore still not met by ISDi itself, and the
     audit log covers only part of its audit-control requirement (164.312(b)).
