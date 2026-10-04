@@ -177,7 +177,15 @@ class Config:
         # Data directories
         self.scans_dir = self.dirs["data"] / "scans"
         self.reports_dir = self.dirs["data"] / "reports"
-        self.dumps_dir = self.dirs["data"] / "dumps"
+        # Raw dumps hold client data while a phone is scanned: keep them in
+        # private storage. On Termux the data dir is shared storage, which
+        # other apps with storage permission can read, so dumps go to the
+        # private local_data dir instead (the same dir elsewhere).
+        self.dumps_dir = self.dirs["local_data"] / "dumps"
+        # Where older versions wrote dumps; anything left there is deleted.
+        self.legacy_dumps_dirs = [
+            d for d in (self.dirs["data"] / "dumps",) if d != self.dumps_dir
+        ]
         self.phone_dumps_dir = self.dirs["data"] / "phone_dumps"
 
         # Config directory

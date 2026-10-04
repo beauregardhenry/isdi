@@ -19,6 +19,7 @@ stalkerware (see the [releases](https://github.com/beauregardhenry/isdi/releases
 It is distributed through GitHub releases, not PyPI: the `isdi-scanner`
 package on PyPI is upstream's. When the stalkerware blocklist changes, a
 patch release is published, so upgrade regularly to detect newly listed apps.
+What each release changes for staff is in [CHANGELOG.md](CHANGELOG.md).
 
 Client data is encrypted at rest and raw phone dumps are not kept unless an
 evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
@@ -133,6 +134,8 @@ isdi run --debug                  # Debug mode (verbose logging)
 isdi change-passphrase            # New passphrase (--recovery if it is lost)
 isdi user add USERNAME            # Create an account (also: list, disable,
                                   #   enable, reset-password)
+isdi backup -o FILE               # Encrypted backup of all ISDi data
+isdi restore FILE                 # Restore it (here or on a new computer)
 isdi export CLIENTID -o file.json # Everything stored about a client, decrypted
 isdi erase CLIENTID               # Delete everything stored about a client
 isdi audit verify                 # Check the audit log for tampering

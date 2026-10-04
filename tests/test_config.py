@@ -104,7 +104,7 @@ def test_existing_db_is_not_redownloaded(cache_config, tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run_cli(monkeypatch, passphrase):
+def run_cli(app, monkeypatch, passphrase):
     """Invoke `isdi run --test` without starting a server; return
     (output, host)."""
     from flask import Flask
@@ -133,11 +133,22 @@ def test_cli_binds_to_localhost_by_default(run_cli):
     assert "other machines on this network" not in output
 
 
-def test_cli_warns_when_exposed_to_network(run_cli):
-    output, host = run_cli("--host", "0.0.0.0")
-    assert host == "0.0.0.0"
-    assert "other machines on this network can reach ISDi" in output
-    assert "not encrypted (no HTTPS)" in output
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.168.1.20", "isdi.example"])
+def test_cli_refuses_to_listen_on_the_network(monkeypatch, passphrase, host):
+    from isdi import cli
+
+    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
+    res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", "--host", host])
+    assert res.exit_code == 1
+    assert f"Refusing to listen on {host}" in res.output
+
+
+@pytest.mark.parametrize(
+    "host", ["127.0.0.1", "127.0.0.2", "::1", "[::1]", "localhost"]
+)
+def test_cli_accepts_loopback_addresses(run_cli, host):
+    output, bound = run_cli("--host", host)
+    assert bound == host
 
 
 def test_cli_reports_package_version():

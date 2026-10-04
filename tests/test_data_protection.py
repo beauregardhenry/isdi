@@ -288,3 +288,43 @@ def test_dump_details_survive_values_json_cannot_store(phone):
         phone.ddump = None
     assert sorted(details["x"]["perms"]) == ["a", "b"]
     assert details["x"]["when"] == "2026-01-02"
+
+
+def test_dumps_are_kept_in_private_storage_and_old_shared_ones_deleted(
+    tmp_path, monkeypatch
+):
+    """On Termux the data dir is shared storage: dumps must not go there."""
+    from isdi import config as config_mod
+    from isdi.data_protection import purge_plaintext_files
+
+    monkeypatch.setenv("PREFIX", "/data/data/com.termux/files/usr")
+    monkeypatch.setattr(config_mod.Path, "home", lambda: tmp_path)
+    dirs = config_mod.get_platform_dirs()
+    assert "storage" in dirs["data"].parts and "storage" not in dirs["local_data"].parts
+
+    cfg = get_config()
+    monkeypatch.setattr(cfg, "dirs", dirs)
+    cfg.setup_paths()
+    try:
+        assert cfg.dumps_dir == dirs["local_data"] / "dumps"
+        assert "storage" not in cfg.dumps_dir.parts
+        shared = dirs["data"] / "dumps"
+        assert cfg.legacy_dumps_dirs == [shared]
+        shared.mkdir(parents=True, exist_ok=True)
+        (shared / "abc_android.txt").write_text("raw dump")
+        monkeypatch.setattr(cfg, "DUMP_DIR", str(cfg.dumps_dir))
+        from isdi import scanner
+
+        monkeypatch.setattr(scanner.cfg, "DUMP_DIR", str(cfg.dumps_dir))
+        assert purge_plaintext_files(cfg)["dumps"] == 1
+        assert list(shared.iterdir()) == []
+    finally:
+        monkeypatch.undo()
+        get_config().setup_paths()
+
+
+def test_elsewhere_dumps_stay_where_they_were():
+    cfg = get_config()
+    assert cfg.dirs["data"] == cfg.dirs["local_data"]
+    assert cfg.dumps_dir == cfg.dirs["data"] / "dumps"
+    assert cfg.legacy_dumps_dirs == []

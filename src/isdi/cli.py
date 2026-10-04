@@ -62,12 +62,34 @@ def _anchor_reminder(last, now=None):
     )
 
 
+BACKUP_REMINDER_DAYS = 7
+
+
+def _backup_reminder(last, now=None):
+    """A reminder to back up, if the last backup is old."""
+    from datetime import datetime, timezone
+
+    now = now or datetime.now(timezone.utc)
+    if last:
+        days = (now - datetime.fromisoformat(last["time"])).days
+        if days < BACKUP_REMINDER_DAYS:
+            return None
+        when = f"{days} days ago"
+    else:
+        when = "never"
+    return (
+        f"⚠ The last backup was made {when}. Run `isdi backup -o FILE` and "
+        "keep the file away from this computer."
+    )
+
+
 @cli.command()
 @click.option(
     "--host",
     default=None,
-    help="Host to bind to (default: 127.0.0.1). Binding to another address "
-    "exposes scan results and device controls to the network.",
+    help="Loopback address to bind to (default: 127.0.0.1). Other addresses "
+    "are refused: ISDi serves plain HTTP and must not be reachable from the "
+    "network.",
 )
 @click.option("--port", type=int, default=None, help="Port to bind to (default: 6200)")
 @click.option("--debug/--no-debug", default=False, help="Enable debug mode")
@@ -91,20 +113,18 @@ def run(host, port, debug, test_mode, no_browser):
     config_started = perf_counter()
     config = get_config(env)
     click.echo(f"⏱ Config init: {perf_counter() - config_started:.2f}s")
-    _unlock(config)
 
-    # Override from command line
     final_host = host or config.host
     final_port = port or config.port
-    if final_host not in ("127.0.0.1", "localhost", "::1"):
-        click.secho(
-            f"⚠ Listening on {final_host}: other machines on this network can "
-            "reach ISDi. Anyone with an account can view scan data and control "
-            "connected devices, and the connection is not encrypted (no HTTPS).",
-            fg="red",
-            err=True,
+    if not _is_loopback(final_host):
+        # Plain HTTP: passwords and client data would cross the network in
+        # the clear, and anyone on it could try to sign in.
+        raise click.ClickException(
+            f"Refusing to listen on {final_host}: ISDi only runs on this "
+            "computer (127.0.0.1, ::1 or localhost)."
         )
-    browser_host = "127.0.0.1" if final_host in ("0.0.0.0", "::") else final_host
+    browser_host = final_host
+    _unlock(config)
 
     # Create app
     app_started = perf_counter()
@@ -117,8 +137,11 @@ def run(host, port, debug, test_mode, no_browser):
             "session_started", details={"isdi_version": __version__, "env": env}
         )
         _ensure_an_account()
-        reminder = _anchor_reminder(audit.last_anchor())
-    if reminder:
+        reminders = [
+            _anchor_reminder(audit.last_anchor()),
+            _backup_reminder(audit.last_action("backup_made")),
+        ]
+    for reminder in filter(None, reminders):
         click.secho(reminder, fg="yellow", err=True)
 
     # Open browser after short delay
@@ -153,6 +176,17 @@ def run(host, port, debug, test_mode, no_browser):
         ),  # Use stat-based reloader for better reliability
         extra_files=None,
     )
+
+
+def _is_loopback(host: str) -> bool:
+    import ipaddress
+
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
 
 
 def _ensure_an_account():
@@ -373,6 +407,150 @@ def erase(clientid, operator):
         "✓ Deleted "
         + ", ".join(f"{n} {table}" for table, n in counts.items() if n)
         + " row(s)."
+    )
+
+
+@cli.command("backup")
+@click.option(
+    "-o",
+    "--output",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="File to write the backup to (a new file).",
+)
+@_operator_option
+def backup_cmd(output, operator):
+    """Write an encrypted backup of all ISDi data to one file.
+
+    Restoring it (`isdi restore`) needs the passphrase or the recovery key
+    that is valid now. Keep backups away from this computer."""
+    import os
+
+    from isdi import audit, backup
+    from isdi.config import get_config
+
+    config = get_config()
+    if os.path.exists(output):
+        raise click.ClickException(f"{output} already exists")
+    with _data(config, operator):
+        audit.record("backup_made", details={"file": os.path.basename(output)})
+        summary = backup.write(output, config.database_path, config.keyfile)
+    click.echo(
+        f"✓ Wrote {output} ({summary['size']} bytes, SHA-256 {summary['sha256']})."
+    )
+    click.echo(
+        "  It is encrypted. Keep it away from this computer, with the "
+        "recovery key stored separately."
+    )
+
+
+@cli.command("restore")
+@click.argument("path", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--recovery",
+    is_flag=True,
+    help="Unlock the backup with the recovery key instead of the passphrase.",
+)
+@click.option(
+    "--replace",
+    is_flag=True,
+    help="Replace the data already on this computer (kept as a copy).",
+)
+@_operator_option
+def restore_cmd(path, recovery, replace, operator):
+    """Restore an encrypted backup made with `isdi backup`.
+
+    Asks for the passphrase (or, with --recovery, the recovery key) that
+    was valid when the backup was made. If ISDi already has data here,
+    --replace is needed; the current files are kept next to the restored
+    ones, renamed."""
+    import json
+    import os
+    import shutil
+    import tempfile
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    from isdi import backup, crypto
+    from isdi.config import get_config
+
+    config = get_config()
+    database, keyfile = Path(config.database_path), Path(config.keyfile)
+    existing = [p for p in (database, keyfile) if p.exists()]
+    if existing and not replace:
+        raise click.ClickException(
+            "ISDi already has data on this computer. Use --replace to replace "
+            "it (the current files are kept, renamed)."
+        )
+    try:
+        header = backup.read_header(path)
+    except (OSError, ValueError) as e:
+        raise click.ClickException(f"Cannot read {path}: {e}")
+    click.echo(f"Backup made {header['made_at']}.")
+
+    saved = crypto._state()
+    workdir = Path(tempfile.mkdtemp(dir=keyfile.parent, prefix=".restore-"))
+    try:
+        tmp_keyfile = workdir / "datakey.json"
+        tmp_keyfile.write_text(json.dumps(header["keyfile"]))
+        os.chmod(tmp_keyfile, 0o600)
+        secret = (
+            {"recovery_key": click.prompt("Recovery key")}
+            if recovery
+            else {"passphrase": click.prompt("Passphrase", hide_input=True)}
+        )
+        try:
+            crypto.unlock(tmp_keyfile, **secret)
+            db_bytes = backup.decrypt(path)
+            backup.check_database(db_bytes, workdir)
+        except crypto.UnlockError:
+            raise click.ClickException(
+                "That is not the passphrase or recovery key of this backup."
+            )
+        except backup.BackupError as e:
+            raise click.ClickException(f"Cannot restore: {e}")
+
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        for p in existing:
+            p.rename(p.with_name(f"{p.name}.before-restore-{stamp}"))
+            click.echo(
+                f"  Kept the current {p.name} as {p.name}.before-restore-{stamp}"
+            )
+        database.parent.mkdir(parents=True, exist_ok=True)
+        tmp_db = workdir / "database.db"
+        fd = os.open(tmp_db, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(db_bytes)
+        shutil.move(str(tmp_db), database)
+        shutil.move(str(tmp_keyfile), keyfile)
+
+        # The restore is part of the records' history: log it in them.
+        import sqlite3
+
+        from isdi import audit
+        from isdi.scanner.db import make_dicts
+
+        _set_operator(operator)
+        conn = sqlite3.connect(database)
+        conn.row_factory = make_dicts
+        try:
+            audit.record(
+                "restored_from_backup",
+                details={
+                    "file": os.path.basename(path),
+                    "backup_made_at": header["made_at"],
+                    "replaced_existing_data": bool(existing),
+                },
+                conn=conn,
+            )
+        finally:
+            conn.close()
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+        crypto._restore(saved)
+    click.echo(
+        f"✓ Restored the data from {path}. Start ISDi with `isdi run`; it asks "
+        "for the passphrase that was valid when the backup was made."
     )
 
 

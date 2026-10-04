@@ -120,13 +120,15 @@ def record(
     clientid: Optional[str] = None,
     scanid: Optional[int] = None,
     details: Optional[dict] = None,
+    conn=None,
 ) -> int:
-    """Append an entry; returns its id."""
+    """Append an entry; returns its id. conn: a database other than the
+    app's (with the dict row factory), e.g. one just restored."""
     from isdi.scanner.db import get_db
 
     # Stored as JSON: MAC the same form that will be read back.
     details = json.loads(json.dumps(details, default=str))
-    db = get_db()
+    db = conn or get_db()
     with _lock:
         last = db.execute("SELECT id, mac FROM audit_log ORDER BY id DESC LIMIT 1")
         last = last.fetchone()
@@ -182,15 +184,20 @@ def head() -> Optional[dict]:
 ANCHOR_FORMAT = "isdi-audit-anchor/1"
 
 
-def last_anchor() -> Optional[dict]:
-    """The newest anchor made, as recorded in the log (id and time)."""
+def last_action(action: str) -> Optional[dict]:
+    """The newest entry for an action (id and time), or None."""
     from isdi.scanner.db import query_db
 
     return query_db(
-        "SELECT id, time FROM audit_log WHERE action='audit_anchored' "
-        "ORDER BY id DESC LIMIT 1",
+        "SELECT id, time FROM audit_log WHERE action=? ORDER BY id DESC LIMIT 1",
+        (action,),
         one=True,
     )
+
+
+def last_anchor() -> Optional[dict]:
+    """The newest anchor made, as recorded in the log (id and time)."""
+    return last_action("audit_anchored")
 
 
 def make_anchor() -> dict:

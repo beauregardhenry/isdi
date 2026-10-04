@@ -51,6 +51,9 @@ your compliance officer to decide.
   cookie from working.
 - Sign-ins (failed ones too), sign-outs and account changes are in the
   audit log.
+- ISDi only listens on this computer (127.0.0.1). It serves plain HTTP, so
+  `isdi run` refuses any other address: passwords and client data never
+  cross the network.
 
 ### Encryption
 
@@ -168,9 +171,11 @@ changes to ISDi.
   scan. **Use full-disk encryption** (FileVault, BitLocker, LUKS, or the
   phone's own encryption on Termux): it is what protects anything the file
   system leaves behind, and a lost or stolen laptop.
-- **On Termux, the data directory is on shared storage**, where other apps
-  with storage permission can read files. The database is encrypted, but
-  raw dumps there are not, during a scan.
+- **On Termux**, the database and the raw dumps of a scan are kept in
+  Termux's private storage. Versions before 1.6 wrote dumps to shared
+  storage, where other apps with storage permission can read them; any
+  left there are deleted at the next start. Exports you write with `-o`
+  go where you say: keep them out of shared storage.
 - **`ISDI_PASSPHRASE`.** Setting it skips the passphrase prompt, but other
   programs running as the same user can read it. Avoid it outside testing.
 - **Breach notification.** Under GDPR Art. 34(3)(a), notifying the people
@@ -185,6 +190,11 @@ changes to ISDi.
   need a data protection impact assessment (Art. 35).
 - Keep the recovery key offline and with someone accountable, separate from
   the computer.
-- Use full-disk encryption on every computer that runs ISDi, and keep
-  backups of the database encrypted as well.
+- Back up regularly with `isdi backup -o FILE` (`isdi run` reminds you
+  after 7 days) and keep the backups away from the computer. A backup is
+  encrypted: restoring it needs the recovery key, or the passphrase that
+  was valid when the backup was made (changing the passphrase does not
+  change the recovery key). Test a restore (`isdi restore`) on another
+  computer now and then.
+- Use full-disk encryption on every computer that runs ISDi.
 - Decide who may run ISDi, and how exports are handed over and deleted.
