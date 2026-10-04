@@ -21,7 +21,7 @@ from isdi.scanner.db import (
 
 config = get_config()
 
-_SCAN_JOBS = {}
+_SCAN_JOBS: dict = {}
 _SCAN_JOBS_LOCK = threading.Lock()
 # Finished jobs hold full scan results in memory; drop them after this long.
 _SCAN_JOB_TTL = 60 * 60

@@ -125,7 +125,7 @@ class AndroidScanner(AppScanner):
         s = catch_err(
             run_command(cmd, cli=self.cli, serial=shlex.quote(serialno)), cmd=cmd
         )
-        device_owner_apps = set()
+        device_owner_apps: set = set()
         if not s:
             return device_owner_apps
         for line in s.splitlines():

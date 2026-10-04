@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from isdi.config import get_config
 
+from . import parse_dump
 from .runcmd import catch_err, run_command
 
 cfg = get_config()
@@ -69,7 +70,7 @@ class IosScanner(AppScanner):
             return []
 
         result = self._load_dump(serialno)
-        if not result or not self.ddump:
+        if not result or not isinstance(self.ddump, parse_dump.IosDump):
             logging.error("Failed to load iOS dump")
             return []
 
@@ -77,7 +78,9 @@ class IosScanner(AppScanner):
 
     def get_app_titles(self, serialno: str) -> Dict[str, str]:
         """Get iOS app titles as dict: {appId: title}."""
-        return self.ddump.installed_apps_titles() if self.ddump else {}
+        if not isinstance(self.ddump, parse_dump.IosDump):
+            return {}
+        return self.ddump.installed_apps_titles()
 
     def device_info(self, serial: str) -> Tuple[str, Dict]:
         """Get iOS device info. Starts a scan, so always reads the phone."""
@@ -85,7 +88,7 @@ class IosScanner(AppScanner):
             return "Unknown iOS Device", {}
 
         self._load_dump(serial)
-        if self.ddump:
+        if isinstance(self.ddump, parse_dump.IosDump):
             return self.ddump.device_info()
         return "Unknown iOS Device", {}
 
@@ -93,7 +96,7 @@ class IosScanner(AppScanner):
         """Check if iOS device is jailbroken."""
         from isdi.scanner.root_check import check_ios_jailbreak
 
-        apps = self.ddump.appinfo if self.ddump else []
+        apps = self.ddump.appinfo if isinstance(self.ddump, parse_dump.IosDump) else []
         return check_ios_jailbreak(serial, self.cli, apps)
 
     def uninstall(self, serial: str, appid: str) -> bool:

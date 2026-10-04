@@ -154,7 +154,7 @@ def change_password():
                 error = str(e)
             else:
                 # Other sessions of this account end; this one continues.
-                session["token"] = users.session_token(users.get(user["id"]))
+                session["token"] = users.session_token(users.require(user["username"]))
                 message = "Password changed."
     return (
         render_template(

@@ -40,6 +40,7 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "black==26.5.1",  # keep in sync with .github/workflows/tests.yml
+    "mypy==2.4.0",  # likewise
 ]
 
 [project.urls]
@@ -66,6 +67,26 @@ isdi = [
 testpaths = ["tests"]
 xfail_strict = true
 addopts = "--strict-markers"
+
+[tool.mypy]
+files = ["src/isdi"]
+ignore_missing_imports = true
+
+# Keys, accounts, the audit log, evidence and backups: also check the
+# bodies of functions without annotations.
+[[tool.mypy.overrides]]
+module = [
+    "isdi.crypto",
+    "isdi.users",
+    "isdi.audit",
+    "isdi.evidence",
+    "isdi.backup",
+    "isdi.data_protection",
+    "isdi.web.access",
+    "isdi.web.view.auth",
+    "isdi.cli.keys",
+]
+check_untyped_defs = true
 
 [tool.coverage.run]
 source = ["isdi"]

@@ -398,7 +398,7 @@ class AppScanner:
         """Get human-readable device info string and dict."""
         return "", {}
 
-    def isrooted(self, serial: str) -> Tuple[bool, List[str]]:
+    def isrooted(self, serial: str) -> Tuple[Optional[bool], List[str]]:
         """Check if device is rooted/jailbroken."""
         return False, []
 

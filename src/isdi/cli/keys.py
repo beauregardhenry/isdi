@@ -2,7 +2,7 @@
 
 import click
 
-from isdi.cli import _data, _operator_option, _set_operator, cli
+from isdi.cli.common import _data, _operator_option, _set_operator, cli
 
 
 @cli.command("change-passphrase")

@@ -33,7 +33,7 @@ import hmac
 import json
 import threading
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, Optional, cast
 
 from isdi import crypto
 
@@ -75,7 +75,7 @@ _UNSET = object()
 def operator() -> Optional[str]:
     name = getattr(_acting, "name", _UNSET)
     if name is not _UNSET:
-        return name
+        return cast(Optional[str], name)
     try:
         from flask import g, has_request_context
 
@@ -132,7 +132,7 @@ def record(
     with _lock:
         last = db.execute("SELECT id, mac FROM audit_log ORDER BY id DESC LIMIT 1")
         last = last.fetchone()
-        row = {
+        row: Dict[str, Any] = {
             "id": (last["id"] + 1) if last else 1,
             "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "operator": operator(),
@@ -160,7 +160,7 @@ def record(
             ),
         )
         db.commit()
-    return row["id"]
+    return int(row["id"])
 
 
 def entries(clientid: Optional[str] = None) -> list:

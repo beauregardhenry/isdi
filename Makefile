@@ -11,7 +11,7 @@ help:
 	@echo "  make install          - Install the package in development mode"
 	@echo "  make install-dev      - Install with development dependencies"
 	@echo "  make test             - Run tests"
-	@echo "  make lint             - Run linter (black format check)"
+	@echo "  make lint             - Check formatting (black) and types (mypy)"
 	@echo "  make format           - Format code with black"
 	@echo "  make build            - Build distribution packages"
 	@echo "  make upload-test      - Upload to TestPyPI (requires .pypirc)"
@@ -32,6 +32,7 @@ test:
 
 lint:
 	$(PYTHON) -m black --check src/ tests/
+	$(PYTHON) -m mypy
 
 format:
 	$(PYTHON) -m black src/ tests/
