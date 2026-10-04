@@ -24,6 +24,11 @@ Client data is encrypted at rest and raw phone dumps are not kept unless an
 evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
 For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md).
 
+**Upgrading to 1.5:** every page now needs a sign-in. The first time ISDi
+starts after the upgrade, it asks for a first account (username, full
+name, password) in the terminal; add one for each other person with
+`isdi user add`. ISDi no longer asks for a name at startup.
+
 To report a security problem, see [SECURITY.md](SECURITY.md). For anything
 else, open an [issue](https://github.com/beauregardhenry/isdi/issues).
 
@@ -71,17 +76,17 @@ See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Android device setup.
 ### Option 1: Install a release (Recommended)
 
 Install the latest release of this fork straight from GitHub (replace
-`v1.4.0` with the newest tag on the
+`v1.5.0` with the newest tag on the
 [releases page](https://github.com/beauregardhenry/isdi/releases)):
 
 ```bash
-pip install "git+https://github.com/beauregardhenry/isdi@v1.4.0"
+pip install "git+https://github.com/beauregardhenry/isdi@v1.5.0"
 ```
 
 Or, without git, install the wheel attached to the release:
 
 ```bash
-pip install https://github.com/beauregardhenry/isdi/releases/download/v1.4.0/isdi_scanner-1.4.0-py3-none-any.whl
+pip install https://github.com/beauregardhenry/isdi/releases/download/v1.5.0/isdi_scanner-1.5.0-py3-none-any.whl
 ```
 
 > **Note:** this fork uses the same package name, `isdi-scanner`, as
