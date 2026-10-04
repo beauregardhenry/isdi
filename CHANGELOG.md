@@ -22,6 +22,14 @@ have no section here.
   "Delete" on a device removes only the current client's scans of it.
   Two people starting new clients at the same time no longer get the same
   client id.
+- An app's details page now always shows what that scan recorded. Before,
+  if the phone had been scanned again later (for any client), it showed
+  the later scan's details.
+- If a command to the phone fails, ISDi no longer records the error text
+  as the phone's answer (for example as its model name).
+- The nickname typed for a phone is kept on the page after a scan.
+- iPhone app details no longer show empty "jailbroken" and "phone_kind"
+  rows. (Jailbreak checks are made per phone, at the top of the scan.)
 - **Termux:** raw phone dumps are now kept in Termux's private storage
   during a scan, not in shared storage. Any left in shared storage by an
   older version are deleted at the next start.

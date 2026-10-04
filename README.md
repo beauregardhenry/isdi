@@ -233,7 +233,6 @@ to the application. I don't know how to get install date, resource usage, etc.
 
 - **`src/isdi/scripts/`** - Shell scripts for device interaction
   - `ios_scan.sh` - iOS device dump (Android dumps are taken in Python)
-  - `ios_mount_linux.sh` - Mounts an iPhone on Linux (not yet wired in)
 
 - **`src/isdi/data/`** - Static data and reference files
   - `app-flags.csv` - App classification metadata

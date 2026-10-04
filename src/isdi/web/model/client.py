@@ -40,17 +40,12 @@ class Client(sa.Model):
         "validators": InputRequired() if req == "r" else "",
     }
     id = sa.Column(sa.Integer, primary_key=True)
-    created_at = sa.Column(
-        sa.DateTime,
-        # default=datetime.now()
-        # TODO: timestamp off by 4 hours? investigate.
-        default=sa.func.current_timestamp(),
-        # server_default=sa.func.current_timestamp()
-        # server_default=str(datetime.now()),
-    )
+    # In UTC (SQLite's CURRENT_TIMESTAMP), not local time: in US Eastern
+    # daylight time it reads 4 hours ahead.
+    created_at = sa.Column(sa.DateTime, default=sa.func.current_timestamp())
 
-    # TODO: link to session ClientID for scans, with foreignkey? across different db?
-    # try using fieldstudy.db, creating table not dropping existing things. use ~test.
+    # Links the notes to the client's scans (scan_res.clientid) in the same
+    # database.
     clientid = sa.Column(sa.String(100), nullable=False, **_d)
 
     consultant_initials = sa.Column(

@@ -101,3 +101,16 @@ def test_scan_page_reports_bad_input(client, query, message):
 )
 def test_root_status_text(rooted, reasons, expected):
     assert expected in scan_view._isrooted_html(rooted, reasons)
+
+
+def test_the_nickname_is_kept_after_a_form_scan(client, no_csrf):
+    r = client.post(
+        "/scan",
+        data={
+            "device": "test",
+            "device_owner": "Kept Nickname",
+            "devid": "testdevice1",
+        },
+    )
+    assert r.status_code == 200
+    assert 'value="Kept Nickname"' in r.get_data(as_text=True)

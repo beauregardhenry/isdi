@@ -145,3 +145,18 @@ def test_live_scan_results_link_by_id_only(app, client, no_csrf):
     assert client.get(details[0]).status_code == 200
     for link in links:
         assert "testdevice1" not in link and "Nickname-9c" not in link
+
+
+def test_details_come_from_the_scan_in_the_url(app, client, no_phone, tmp_path):
+    """The same phone scanned again (for another client, say) must not
+    change what an earlier scan's details page shows."""
+    serial = get_config().hmac_serial("SAVED-PHONE-4")
+    first = _store_scan(app, serial, _details(tmp_path))
+    later_details = _details(
+        tmp_path, FIXTURE.read_text().replace("versionName=2.1", "versionName=9.9")
+    )
+    assert later_details["com.example.spy"] != _details(tmp_path)["com.example.spy"]
+    _store_scan(app, serial, later_details)
+
+    html = client.get(f"/scan/{first}/app/{_row(app, first)}").get_data(as_text=True)
+    assert "2.1" in html and "9.9" not in html

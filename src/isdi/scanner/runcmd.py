@@ -53,13 +53,13 @@ def is_valid_hmac_serial(serial) -> bool:
     return isinstance(serial, str) and _HMAC_SERIAL_RE.fullmatch(serial) is not None
 
 
-# TODO: @sam the catch_err should only catch the os level errors, not
-# application level errors. They should go to particular application specific
-# handling.
 def catch_err(
     p: subprocess.Popen[bytes], cmd="", msg_on_err="", time=10, large_output=False
 ) -> str:
-    """TODO: Therer are two different types. homogenize them"""
+    """Wait for a command and return its output, or "" if it failed (the
+    error is logged, never returned: callers treat the result as the
+    phone's output, so an error message would be stored as, say, the
+    device model). p.returncode tells callers that need it why."""
     try:
         large_output_var = b""
         if large_output:
@@ -86,7 +86,7 @@ def catch_err(
                 print(e)
                 return ""
             logging.warning(redact(m))
-            return m
+            return ""
         else:
             if large_output:
                 s = large_output_var.decode()

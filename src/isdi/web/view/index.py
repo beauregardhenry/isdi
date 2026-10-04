@@ -8,13 +8,14 @@ import os
 
 config = get_config()
 
-# FIXME: why are we scanning devices before people clicked on scan now?
+# One scanner per kind of phone, shared by all requests. Creating them does
+# not touch any phone; the home page lists the connected phones (adb and
+# usbmuxd) so the operator can pick one before scanning.
 android = AndroidScanner()
 ios = IosScanner()
 test = TestScanner()
 
 
-# all in all, this particular section has a terrible code smell...
 def get_device(k):
     return {"android": android, "ios": ios, "test": test}.get(k)
 
@@ -40,7 +41,6 @@ def index():
         platform=config.PLATFORM,
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,
-        device_primary_user=config.DEVICE_PRIMARY_USER,
         task="home",
         devices={
             "Android": android.devices(),
