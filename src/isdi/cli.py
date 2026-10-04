@@ -41,6 +41,27 @@ def _set_operator(name):
     audit.set_operator(name)
 
 
+ANCHOR_REMINDER_DAYS = 7
+
+
+def _anchor_reminder(last, now=None):
+    """A reminder to anchor the audit log, if the last anchor is old."""
+    from datetime import datetime, timezone
+
+    now = now or datetime.now(timezone.utc)
+    if last:
+        days = (now - datetime.fromisoformat(last["time"])).days
+        if days < ANCHOR_REMINDER_DAYS:
+            return None
+        when = f"{days} days ago"
+    else:
+        when = "never"
+    return (
+        f"⚠ The audit log was last anchored {when}. Run `isdi audit anchor -o "
+        "FILE` and send the file outside the clinic (see COURT_RECORDS.md)."
+    )
+
+
 @cli.command()
 @click.option(
     "--host",
@@ -96,6 +117,9 @@ def run(host, port, debug, test_mode, no_browser, operator):
         audit.record(
             "session_started", details={"isdi_version": __version__, "env": env}
         )
+        reminder = _anchor_reminder(audit.last_anchor())
+    if reminder:
+        click.secho(reminder, fg="yellow", err=True)
 
     # Open browser after short delay
     if not no_browser and not debug and not test_mode:
@@ -323,6 +347,7 @@ def evidence_list(clientid, operator):
         click.echo(
             f"scan {r['scanid']}  client {r['clientid']}  kept {r['created']}  "
             f"{r['size']} bytes  sha256 {r['dump_sha256']}"
+            + ("  unredacted" if r["unredacted"] else "")
         )
 
 
@@ -402,16 +427,52 @@ def audit_group():
     """The audit log: who did what, and when."""
 
 
+def _read_anchor(path, public):
+    """An anchor file's contents, once its signature is checked against this
+    installation's key."""
+    import json
+
+    from isdi import crypto, evidence
+
+    try:
+        signed = evidence.verify(path)
+        anchor = json.loads(open(path, encoding="utf-8").read())
+    except (OSError, ValueError, KeyError) as e:
+        raise click.ClickException(f"Cannot read anchor {path}: {e}")
+    if not signed["ok"]:
+        raise click.ClickException(f"Anchor {path} does not match its signature")
+    if signed["fingerprint"] != crypto.fingerprint(public):
+        raise click.ClickException(
+            f"Anchor {path} was signed by another key ({signed['fingerprint']})"
+        )
+    return anchor
+
+
 @audit_group.command("verify")
+@click.option(
+    "--anchor",
+    "anchors",
+    multiple=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Also check the log against an anchor made earlier (repeatable).",
+)
 @_operator_option
-def audit_verify(operator):
-    """Check that no audit entry was altered, inserted or removed."""
-    from isdi import audit
+def audit_verify(anchors, operator):
+    """Check that no audit entry was altered, inserted or removed.
+
+    With --anchor, also check that the log still holds the entry the anchor
+    recorded, unchanged: a log rebuilt or cut short since then fails."""
+    from isdi import audit, crypto
     from isdi.config import get_config
 
-    with _data(get_config(), operator):
+    config = get_config()
+    with _data(config, operator):
         result = audit.verify()
         head = audit.head()
+        public = crypto.public_key(config.keyfile)
+        problems = [
+            (path, audit.check_anchor(_read_anchor(path, public))) for path in anchors
+        ]
     if not result["ok"]:
         raise click.ClickException(f"Audit log check FAILED: {result['problem']}")
     click.echo(
@@ -420,6 +481,47 @@ def audit_verify(operator):
     )
     if head:
         click.echo(f"  Newest entry: {head['id']}, MAC {head['mac']}")
+    for path, problem in problems:
+        if problem:
+            raise click.ClickException(f"Anchor {path} check FAILED: {problem}")
+        click.echo(f"✓ Matches anchor {path}")
+
+
+@audit_group.command("anchor")
+@click.option(
+    "-o",
+    "--output",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="File to write the anchor to (a signature is written next to it).",
+)
+@_operator_option
+def audit_anchor(output, operator):
+    """Write a signed record of the audit log's newest entry.
+
+    Send it somewhere outside the clinic's control, for example by email to
+    counsel. It holds no client data. Later, `isdi audit verify --anchor
+    FILE` shows whether the log was rewritten or cut short since."""
+    import json
+    import os
+
+    from isdi import audit, crypto
+    from isdi.config import get_config
+    from isdi.evidence import sign_file
+
+    config = get_config()
+    if os.path.exists(output):
+        raise click.ClickException(f"{output} already exists")
+    with _data(config, operator):
+        anchor = audit.make_anchor()
+    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(anchor, indent=2) + "\n")
+    sig = sign_file(output, crypto.public_key(config.keyfile))
+    click.echo(
+        f"✓ Wrote {output} and {sig}: entry {anchor['newest_entry']['id']}. "
+        "Send both outside the clinic, for example by email to counsel."
+    )
 
 
 @audit_group.command("show")

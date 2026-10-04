@@ -8,7 +8,9 @@ the audit log at the moment of the scan.
 `export_package` writes everything about one scan to a directory:
 
 - the dump, as ISDi wrote it (for Android, account email addresses are
-  redacted and whitespace normalised; for iOS, as pymobiledevice3 wrote it);
+  redacted and whitespace normalised, unless an unredacted copy was asked
+  for, which is the adb output as received; for iOS, as pymobiledevice3
+  wrote it);
 - results.json: the scan record and its apps, decrypted;
 - audit.json: the audit entries for the scan, and the log's newest entry;
 - manifest.json: what the package is, how it was made, and the SHA-256 of
@@ -41,12 +43,22 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def preserve(scanner, serial: str, scanid: int, clientid: str) -> Optional[str]:
+def preserve(
+    scanner, serial: str, scanid: int, clientid: str, unredacted: bool = False
+) -> Optional[str]:
     """Keep the dump of the scan that just ran, encrypted. Returns its
-    SHA-256, or None if there is no dump (the test scanner has none)."""
+    SHA-256, or None if there is no dump (the test scanner has none).
+
+    With unredacted (Android), the copy kept is the adb output as received,
+    account email addresses included, instead of the processed dump."""
+    from isdi.scanner import raw_path
     from isdi.scanner.db import get_db
 
     path = scanner.dump_path(serial)
+    name = os.path.basename(path).split("_", 1)[1]
+    if unredacted:
+        path = raw_path(path)
+        name = name.replace(".", "-unredacted.", 1)
     if not os.path.exists(path):
         audit.record("evidence_unavailable", clientid=clientid, scanid=scanid)
         return None
@@ -56,15 +68,16 @@ def preserve(scanner, serial: str, scanid: int, clientid: str) -> Optional[str]:
     db = get_db()
     db.execute(
         "INSERT INTO evidence (scanid, clientid, created, dump_name, dump_sha256, "
-        "size, data) VALUES (?,?,?,?,?,?,?)",
+        "size, data, unredacted) VALUES (?,?,?,?,?,?,?,?)",
         (
             scanid,
             clientid,
             _now(),
-            crypto.encrypt("dump_name", os.path.basename(path).split("_", 1)[1]),
+            crypto.encrypt("dump_name", name),
             digest,
             len(raw),
             crypto.encrypt("data", base64.b64encode(raw).decode("ascii")),
+            int(unredacted),
         ),
     )
     db.commit()
@@ -72,7 +85,7 @@ def preserve(scanner, serial: str, scanid: int, clientid: str) -> Optional[str]:
         "evidence_preserved",
         clientid=clientid,
         scanid=scanid,
-        details={"dump_sha256": digest, "size": len(raw)},
+        details={"dump_sha256": digest, "size": len(raw), "unredacted": unredacted},
     )
     return digest
 
@@ -86,7 +99,7 @@ def evidence_for_scan(scanid: int) -> Optional[dict]:
 def list_evidence(clientid: Optional[str] = None) -> list:
     from isdi.scanner.db import query_db
 
-    cols = "id, scanid, clientid, created, dump_sha256, size"
+    cols = "id, scanid, clientid, created, dump_sha256, size, unredacted"
     if clientid:
         return query_db(
             f"SELECT {cols} FROM evidence WHERE clientid=? ORDER BY id", (clientid,)
@@ -171,9 +184,13 @@ def export_package(scanid: int, outdir, public: bytes) -> Path:
             {
                 "kept_at": ev["created"],
                 "sha256_recorded_at_scan": ev["dump_sha256"],
+                "unredacted": bool(ev["unredacted"]),
                 "note": (
-                    "As written by ISDi during the scan. Android dumps have "
-                    "account email addresses redacted and whitespace "
+                    "The phone's output as ISDi received it from adb during the "
+                    "scan, as UTF-8 text, unredacted. Not a forensic image."
+                    if ev["unredacted"]
+                    else "As written by ISDi during the scan. Android dumps "
+                    "have account email addresses redacted and whitespace "
                     "normalised; they are not a forensic image of the phone."
                 ),
             }
