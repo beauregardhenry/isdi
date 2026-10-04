@@ -23,9 +23,34 @@ compliant with either.
 | Raw phone dumps | dump directory | exist only while the phone is scanned (see below) |
 | Evidence copies (only when "Keep an encrypted evidence copy" is ticked) | database | encrypted, with the SHA-256 recorded at the scan. Android copies have account email addresses blanked out, unless "keep it unredacted" is also ticked |
 | Encryption keys | `datakey.json` in the config directory | encrypted with the passphrase and the recovery key |
+| Accounts: username, full name, password | database | username in the clear (sign-in looks it up); name encrypted; only a scrypt hash of the password |
 | Audit log: who did what, when (scans, notes and their edits, uninstalls, exports, erasures) | database | entries chained with HMAC-SHA256; details encrypted, and blanked when a client is erased |
 | Log file `isdi.log` | cache directory | no serials, device output, app lists or email addresses |
 | App metadata (`app-info.db`) | cache directory | public data, not client data |
+
+### Accounts and signing in
+
+Each person signs in to the web interface with their own account, so the
+audit log and each scan record who acted. This is meant to address
+HIPAA's unique user identification (45 CFR 164.312(a)(2)(i)) and
+automatic logoff (164.312(a)(2)(iii)) specifications and part of its audit
+controls (164.312(b)); whether it is enough for your organisation is for
+your compliance officer to decide.
+
+- `isdi run` creates the first account if there is none. Others are added
+  and managed on the command line, which needs the passphrase: `isdi user
+  add`, `list`, `disable`, `enable` and `reset-password`.
+- Passwords are at least 12 characters. Only a scrypt hash is stored; the
+  person's full name is encrypted.
+- After 5 wrong passwords in a row, an account is locked for 15 minutes
+  (`isdi user enable` unlocks it sooner).
+- A session ends after 15 minutes without activity (typing and clicking
+  count, so a long form is not lost; set `ISDI_IDLE_MINUTES` to change the
+  limit), when the user signs out, when the account is disabled, or when
+  its password changes. Signing out also stops copies of the session
+  cookie from working.
+- Sign-ins (failed ones too), sign-outs and account changes are in the
+  audit log.
 
 ### Encryption
 
@@ -110,19 +135,20 @@ them.
 These are gaps you need to cover with how ISDi is run, or that would need
 changes to ISDi.
 
-- **No user accounts.** Anyone who can use the computer while ISDi is
-  running and unlocked can see all data in the browser.
-  - ISDi records the operator's name, given at startup, with every scan and
-    audit entry, but it is the operator's own statement, not a login.
-  - The audit log (`isdi audit verify`, `isdi audit show`) records actions
-    and detects altered, inserted or removed entries. Someone with the
-    passphrase could still rebuild the whole log; an anchor sent off-site
-    earlier (`isdi audit anchor`), or an earlier export, would then no
-    longer match. `isdi run` reminds you when the last anchor is more than
-    7 days old.
-  - HIPAA's unique user identification requirement (45 CFR
-    164.312(a)(2)(i)) is therefore still not met by ISDi itself, and the
-    audit log covers only part of its audit-control requirement (164.312(b)).
+- **Every account sees everything.** There are no roles: each signed-in
+  user can see all clients and scans. Give accounts only to people who need
+  them, and disable them (`isdi user disable`) when they leave.
+- **The command line has no accounts.** Commands such as `isdi export` and
+  `isdi erase` need the passphrase, and record the name given with
+  `--operator` (or asked for): the operator's own statement. Keep the
+  passphrase to a small, named group.
+- **The audit log can be rebuilt by a passphrase holder.** The log (`isdi
+  audit verify`, `isdi audit show`) detects altered, inserted or removed
+  entries, but someone with the passphrase could rebuild it; an anchor sent
+  off-site earlier (`isdi audit anchor`), or an earlier export, would then
+  no longer match. `isdi run` reminds you when the last anchor is more
+  than 7 days old.
+- **Other safeguards are still yours:**
   - Use a separate OS account for ISDi.
   - Lock the screen when away.
   - Stop ISDi (Ctrl-C) when the consultation ends.

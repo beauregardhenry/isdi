@@ -280,3 +280,18 @@ $(document).on('submit', 'form[data-confirm]', function (e) {
         e.preventDefault();
     }
 });
+
+// Signed-in sessions end after a period without requests (automatic
+// logoff). Typing or clicking counts as activity, so a long form being
+// filled in is not lost: tell the server, at most once a minute.
+(function () {
+    var last = Date.now();
+    function active() {
+        if (Date.now() - last < 60000) {
+            return;
+        }
+        last = Date.now();
+        $.get('/session/ping');
+    }
+    $(document).on('keydown click', active);
+})();

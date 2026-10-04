@@ -73,8 +73,7 @@ def _anchor_reminder(last, now=None):
 @click.option("--debug/--no-debug", default=False, help="Enable debug mode")
 @click.option("--test", "test_mode", is_flag=True, help="Run in test mode")
 @click.option("--no-browser", is_flag=True, help="Do not open browser automatically")
-@_operator_option
-def run(host, port, debug, test_mode, no_browser, operator):
+def run(host, port, debug, test_mode, no_browser):
     """Run the ISDI web server"""
     from isdi.config import get_config
     from isdi.app import create_app
@@ -93,7 +92,6 @@ def run(host, port, debug, test_mode, no_browser, operator):
     config = get_config(env)
     click.echo(f"⏱ Config init: {perf_counter() - config_started:.2f}s")
     _unlock(config)
-    _set_operator(operator)
 
     # Override from command line
     final_host = host or config.host
@@ -101,7 +99,8 @@ def run(host, port, debug, test_mode, no_browser, operator):
     if final_host not in ("127.0.0.1", "localhost", "::1"):
         click.secho(
             f"⚠ Listening on {final_host}: other machines on this network can "
-            "view scan data and control connected devices. There is no login.",
+            "reach ISDi. Anyone with an account can view scan data and control "
+            "connected devices, and the connection is not encrypted (no HTTPS).",
             fg="red",
             err=True,
         )
@@ -117,6 +116,7 @@ def run(host, port, debug, test_mode, no_browser, operator):
         audit.record(
             "session_started", details={"isdi_version": __version__, "env": env}
         )
+        _ensure_an_account()
         reminder = _anchor_reminder(audit.last_anchor())
     if reminder:
         click.secho(reminder, fg="yellow", err=True)
@@ -153,6 +153,56 @@ def run(host, port, debug, test_mode, no_browser, operator):
         ),  # Use stat-based reloader for better reliability
         extra_files=None,
     )
+
+
+def _ensure_an_account():
+    """The web interface needs a signed-in user: create the first account
+    if there is none."""
+    from isdi import audit, users
+
+    if users.count():
+        return
+    click.secho("\nEach person using ISDi signs in with an account.", bold=True)
+    click.echo("Create the first one now; add others with `isdi user add`.")
+    with audit.acting_as("isdi run (first account)"):
+        _add_user_interactively()
+
+
+def _add_user_interactively(username=None, name=None):
+    from isdi import users
+
+    while True:
+        username = username or click.prompt("Username (for example jdoe)")
+        try:
+            username = users.check_username(username)
+            if users.by_username(username):
+                raise users.AccountError(f"There is already an account {username!r}.")
+            break
+        except users.AccountError as e:
+            click.echo(str(e))
+            username = None
+    while not (name or "").strip():
+        name = click.prompt("Full name")
+    password = _new_password()
+    user = users.create(username, name, password)
+    click.echo(f"✓ Created account {user['username']} for {user['name']}")
+    return user
+
+
+def _new_password():
+    from isdi import users
+
+    while True:
+        password = click.prompt(
+            "Password (at least 12 characters)",
+            hide_input=True,
+            confirmation_prompt=True,
+        )
+        try:
+            users.check_password(password)
+            return password
+        except users.AccountError as e:
+            click.echo(str(e))
 
 
 def _unlock(config):
@@ -324,6 +374,94 @@ def erase(clientid, operator):
         + ", ".join(f"{n} {table}" for table, n in counts.items() if n)
         + " row(s)."
     )
+
+
+@cli.group("user")
+def user_group():
+    """Accounts for the web interface (each person signs in with their own)."""
+
+
+@user_group.command("add")
+@click.argument("username", required=False)
+@click.option("--name", help="The person's full name (asked for if not given).")
+@_operator_option
+def user_add(username, name, operator):
+    """Create an account. The password is asked for."""
+    from isdi import users
+    from isdi.config import get_config
+
+    with _data(get_config(), operator):
+        try:
+            _add_user_interactively(username, name)
+        except users.AccountError as e:
+            raise click.ClickException(str(e))
+
+
+@user_group.command("list")
+@_operator_option
+def user_list(operator):
+    """List accounts."""
+    from isdi import users
+    from isdi.config import get_config
+
+    with _data(get_config(), operator):
+        rows = users.list_users()
+        locked = {r["username"]: users.is_locked(r) for r in rows}
+    if not rows:
+        click.echo("No accounts yet: isdi user add USERNAME")
+    for r in rows:
+        state = (
+            "disabled"
+            if r["disabled"]
+            else "locked" if locked[r["username"]] else "active"
+        )
+        click.echo(
+            f"{r['username']:<20} {r['name']:<30} {state:<9} "
+            f"last sign-in {r['last_login'] or 'never'}"
+        )
+
+
+def _user_change(username, operator, change):
+    from isdi import users
+    from isdi.config import get_config
+
+    with _data(get_config(), operator):
+        try:
+            change(users)
+        except users.AccountError as e:
+            raise click.ClickException(str(e))
+
+
+@user_group.command("disable")
+@click.argument("username")
+@_operator_option
+def user_disable(username, operator):
+    """Disable an account; its sessions end at their next request."""
+    _user_change(username, operator, lambda u: u.set_disabled(username, True))
+    click.echo(f"✓ Disabled {username}")
+
+
+@user_group.command("enable")
+@click.argument("username")
+@_operator_option
+def user_enable(username, operator):
+    """Enable a disabled or locked account."""
+    _user_change(username, operator, lambda u: u.set_disabled(username, False))
+    click.echo(f"✓ Enabled {username}")
+
+
+@user_group.command("reset-password")
+@click.argument("username")
+@_operator_option
+def user_reset_password(username, operator):
+    """Set a new password for an account (and unlock it)."""
+
+    def change(users):
+        users.require(username)  # before asking for the password
+        users.set_password(username, _new_password())
+
+    _user_change(username, operator, change)
+    click.echo(f"✓ New password set for {username}; its other sessions end.")
 
 
 @cli.group("evidence")

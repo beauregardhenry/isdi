@@ -15,7 +15,7 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from isdi import audit, crypto
+from isdi import audit, crypto, users
 from isdi import cli as cli_mod
 from isdi.config import get_config
 from isdi.scanner import db
@@ -200,6 +200,7 @@ def test_anchor_reminder(days_ago, reminded):
 
 
 def test_run_reminds_to_anchor(run_cli, fresh_log):  # noqa: F811
+    users.create("someone", "Some One", "a long enough password")
     output, _ = run_cli()
     assert "audit log was last anchored never" in output
 

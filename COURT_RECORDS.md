@@ -59,9 +59,9 @@ All are stored encrypted on the clinic's computer (see
 
 | Record | Contents |
 |---|---|
-| Scan | Time; operator's name; device type, model and OS version; a pseudonym of the serial number (HMAC); root or jailbreak findings; each app with its flags; per app, what the phone reported (install and update times, permissions, data use) |
+| Scan | Time; the signed-in user (full name and username); device type, model and OS version; a pseudonym of the serial number (HMAC); root or jailbreak findings; each app with its flags; per app, what the phone reported (install and update times, permissions, data use) |
 | Consultation notes | The clinic's intake form |
-| Audit log | Every scan, note, edit (old and new values), uninstall attempt, export and erasure, with time (UTC) and operator |
+| Audit log | Every scan, note, edit (old and new values), uninstall attempt, export and erasure, with time (UTC) and the signed-in user (or, on the command line, the name given); sign-ins and sign-outs |
 | Evidence copy (optional) | When "Keep an encrypted evidence copy" is ticked: the raw dump of the phone, and its SHA-256 recorded at the time of the scan. For Android, either with email addresses blanked out (the default) or, if "keep it unredacted" is ticked, the output as received |
 | Audit anchors | Signed records of the audit log's newest entry, made with `isdi audit anchor` and kept outside the clinic |
 
@@ -80,7 +80,7 @@ Exports:
 
 | Feature | What it shows | Limit |
 |---|---|---|
-| Operator name | Who says they ran the scan | Typed by the operator at startup; ISDi has no user accounts or logins |
+| Signed-in user | Which account ran the scan or made the change | Shows who signed in, not who sat at the keyboard: a shared or leaked password defeats it. Command-line actions (exports, erasure) record the name the operator typed, not an account |
 | Timestamps (UTC) | When the scan or change was recorded | Taken from the computer's clock, which ISDi does not check |
 | SHA-256 of the raw dump, recorded at scan time and in the audit log | The kept dump is the one taken during the scan | For Android, the default copy is ISDi's record of the phone's output, with email addresses redacted and whitespace normalised. An unredacted copy is the output as ISDi received it from `adb`, as text. Neither is a forensic image |
 | Audit log chained with HMAC-SHA256 | Entries were not altered, inserted or removed (`isdi audit verify`) | Anyone with the passphrase could rebuild the whole log, or remove the newest entries. Both are detectable against an anchor or export made earlier, but only for entries up to the one it recorded |
@@ -101,6 +101,7 @@ Practices that make these stronger:
 - Decide, with counsel, when an unredacted Android copy is needed. The
   email addresses of accounts on the phone can matter, but they may belong
   to someone other than the client.
+- Give each person their own ISDi account and never share passwords.
 - Keep the passphrase to a small, named group, and run ISDi under a
   dedicated computer account.
 - Keep the computer's clock synchronised.
