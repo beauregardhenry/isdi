@@ -53,67 +53,41 @@ def is_valid_hmac_serial(serial) -> bool:
     return isinstance(serial, str) and _HMAC_SERIAL_RE.fullmatch(serial) is not None
 
 
-def catch_err(
-    p: subprocess.Popen[bytes], cmd="", msg_on_err="", time=10, large_output=False
-) -> str:
+_USB_PERMISSION = "insufficient permissions for device: user in plugdev group"
+
+
+def catch_err(p: subprocess.Popen[bytes], cmd="", time=10) -> str:
     """Wait for a command and return its output, or "" if it failed (the
     error is logged, never returned: callers treat the result as the
     phone's output, so an error message would be stored as, say, the
-    device model). p.returncode tells callers that need it why."""
-    try:
-        large_output_var = b""
-        if large_output:
-            if p.stdout:
-                for line in p.stdout:
-                    large_output_var += line
+    device model). p.returncode tells callers that need it why.
 
+    Output is also treated as a failure when it is a short message saying
+    "fail" or "error", or adb's USB-permission error."""
+    try:
         p.wait(time)
         logging.debug("Returncode: %s", p.returncode)
-        if p.returncode != 0:
-
-            if p.stderr:
-                err_msg = p.stderr.read().decode("utf-8")
-            else:
-                err_msg = (
-                    "stderr was none. This may indicate large issues with process."
-                )
-
-            m = "[{}]: Error running {!r}. Error ({}): {}\n{}".format(
-                "android", cmd, p.returncode, err_msg, msg_on_err
+        err = p.stderr.read().decode("utf-8") if p.stderr else ""
+        out = p.stdout.read().decode("utf-8") if p.stdout else ""
+        if _USB_PERMISSION in err or _USB_PERMISSION in out:
+            logging.error(
+                'adb has no permission for the phone: set "USB for file '
+                'transfers" mode on the phone, or check the udev rules.'
             )
-            if "insufficient permissions for device: user in plugdev group" in err_msg:
-                e = 'Error: Please set "USB For File Transfers" mode on your Android device.'
-                print(e)
-                return ""
-            logging.warning(redact(m))
             return ""
-        else:
-            if large_output:
-                s = large_output_var.decode()
-            else:
-                if p.stdout:
-                    s = p.stdout.read().decode()
-                else:
-                    return ""
-
-            if (
-                (len(s) <= 100 and re.search("(?i)(fail|error)", s))
-                or "insufficient permissions for device: user in plugdev group; are your udev rules wrong?"
-                in s
-            ):
-                # config.add_to_error(s)
-                return ""
-            if (
-                "insufficient permissions for device: user in plugdev group; are your udev rules wrong?"
-                in s
-            ):
-                logging.error("Need USB for Charging.")
-                return ""
-            else:
-                # Device output is personal data: never log it.
-                return s
+        if p.returncode != 0:
+            logging.warning(
+                redact(
+                    f"Error running {cmd!r}. Error ({p.returncode}): "
+                    f"{err or 'no error output'}"
+                )
+            )
+            return ""
+        if len(out) <= 100 and re.search("(?i)(fail|error)", out):
+            return ""
+        # Device output is personal data: never log it.
+        return out
     except Exception as ex:
-        # config.add_to_error(ex)
         logging.error("Exception>>> %s", ex)
         return ""
 

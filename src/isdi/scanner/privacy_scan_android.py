@@ -96,10 +96,9 @@ def open_activity(ser, activity_name):
 def keycode(ser, evt):
     cmds = {"home": "3", "back": "4", "menu": "82", "power": "26"}
     if evt not in cmds:
-        print("ERROR (keycode): No support for {}".format(evt))
-
-    key = cmds.get(evt)
-    run_command("{cli} shell input keyevent {key}", cli=thiscli(ser), key=key)
+        logging.error("keycode: no key %r", evt)
+        return
+    run_command("{cli} shell input keyevent {key}", cli=thiscli(ser), key=cmds[evt])
 
 
 def take_screenshot(ser):
@@ -119,7 +118,7 @@ def take_screenshot(ser):
             e.returncode
         )
     except (OSError, TimeoutExpired) as e:
-        print(e)
+        logging.error("Screenshot failed: %s", type(e).__name__)
         return "<div class='screenshotfail'>Screenshot failed: {}</div>".format(
             escape(str(e))
         )

@@ -11,6 +11,12 @@ have no section here.
   passphrase, a backup first (`-o FILE`, or `--no-backup` to skip it), and
   typing `DELETE EVERYTHING`. The reset is recorded in the audit log, which
   the backup keeps. To delete one client's data, use `isdi erase`.
+- Scans parse each phone dump once instead of twice, which roughly halves
+  that part of an Android scan.
+- An app's details page no longer shows an empty highlighted summary: it
+  falls back to the app's name. A malformed data-usage line no longer
+  hides the "data used" rows, and an empty dump section can no longer
+  replace the data from a full one.
 - **Reproducible installs.** Each release now has a `constraints.txt`
   listing the dependency versions it was tested with on each Python
   version; see the README for the install command.

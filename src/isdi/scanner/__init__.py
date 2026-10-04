@@ -257,7 +257,10 @@ class AppScanner:
                 )
 
             d["descriptionHTML"] = description
-            d.setdefault("summary", d.get("title", ""))
+            # Shown highlighted on the details page: never empty if there
+            # is a title.
+            if not d.get("summary"):
+                d["summary"] = d.get("title", "")
 
             return d, device.get(appid, {})
 
@@ -666,27 +669,7 @@ class IosScanner(AppScanner):
 
     def get_app_titles(self, serialno: str) -> Dict[str, str]:
         """Get iOS app titles as dict: {appId: title}."""
-        if not self.ddump:
-            return {}
-        titles_df = self.ddump.installed_apps_titles()
-        # If it returns a DataFrame-like object, convert to dict
-        # if hasattr(titles_df, 'to_dict'):
-        #     # It's a DataFrame, convert to our dict format
-        #     result = {}
-        #     for appid, title in zip(titles_df.get('appId', []), titles_df.get('title', [])):
-        #         result[appid] = title
-        #     return result
-        if isinstance(titles_df, dict):
-            # Already a dict
-            return titles_df
-        else:
-            # Try to iterate
-            try:
-                return {
-                    item.get("appId"): item.get("title") for item in titles_df if item
-                }
-            except:
-                return {}
+        return self.ddump.installed_apps_titles() if self.ddump else {}
 
     def device_info(self, serial: str) -> Tuple[str, Dict]:
         """Get iOS device info. Starts a scan, so always reads the phone."""

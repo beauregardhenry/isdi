@@ -124,3 +124,127 @@ def test_sharing_checks_show_their_own_example(app, monkeypatch, command, image)
         html = ps.do_privacy_check("SER1", command)
     assert f"/static/{image}" in html
     assert (Path(app.static_folder) / image).is_file()
+
+
+@pytest.fixture
+def phone_shell(monkeypatch):
+    """Record the commands sent to the phone; answer with .out and .err."""
+
+    class Shell:
+        sent = []
+        out, err = "Starting: Intent { ... }", ""
+
+    Shell.sent = []
+
+    def fake(cmd, **kw):
+        Shell.sent.append(cmd.format(**kw))
+        return Shell.out, Shell.err
+
+    monkeypatch.setattr(ps, "run_command", fake)
+    monkeypatch.setattr(ps, "wait", lambda t: None)
+    return Shell
+
+
+@pytest.mark.parametrize(
+    "out, err, opened",
+    [
+        ("Starting: Intent { cmp=x }", "", True),
+        ("", "adb: device offline", False),
+        ("Error type 3: Activity class does not exist.", "", False),
+    ],
+)
+def test_open_activity_reports_failure(phone_shell, out, err, opened):
+    phone_shell.out, phone_shell.err = out, err
+    assert ps.open_activity("SER1", "a/.B") is opened
+
+
+@pytest.mark.parametrize(
+    "command, activity, says",
+    [
+        ("account", "GoogleSettingsLink", "account email address"),
+        ("ACCOUNT", "GoogleSettingsLink", "account email address"),
+        ("backup", "PrivacySettingsActivity", "Backup"),
+    ],
+)
+def test_settings_checks_open_their_screen(phone_shell, command, activity, says):
+    html = ps.do_privacy_check("SER1", command)
+    assert says in html
+    assert activity in phone_shell.sent[0] and "-s SER1" in phone_shell.sent[0]
+
+
+def test_sync_check_says_when_the_phone_has_no_sync_screen(phone_shell):
+    assert "Click on the" in ps.do_privacy_check("SER1", "sync")
+    phone_shell.out = "Error type 3: Activity class does not exist."
+    assert "could not find syncing" in ps.do_privacy_check("SER1", "sync")
+
+
+def test_sharing_checks_press_menu_after_opening(app, phone_shell):
+    with app.test_request_context():
+        ps.do_privacy_check("SER1", "gmap")
+    assert phone_shell.sent[1].endswith("input keyevent 82")
+
+
+def test_unknown_checks_and_keys_do_nothing(phone_shell):
+    assert "not supported" in ps.do_privacy_check("SER1", "format-phone")
+    ps.keycode("SER1", "selfdestruct")
+    assert phone_shell.sent == []
+
+
+def test_without_a_serial_adb_picks_the_only_phone():
+    assert ps.thiscli("") == ps.adb
+    assert ps.thiscli("A B") == f"{ps.adb} -s 'A B'"
+
+
+def test_run_command_returns_output_and_errors():
+    out, err = ps.run_command("echo {a}; echo {b} >&2", a="out", b="err")
+    assert (out.strip(), err.strip()) == ("out", "err")
+
+
+@pytest.mark.parametrize(
+    "error, message",
+    [
+        (subprocess.TimeoutExpired("adb", 4), "Command timed out"),
+        (FileNotFoundError("adb"), "Command not found"),
+        (RuntimeError("boom"), "Error: boom"),
+    ],
+)
+def test_run_command_reports_failures(monkeypatch, error, message):
+    class FakePopen:
+        def __init__(self, *a, **kw):
+            if isinstance(error, FileNotFoundError):
+                raise error
+
+        def wait(self, t):
+            raise error
+
+        def kill(self):
+            self.killed = True
+
+    monkeypatch.setattr(ps, "Popen", FakePopen)
+    out, err = ps.run_command("adb devices")
+    assert out == "" and message in err
+
+
+def test_screenshot_timeout_is_reported(adb):
+    adb.error = subprocess.TimeoutExpired("adb", 30)
+    assert "screenshotfail" in ps.take_screenshot("SER1")
+
+
+def test_privacy_route_errors(client, monkeypatch):
+    from isdi.web.view import index
+
+    assert client.get("/privacy/nokia/account").status_code == 400
+    monkeypatch.setattr(index.android, "devices", lambda: [])
+    r = client.get("/privacy/android/account")
+    assert r.status_code == 400 and b"No device serial" in r.data
+    r = client.get("/privacy/android/account", query_string={"serial": "a;rm -rf"})
+    assert r.status_code == 400 and b"Invalid device serial" in r.data
+
+
+def test_privacy_route_uses_the_connected_phone(client, monkeypatch, phone_shell):
+    from isdi.web.view import index
+
+    monkeypatch.setattr(index.android, "devices", lambda: ["SER9"])
+    r = client.get("/privacy/android/backup")
+    assert r.status_code == 200 and "-s SER9" in phone_shell.sent[0]
+    assert client.get("/privacy").status_code == 200
