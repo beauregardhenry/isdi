@@ -1,6 +1,7 @@
 """Flask application factory"""
 
 import logging
+import os
 import secrets
 from pathlib import Path
 from time import perf_counter
@@ -43,6 +44,8 @@ def create_app(config=None):
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     # One token per session; the page is often left open for a whole consult.
     app.config["WTF_CSRF_TIME_LIMIT"] = None
+    # Minutes without activity before a signed-in session ends.
+    app.config["ISDI_IDLE_MINUTES"] = int(os.environ.get("ISDI_IDLE_MINUTES", 15))
 
     # Store config in app
     app.config["ISDI_CONFIG"] = config

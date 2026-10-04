@@ -117,8 +117,10 @@ def run_cli(monkeypatch, passphrase):
     )
     monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
 
-    def invoke(*args):
-        res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", *args])
+    def invoke(*args, input=None):
+        res = CliRunner().invoke(
+            cli.cli, ["run", "--test", "--no-browser", *args], input=input
+        )
         assert res.exit_code == 0, res.output
         return res.output, bound["host"]
 
@@ -134,7 +136,8 @@ def test_cli_binds_to_localhost_by_default(run_cli):
 def test_cli_warns_when_exposed_to_network(run_cli):
     output, host = run_cli("--host", "0.0.0.0")
     assert host == "0.0.0.0"
-    assert "other machines on this network can view scan data" in output
+    assert "other machines on this network can reach ISDi" in output
+    assert "not encrypted (no HTTPS)" in output
 
 
 def test_cli_reports_package_version():

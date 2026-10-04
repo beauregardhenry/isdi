@@ -27,6 +27,7 @@ a MAC of its details, remain, so the chain still verifies and shows that
 something was erased, and when.
 """
 
+import contextlib
 import hashlib
 import hmac
 import json
@@ -39,9 +40,14 @@ from isdi import crypto
 GENESIS = "0" * 64
 _lock = threading.Lock()
 
-# The person running ISDi, as given at startup (see `isdi run --operator`).
-# ISDi has no user accounts, so this is what the operator says, not proof.
+# Who is acting, in order:
+# - in the web interface, the signed-in user (isdi/users.py), set per
+#   request, and carried into background scans with acting_as();
+# - on the command line, the name given with --operator (or asked for):
+#   the operator's own statement, since commands need the passphrase but
+#   no account.
 _operator: Optional[str] = None
+_acting = threading.local()
 
 
 def set_operator(name: Optional[str]) -> None:
@@ -49,7 +55,34 @@ def set_operator(name: Optional[str]) -> None:
     _operator = (name or "").strip() or None
 
 
+@contextlib.contextmanager
+def acting_as(name: Optional[str]):
+    """Record entries made in this thread under name."""
+    saved = getattr(_acting, "name", _UNSET)
+    _acting.name = name
+    try:
+        yield
+    finally:
+        if saved is _UNSET:
+            del _acting.name
+        else:
+            _acting.name = saved
+
+
+_UNSET = object()
+
+
 def operator() -> Optional[str]:
+    name = getattr(_acting, "name", _UNSET)
+    if name is not _UNSET:
+        return name
+    try:
+        from flask import g, has_request_context
+
+        if has_request_context() and "operator" in g:
+            return g.operator
+    except ImportError:  # pragma: no cover
+        pass
     return _operator
 
 
@@ -100,7 +133,7 @@ def record(
         row = {
             "id": (last["id"] + 1) if last else 1,
             "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "operator": _operator,
+            "operator": operator(),
             "action": action,
             "clientid": clientid,
             "scanid": scanid,

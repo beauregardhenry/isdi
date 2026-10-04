@@ -142,6 +142,23 @@ CREATE TABLE IF NOT EXISTS evidence (
   FOREIGN KEY(scanid) REFERENCES scan_res(id)
 );
 CREATE INDEX IF NOT EXISTS idx_evidence_scanid on evidence (scanid);
+
+-- Staff accounts for the web interface (isdi/users.py). Only a scrypt
+-- hash of each password is stored. Sessions begun before signed_out_at
+-- (seconds since the epoch) are no longer valid.
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  name TEXT,
+  password_hash TEXT NOT NULL,
+  disabled INTEGER NOT NULL DEFAULT 0,
+  failed_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT,
+  created TEXT NOT NULL,
+  password_changed TEXT,
+  last_login TEXT,
+  signed_out_at REAL
+);
 """
 
 
@@ -173,9 +190,10 @@ ENCRYPTED_COLUMNS = {
     ).split(),
     "audit_log": "operator details".split(),
     "evidence": "dump_name data".split(),
+    "users": ["name"],
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 def _enc(column, value):

@@ -14,6 +14,7 @@ bp = Blueprint("main", __name__)
 def init_routes(flask_app):
     """Register all routes on flask_app."""
     from isdi.web.view import (  # noqa: F401 (imported for their routes)
+        auth,
         consult,
         control,
         details,

@@ -1,9 +1,11 @@
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
+from flask.testing import FlaskClient
 
 # Keep the suite away from the user's real ISDi data: the database, phone
 # dumps, reports and the PII key live under these directories. This must run
@@ -43,6 +45,28 @@ def pytest_sessionfinish(session, exitstatus):
     shutil.rmtree(_TMP, ignore_errors=True)
 
 
+from isdi import users  # noqa: E402
+
+users.PASSWORD_SCRYPT_N = 2**10  # for speed only, like crypto.SCRYPT_N
+TEST_USERNAME = "tester"
+TEST_PASSWORD = "tester password 1234"
+
+
+class SignedInClient(FlaskClient):
+    """Test clients are signed in as TEST_USERNAME, unless created with
+    app.test_client(signed_in=False)."""
+
+    def __init__(self, *args, signed_in=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        if signed_in:
+            with self.application.app_context():
+                user = users.by_username(TEST_USERNAME)
+            with self.session_transaction() as s:
+                s["user_id"] = user["id"]
+                s["token"] = users.session_token(user)
+                s["signed_in_at"] = s["last_seen"] = time.time()
+
+
 @pytest.fixture(scope="session")
 def app():
     """One app for the whole run; creating it initialises the test database."""
@@ -50,6 +74,10 @@ def app():
 
     app = create_app(get_config("test"))
     app.config["TESTING"] = True
+    app.test_client_class = SignedInClient
+    with app.app_context():
+        if not users.by_username(TEST_USERNAME):
+            users.create(TEST_USERNAME, TEST_OPERATOR, TEST_PASSWORD)
     return app
 
 

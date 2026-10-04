@@ -11,7 +11,7 @@
               href="{{ url_for('static', filename='style.css') }}?234">
         <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
         <script src="{{ url_for('static', filename='bootstrap-4.6.2.bundle.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='myjscript.js') }}?5"></script>
+        <script src="{{ url_for('static', filename='myjscript.js') }}?6"></script>
 	<title>{{ title }} {% if platform %}({{ platform }}){% endif %}</title>
         <script nonce="{{ csp_nonce() }}">
 
@@ -106,6 +106,16 @@
     </head>
 
     <body class="container-fluid isdi-body">
+      {% if g.user %}
+      <div class="small text-right text-muted py-1">
+        Signed in as {{ g.user.name }} ({{ g.user.username }}) ·
+        <a href="{{ url_for('main.change_password') }}">Change password</a> ·
+        <form method="post" action="{{ url_for('main.logout') }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-link btn-sm p-0 align-baseline">Sign out</button>
+        </form>
+      </div>
+      {% endif %}
       {% block content %}
         {% if task == 'home' %}
           {% include 'home.html' %}

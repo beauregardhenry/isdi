@@ -290,8 +290,21 @@ def _scan_and_save(
 
 
 def _scan_worker(
-    job_id, clientid, device, device_owner, ser, preserve=False, unredacted=False
+    job_id,
+    clientid,
+    device,
+    device_owner,
+    ser,
+    preserve=False,
+    unredacted=False,
+    operator=None,
 ):
+    # A thread of its own: record what it does under the user who started it.
+    with audit.acting_as(operator):
+        _scan_job(job_id, clientid, device, device_owner, ser, preserve, unredacted)
+
+
+def _scan_job(job_id, clientid, device, device_owner, ser, preserve, unredacted):
     try:
         template_d, status_code = _run_live_scan(
             clientid,
@@ -380,6 +393,7 @@ def scan_start():
             ser,
             get_param("preserve_evidence") == "1",
             get_param("evidence_unredacted") == "1",
+            audit.operator(),
         ),
         daemon=True,
     )

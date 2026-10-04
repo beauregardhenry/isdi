@@ -1,0 +1,36 @@
+{% extends "main.html" %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-sm-8 col-md-5 col-lg-4">
+    <h4 class="mb-3">Sign in to ISDi</h4>
+    {% if notice %}<div class="alert alert-info">{{ notice }}</div>{% endif %}
+    {% if error %}<div class="alert alert-warning">{{ error }}</div>{% endif %}
+    {% if no_accounts %}
+    <div class="alert alert-info">
+      There are no accounts yet. Create one on this computer with
+      <code>isdi user add USERNAME</code>.
+    </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input class="form-control" id="username" name="username"
+               autocomplete="username" autocapitalize="none" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input class="form-control" id="password" name="password" type="password"
+               autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-primary btn-block">Sign in</button>
+    </form>
+    <p class="small text-muted mt-3">
+      After {{ max_failed }} wrong passwords in a row, an account is locked for
+      {{ lockout_minutes }} minutes. Forgotten passwords are reset on this
+      computer with <code>isdi user reset-password USERNAME</code>.
+    </p>
+  </div>
+</div>
+{% endblock %}
