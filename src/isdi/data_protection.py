@@ -21,6 +21,11 @@ def purge_plaintext_files(config) -> dict:
     from isdi.scanner import purge_raw_dumps
 
     removed = {"dumps": purge_raw_dumps(), "reports": 0, "legacy_pii_key": 0}
+    for legacy in getattr(config, "legacy_dumps_dirs", []):
+        for dump in Path(legacy).glob("*"):
+            if dump.is_file():
+                dump.unlink()
+                removed["dumps"] += 1
     for report in Path(config.reports_dir).glob("*.csv"):
         report.unlink()
         removed["reports"] += 1

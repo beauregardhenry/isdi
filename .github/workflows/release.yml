@@ -4,7 +4,8 @@ name: Release
 # the sdist and their SHA-256 sums attached. This fork is not on PyPI (the
 # isdi-scanner name there is upstream's); users install from these releases.
 #
-# To release: bump the version (VERSION_PART=minor make bump-version), merge
+# To release: add the version's section to CHANGELOG.md (what changes for
+# staff), bump the version (VERSION_PART=minor make bump-version), merge
 # that to main, then run this workflow from the Actions tab.
 #
 # It also runs by itself when a change to the blocklist reaches main: the
@@ -59,6 +60,24 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # The release notes start with the version's CHANGELOG.md section
+      # (what changes for staff). Blocklist-only patch releases have none.
+      - name: Write release notes
+        if: steps.version.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          notes="$RUNNER_TEMP/notes.md"
+          if python scripts/release_notes.py "$VERSION" > "$notes"; then
+            cat "$notes"
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            printf '%s\n\n%s\n' "## What changes for staff" \
+              "The stalkerware blocklist is updated. Upgrade to detect newly listed apps." > "$notes"
+          else
+            echo "::error::CHANGELOG.md has no section for $VERSION; add one first"
+            exit 1
+          fi
+
       - name: Run tests
         if: steps.version.outputs.skip != 'true'
         run: |
@@ -83,4 +102,5 @@ jobs:
           gh release create "v$VERSION" dist/* \
             --target "$GITHUB_SHA" \
             --title "ISDi v$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
             --generate-notes
