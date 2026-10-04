@@ -38,10 +38,38 @@ for f in (
     if not f.is_file():
         sys.exit(f"missing from the wheel: {f}")
 
+import re  # noqa: E402
+
+from isdi import users  # noqa: E402
 from isdi.app import create_app  # noqa: E402
 
-client = create_app(config).test_client()
-for url in ("/", "/instruction", "/static/myjscript.js", "/static/bootstrap.min.css"):
+app = create_app(config)
+password = "smoke test password"
+with app.app_context():
+    users.create("smoke", "Smoke Test", password)
+client = app.test_client()
+
+status = client.get("/").status_code
+if status != 302:
+    sys.exit(f"GET / without signing in returned {status}, not a redirect")
+page = client.get("/login")
+if page.status_code != 200:
+    sys.exit(f"GET /login returned {page.status_code}")
+token = re.search(rb'name="csrf_token" value="([^"]+)"', page.data).group(1)
+r = client.post(
+    "/login",
+    data={"csrf_token": token.decode(), "username": "smoke", "password": password},
+)
+if r.status_code != 302:
+    sys.exit(f"signing in returned {r.status_code}")
+
+for url in (
+    "/",
+    "/instruction",
+    "/account/password",
+    "/static/myjscript.js",
+    "/static/bootstrap.min.css",
+):
     status = client.get(url).status_code
     if status != 200:
         sys.exit(f"GET {url} returned {status}")
