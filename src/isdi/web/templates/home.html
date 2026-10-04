@@ -130,7 +130,7 @@
 		    {% for scanned in currently_scanned %}
 		    {% if scanned.serial %}
       <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-        <a target="_blank" href="{{ url_for('main.scan', device=scanned.device, device_owner=scanned.device_primary_user, devid=scanned.serial, from_dump=1) }}">
+        <a target="_blank" href="{{ url_for('main.saved_scan', scanid=scanned.id) }}">
             {{ scanned.device_model }} ({{ scanned.device_primary_user }})
         </a>
         <form method="POST" action="/delete_device" style="display:inline;" data-confirm="{{ "Delete all data for %s (%s)? This cannot be undone." | format(scanned.device_model, scanned.device_primary_user) }}">
@@ -200,10 +200,10 @@
                                                   title="Delete app">&otimes;</a></td>
                             {% endif %}
                             {% if info['title'] %}
-                            <td data-label="App Name"><a href="{{ url_for('main.app_details', device=device, appId=appId, serial=serial, from_dump=('1' if from_dump else None)) }}" target="_blank" rel="noopener"
+                            <td data-label="App Name"><a href="{{ url_for('main.app_details', scanid=scanid, row=app_rows[appId]) }}" target="_blank" rel="noopener"
 		                   class="text text-dark">{{ info['title'] }}</a></td>
                             {% else %}
-                            <td data-label="App Name"><a href="{{ url_for('main.app_details', device=device, appId=appId, serial=serial, from_dump=('1' if from_dump else None)) }}" target="_blank" rel="noopener"
+                            <td data-label="App Name"><a href="{{ url_for('main.app_details', scanid=scanid, row=app_rows[appId]) }}" target="_blank" rel="noopener"
                                    class="text text-dark"> &lt;Unknown&gt;</a></td>
                             {% endif %}
                             <td data-label="App ID"><a class="{{ info.class_ }} appid" href="https://www.google.com/search?q={{ appId }}"

@@ -388,7 +388,7 @@ def create_scan(scan_d):
     )
 
 
-def _app_row_ids(scanid) -> dict:
+def app_row_ids(scanid) -> dict:
     """appid -> row id for one scan. App ids are encrypted (with a random
     nonce), so rows are matched after decrypting, not in SQL."""
     rows = query_db("select id, appid from app_info where scanid=?", (scanid,))
@@ -396,7 +396,7 @@ def _app_row_ids(scanid) -> dict:
 
 
 def update_appinfo(scanid, appid, remark, action):
-    rowid = _app_row_ids(scanid).get(appid)
+    rowid = app_row_ids(scanid).get(appid)
     if rowid is None:
         return False
     insert(
@@ -412,7 +412,7 @@ def update_mul_appinfo(args):
     updates = []
     for remark, scanid, appid in args:
         if scanid not in ids:
-            ids[scanid] = _app_row_ids(scanid)
+            ids[scanid] = app_row_ids(scanid)
         rowid = ids[scanid].get(appid)
         if rowid is not None:
             updates.append((_enc("remark", remark), rowid))

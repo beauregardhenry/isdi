@@ -45,6 +45,17 @@ def main() -> int:
         )
         path.write_text(updated, encoding="utf-8")
 
+    # Install instructions name the release: v1.2.3 and isdi_scanner-1.2.3-.
+    old_version = current
+    for doc in (Path("README.md"), Path("TERMUX_INSTALL.md")):
+        if doc.exists():
+            text = doc.read_text(encoding="utf-8")
+            text = text.replace(f"v{old_version}", f"v{new_version}")
+            text = text.replace(
+                f"isdi_scanner-{old_version}-", f"isdi_scanner-{new_version}-"
+            )
+            doc.write_text(text, encoding="utf-8")
+
     print(f"Bumped version to {new_version}")
     return 0
 

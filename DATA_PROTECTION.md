@@ -120,11 +120,14 @@ changes to ISDi.
 - **Data is decrypted while ISDi runs.** It is in memory and shown in the
   browser; encryption protects the data at rest, not a running, unlocked
   session.
-- **The browser history records links that contain a device serial and app
-  ids** (for example `/details/app/android?serial=…&appId=…`). Use a
-  private browsing window, or clear the history after each consultation.
-  Pages are sent with `Cache-Control: no-store`, so their content is not
-  cached.
+- **Browser history.** ISDi's own links hold only scan and row numbers
+  (`/scan/12/app/345`), and a scan can only be opened in its client's
+  session. Pages are sent with `Cache-Control: no-store`, so their content
+  is not cached. Two things still reach the history:
+  - the app-id links to a Google search, if clicked;
+  - ISDi's address while it runs.
+
+  A private browsing window avoids both.
 - **Deleting a file does not reliably erase it** on SSDs and journaling
   file systems. Raw dumps are on disk, unencrypted, for the length of a
   scan. **Use full-disk encryption** (FileVault, BitLocker, LUKS, or the

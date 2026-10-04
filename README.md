@@ -17,7 +17,8 @@ It fixes security and detection bugs in upstream 1.0.9, including a command
 injection reachable from any web page and a blocklist that flagged no known
 stalkerware (see the [releases](https://github.com/beauregardhenry/isdi/releases)).
 It is distributed through GitHub releases, not PyPI: the `isdi-scanner`
-package on PyPI is upstream's.
+package on PyPI is upstream's. When the stalkerware blocklist changes, a
+patch release is published, so upgrade regularly to detect newly listed apps.
 
 Client data is encrypted at rest and raw phone dumps are not kept unless an
 evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
