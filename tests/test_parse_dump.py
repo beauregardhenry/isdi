@@ -215,3 +215,16 @@ def test_an_unparseable_section_does_not_lose_the_dump(tmp_path):
         "com.whatsapp",
     ]
     assert dump.df["oddservice"]["UNPARSED"][:3] == ["   x\n", "  y\n", " z\n"]
+
+
+def test_ios_app_info_has_no_empty_rows(ios):
+    """The details page shows every key: none may be left empty."""
+    info = ios.info("com.example.tracker")
+    assert "jailbroken" not in info and "phone_kind" not in info
+    assert info["title"]
+
+
+def test_ios_permission_names_are_not_shared_between_dumps(ios, tmp_path):
+    other = pdump.IosDump(str(tmp_path / "dump.json"))
+    other.permissions_map["kTCCServiceTest"] = "Test"
+    assert "kTCCServiceTest" not in ios.permissions_map

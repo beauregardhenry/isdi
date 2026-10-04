@@ -163,7 +163,6 @@ def _scan_and_save(
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,
         device=device,
-        device_primary_user=config.DEVICE_PRIMARY_USER,
         device_primary_user_sel=device_owner,
         apps={},
         currently_scanned=get_client_devices_from_db(clientid),
@@ -433,19 +432,15 @@ def scan_result(job_id):
 
 @bp.route("/scan", methods=["POST", "GET"])
 def scan():
-    """
-    Needs three attribute for a device
-    :param device: "android" or "ios" or test
-    :param devid: id of the android device
-    :param cientid: id of the cient
-    :return: a flask view template
-    """
-    # clientid = request.form.get('clientid', request.args.get('clientid'))
+    """Scan a phone without JavaScript (the page normally uses /scan/start).
+
+    Form fields: device ("android", "ios" or "test"), device_owner (the
+    nickname), devid (the serial; the first connected phone if empty), and
+    the evidence-copy choices."""
     if "clientid" not in session:
         return redirect(url_for("main.index"))
 
     clientid = session["clientid"]
-    device_primary_user = get_param("device_primary_user")
     device = get_param("device")
     device_owner = get_param("device_owner")
     ser = get_param("devid")
@@ -458,14 +453,12 @@ def scan():
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,
         device=device,
-        device_primary_user=config.DEVICE_PRIMARY_USER,  # TODO: Why is this sent
-        device_primary_user_sel=device_primary_user,
+        # Shown again in the nickname field.
+        device_primary_user_sel=device_owner,
         apps={},
         currently_scanned=currently_scanned,
         clientid=session["clientid"],
     )
-    # lookup devices scanned so far here. need to add this by model rather
-    # than by serial.
     sc = get_device(device)
     if not sc:
         template_d["error"] = "Please choose one device to scan."
@@ -478,8 +471,6 @@ def scan():
         ser = first_element_or_none(sc.devices())
 
     if not ser:
-        # FIXME: add pkexec scripts/ios_mount_linux.sh workflow for iOS if
-        # needed.
         error = (
             "<b>A device wasn't detected. Please follow the "
             "<a href='/instruction' target='_blank' rel='noopener'>"
@@ -496,7 +487,7 @@ def scan():
         preserve=get_param("preserve_evidence") == "1",
         unredacted=get_param("evidence_unredacted") == "1",
     )
-    result_d["device_primary_user_sel"] = device_primary_user
+    result_d["device_primary_user_sel"] = device_owner
     return render_template("main.html", **result_d), status_code
 
 
@@ -571,7 +562,6 @@ def saved_scan(scanid):
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,
         device=device,
-        device_primary_user=config.DEVICE_PRIMARY_USER,
         device_primary_user_sel=scan_res.get("device_primary_user"),
         clientid=session["clientid"],
         isrooted=_isrooted_html(rooted, rooted_reason),

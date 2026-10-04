@@ -216,10 +216,16 @@ class AppScanner:
         return os.path.exists(dumpf)
 
     def get_multiple_app_details(
-        self, serialno: str, appids: List[str], stored: bool = False
+        self,
+        serialno: str,
+        appids: List[str],
+        stored: bool = False,
+        scanid: Optional[int] = None,
     ) -> Dict[str, Tuple[Dict, Dict]]:
         """Get details for multiple apps at once, returning dict keyed by appId.
-        With stored=True, serialno is the HMAC kept in the database."""
+        With stored=True, serialno is the HMAC kept in the database. With
+        scanid, what the phone said comes from that scan; otherwise from the
+        phone's latest scan."""
 
         def _process_app_row(appid: str, d: Dict) -> Tuple[Dict, Dict]:
             permissions = d.get("permissions")
@@ -263,8 +269,9 @@ class AppScanner:
         # stored HMAC; live pages carry the serial.
         from isdi.scanner import db
 
-        serial_hmac = serialno if stored else cfg.hmac_serial(serialno)
-        scanid = db.get_most_recent_scan_id(serial_hmac)
+        if scanid is None:
+            serial_hmac = serialno if stored else cfg.hmac_serial(serialno)
+            scanid = db.get_most_recent_scan_id(serial_hmac)
         device = db.app_details_from_scan(scanid, appids) if scanid else {}
 
         if not AppScanner.app_info_conn:
@@ -293,10 +300,16 @@ class AppScanner:
         return details
 
     def app_details(
-        self, serialno: str, appid: str, stored: bool = False
+        self,
+        serialno: str,
+        appid: str,
+        stored: bool = False,
+        scanid: Optional[int] = None,
     ) -> Tuple[Dict, Dict]:
-        """Get detailed info for an app."""
-        details = self.get_multiple_app_details(serialno, [appid], stored=stored)
+        """Get detailed info for an app (from scan scanid, if given)."""
+        details = self.get_multiple_app_details(
+            serialno, [appid], stored=stored, scanid=scanid
+        )
         return details.get(appid, ({}, {}))
 
     def find_spyapps(self, serialno: str) -> Dict[str, Dict[str, Any]]:

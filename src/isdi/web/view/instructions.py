@@ -11,7 +11,6 @@ def instruction():
     return render_template(
         "main.html",
         task="instruction",
-        device_primary_user=config.DEVICE_PRIMARY_USER,
         title=config.TITLE,
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,

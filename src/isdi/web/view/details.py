@@ -23,14 +23,15 @@ def app_details(scanid, row):
     sc = get_device(scan_res.get("device"))
     if appid is None or sc is None:
         return "Unknown app", 404
-    d, info = sc.app_details(scan_res["serial"], appid, stored=True)
+    # This scan's details: the same phone may have been scanned again, for
+    # this client or another one.
+    d, info = sc.app_details(scan_res["serial"], appid, stored=True, scanid=scanid)
     d["appId"] = appid
 
     return render_template(
         "main.html",
         task="app",
         title=config.TITLE,
-        device_primary_user=config.DEVICE_PRIMARY_USER,
         app=d,
         info=info,
         device=scan_res.get("device"),

@@ -1,4 +1,5 @@
 import itertools
+import functools
 import json
 import operator
 import os
@@ -26,15 +27,13 @@ def complexparse(lines: list[str]) -> dict:
         try:
             simpleparse("".join(text[:mid]))
             return _find_length_of_valid_string(text, mid + 1, e)
-        except Exception as ex:
+        except Exception:
             return _find_length_of_valid_string(text, s, mid)
 
     try:
-        d = simpleparse("".join(lines))
-        return d
-    except IndentationError as ex:
-        pass
-        # logging.error(f"IndentationError: {ex}")
+        return simpleparse("".join(lines))
+    except IndentationError:
+        pass  # parse as much as possible, below
     n = _find_length_of_valid_string(lines, 0, len(lines)) - 1
     logging.info(f"Parsed {n} (out of {len(lines)}) lines.")
     d = simpleparse("".join(lines[:n]))
@@ -244,6 +243,12 @@ class PhoneDump(object):
         return []
 
 
+@functools.lru_cache(maxsize=None)
+def _package_json(name: str):
+    with open(os.path.join(config.STATIC_DATA, name), "r") as fh:
+        return json.load(fh)
+
+
 class AndroidDump(PhoneDump):
     def __init__(self, fname):
         super(AndroidDump, self).__init__("android", fname)
@@ -253,7 +258,7 @@ class AndroidDump(PhoneDump):
     @staticmethod
     def custom_parse(service, lines):
         if service == "appops":
-            return complexparse(lines)  # TODO: Creat custom parser for appops
+            return complexparse(lines)  # nested per-package blocks
         elif service == "procstats":
             return parse_procstats("\n".join(lines))
 
@@ -412,7 +417,7 @@ class AndroidDump(PhoneDump):
             return {}
         app_d = self._find_packages_section(d["package"])
         if app_d is None:
-            logging.error(f"No 'Packages' section in the package dump")
+            logging.error("No 'Packages' section in the package dump")
             return {}
         # get_all_leaves(match_keys(d, "^package$//^Packages//^Package .*"))
         packages = {}
@@ -540,16 +545,10 @@ class IosDump(PhoneDump):
         self.df, self.deviceinfo = self.load_file()
         self.device_class = self.deviceinfo.get("DeviceClass", "iPhone/iPad")
 
-        # FIXME: not efficient to load here everytime?
-        # load permissions mappings and apps plist
-        self.permissions_map = {}
-        self.model_make_map = {}
-        with open(os.path.join(config.STATIC_DATA, "ios_permissions.json"), "r") as fh:
-            self.permissions_map = json.load(fh)
-        with open(
-            os.path.join(config.STATIC_DATA, "ios_device_identifiers.json"), "r"
-        ) as fh:
-            self.model_make_map = json.load(fh)
+        # Bundled data files, read once per process.
+        # A copy: get_permissions adds the permissions it meets.
+        self.permissions_map = dict(_package_json("ios_permissions.json"))
+        self.model_make_map = _package_json("ios_device_identifiers.json")
 
     def __nonzero__(self):
         return len(self.df) > 0
@@ -630,10 +629,6 @@ class IosDump(PhoneDump):
         return all_permissions
 
     def device_info(self):
-        # TODO: see idevicediagnostics mobilegestalt KEY
-        # https://blog.timac.org/2017/0124-deobfuscating-libmobilegestalt-keys/
-        # can detect Airplane Mode, PasswordConfigured, lots of details about hardware.
-        # https://gist.github.com/shu223/c108bd47b4c9271e55b5
         m = {}
         try:
             m["model"] = self.model_make_map[self.deviceinfo["ProductType"]]
@@ -650,15 +645,10 @@ class IosDump(PhoneDump):
         'permission': tuple (all permissions of appid, developer
         reasons for requesting the permissions)
         'title': the human-friendly name of the app.
-        'jailbroken': tuple (whether or not phone is suspected to be jailbroken, rationale)
-        'phone_kind': tuple (make, OS version)
+        (Whether the phone is jailbroken is checked per phone, in
+        IosScanner.isrooted, not per app.)
         """
-        # d = self.df
-        res = {
-            "title": "",
-            "jailbroken": "",  # TODO: These are never set: phone_kind and jailbroken
-            "phone_kind": "",
-        }
+        res = {"title": ""}
         # app = self.df.iloc[appidx,:].dropna()
         # self.df is a list of app dictionaries, find the matching app
         app = next((a for a in self.df if a.get("CFBundleIdentifier") == appid), None)

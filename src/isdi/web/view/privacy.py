@@ -11,14 +11,12 @@ config = get_config()
 
 @bp.route("/privacy", methods=["GET"])
 def privacy():
-    """
-    TODO: Privacy scan. Think how should it flow.
-    Privacy is a seperate page.
-    """
+    """The privacy checkup page: it opens the phone's sharing and account
+    settings screens one by one (privacy_scan below) for the operator to
+    review with the client."""
     return render_template(
         "main.html",
         task="privacy",
-        device_primary_user=config.DEVICE_PRIMARY_USER,
         title=config.TITLE,
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,

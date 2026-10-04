@@ -104,7 +104,6 @@ class Config:
         from isdi import __version__
 
         self.VERSION = __version__
-        self.DEVICE_PRIMARY_USER = "client"  # Default label for device owner
 
         # Platform detection
         import platform

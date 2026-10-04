@@ -117,8 +117,7 @@ def score(flags):
 
 
 def assign_class(flags):
-    """Assigns bootstrap text-classes to each flag."""
-    # TODO: This is a view function, should not be here
+    """The Bootstrap class that colours an app's row by its score."""
     w = score(flags)
     norm_w = 0 if w <= 0 else 1 if w <= 0.3 else 2 if w <= 0.8 else 3
     _classes = ["", "alert-info", "alert-warning", "alert-primary"]
