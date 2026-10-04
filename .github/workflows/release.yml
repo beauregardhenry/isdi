@@ -13,6 +13,9 @@ name: Release
 # release and installed copies can pick up the new list. A push whose
 # version is already released is skipped, not failed.
 #
+# Run it with "dry run" ticked to do everything but publish (it then also
+# runs when the version is already released).
+#
 # Besides the wheel and sdist, each release carries constraints.txt: the
 # exact dependency versions that were installed and smoke-tested on each
 # supported Python, so a clinic can reinstall what was tested
@@ -20,6 +23,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, install and pin on every Python, but do not publish"
+        type: boolean
+        default: false
   push:
     branches: [ main ]
     paths:
@@ -51,6 +59,8 @@ jobs:
 
       - name: Read and check version
         id: version
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           version=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
           if ! grep -qx "__version__ = \"$version\"" src/isdi/__init__.py; then
@@ -58,13 +68,16 @@ jobs:
             exit 1
           fi
           if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
-            if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::notice::dry run: v$version is already released, continuing without publishing"
+            elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
               echo "::notice::v$version is already released; nothing to publish"
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0
+            else
+              echo "::error::v$version is already released; bump the version first"
+              exit 1
             fi
-            echo "::error::v$version is already released; bump the version first"
-            exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -149,6 +162,7 @@ jobs:
 
   publish:
     needs: [build, pin]
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

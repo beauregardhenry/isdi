@@ -48,6 +48,18 @@ S&P 2018). This version is a maintained fork:
   in use. Both are recorded with each scan (the blocklist by its SHA-256),
   so a result can be checked against the same version.
 
+### Limits of earlier versions
+
+Each scan records the ISDi version that made it (in its `scan_saved` audit
+entry, from version 1.4.0). Some earlier versions had faults that matter
+when reading their results:
+
+| Versions | Fault | What it means for those records |
+|---|---|---|
+| Before 1.7.0 | The iPhone check for root filesystem access over USB ("afc2") never ran: it called the iPhone library in a way the library does not support, and the error was only logged | An iPhone "no jailbreak found" result rested only on the check for known jailbreak apps. Android root checks were not affected |
+| Before 1.6.0 | If a command to the phone failed, its error text could be recorded as the phone's answer, for example as the device model | Check the device details of such scans against the phone itself |
+| Before 1.6.0 | An app's details page showed what the phone's latest scan recorded, which could be a later scan, possibly for another client | Notes or screenshots taken from a details page may describe a later scan. The scan records and evidence packages were not affected |
+
 For a criminal case, a forensic examination by a qualified examiner
 (often through law enforcement) may carry more weight than ISDi, and
 preserving the phone itself may matter more than any ISDi record.

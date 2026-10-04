@@ -473,3 +473,52 @@ def test_main_handles_interrupts_and_errors(monkeypatch, capsys, error, code, me
     assert exit_.value.code == code
     captured = capsys.readouterr()
     assert message in captured.out + captured.err
+
+
+@pytest.fixture
+def serving(tmp_path, monkeypatch):
+    """Pretend `isdi run` is serving this data from another process."""
+    from isdi.cli import common
+
+    pidfile = tmp_path / "isdi-run.pid"
+    monkeypatch.setattr(common, "_server_pid_file", lambda config: pidfile)
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    pidfile.write_text(str(proc.pid))
+    yield pidfile, proc
+    proc.kill()
+    proc.wait()
+
+
+def test_reset_and_restore_refuse_while_isdi_runs(app, cli, serving, tmp_path):
+    for args in (["reset", "--no-backup"], ["restore", "--replace", __file__]):
+        res = cli(*args, input="DELETE EVERYTHING\n")
+        assert res.exit_code == 1 and "ISDi is running" in res.output, args
+    # The database is untouched.
+    assert get_config().database_path.exists()
+
+
+def test_a_pid_file_left_by_a_crash_is_ignored(serving):
+    from isdi.cli import common
+
+    pidfile, proc = serving
+    assert common.server_pid(get_config()) == proc.pid
+    proc.kill()
+    proc.wait()
+    assert common.server_pid(get_config()) is None
+    pidfile.write_text("not a pid")
+    assert common.server_pid(get_config()) is None
+
+
+def test_run_marks_itself_as_serving(run_cli, tmp_path, monkeypatch):  # noqa: F811
+    import atexit
+
+    from isdi.cli import common
+
+    pidfile = tmp_path / "isdi-run.pid"
+    monkeypatch.setattr(common, "_server_pid_file", lambda config: pidfile)
+    at_exit = []
+    monkeypatch.setattr(atexit, "register", at_exit.append)
+    run_cli()
+    assert pidfile.read_text() == str(os.getpid())
+    at_exit[0]()
+    assert not pidfile.exists()
