@@ -86,7 +86,7 @@ def adb_run(monkeypatch):
             raise Fake.error
         return subprocess.CompletedProcess(argv, 0, stdout=Fake.stdout, stderr="")
 
-    monkeypatch.setattr(scanner.subprocess, "run", run)
+    monkeypatch.setattr(scanner.android.subprocess, "run", run)
     yield Fake
     AndroidScanner().discard_dump(SERIAL)
 

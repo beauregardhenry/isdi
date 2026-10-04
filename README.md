@@ -225,7 +225,21 @@ to the application. I don't know how to get install date, resource usage, etc.
 
 ## Code Structure  
 
+- **`src/isdi/cli/`** - The `isdi` command line
+  - `server.py` - `run`, `info`, `paths`
+  - `accounts.py` - `user ...`
+  - `keys.py` - passphrase, signing key, `backup`, `restore`, `reset`
+  - `records.py` - `export`, `erase`, `evidence ...`, `verify`, `audit ...`
+
+- **Core modules in `src/isdi/`** - `crypto.py` (encryption and signing),
+  `users.py` (accounts and roles), `audit.py` (the audit log), `evidence.py`
+  (evidence copies and signed packages), `backup.py` (encrypted backups),
+  `data_protection.py` (removing plaintext leftovers)
+
 - **`src/isdi/scanner/`** - Core scanning logic
+  - `base.py` - The scanner base class and the raw dump files a scan handles
+  - `android.py`, `ios.py` - The Android (adb) and iOS (pymobiledevice3) scanners
+  - `demo.py` - The pretend phone scanned by `isdi run --test`
   - `parse_dump.py` - Parses device dumps (Android/iOS)
   - `privacy_scan_android.py` - Android privacy scanning
   - `root_check.py` - Root and jailbreak checks

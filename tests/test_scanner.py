@@ -22,8 +22,9 @@ def tool_output(monkeypatch):
         Out.commands.append(cmd.format(**kw))
         return object()
 
-    monkeypatch.setattr(scanner, "run_command", fake_run_command)
-    monkeypatch.setattr(scanner, "catch_err", lambda p, cmd="": Out.text)
+    for module in (scanner.android, scanner.ios):
+        monkeypatch.setattr(module, "run_command", fake_run_command)
+        monkeypatch.setattr(module, "catch_err", lambda p, cmd="": Out.text)
     Out.commands = []
     return Out
 

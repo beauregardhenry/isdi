@@ -58,7 +58,7 @@ def test_android_dump_logs_a_pseudonym(log_lines, monkeypatch, tmp_path):
     def fake_run(argv, **kw):
         return subprocess.CompletedProcess(argv, 0, stdout="x=1\n" * 400, stderr="")
 
-    monkeypatch.setattr(scanner.subprocess, "run", fake_run)
+    monkeypatch.setattr(scanner.android.subprocess, "run", fake_run)
     sc = scanner.AndroidScanner()
     monkeypatch.setattr(sc, "dump_path", lambda serial: str(tmp_path / "d.txt"))
     assert sc._dump_phone(SERIAL)

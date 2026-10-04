@@ -105,7 +105,7 @@ def ios(monkeypatch):
 
     clock = [1000.0]
     monkeypatch.setattr(sc, "_dump_phone", fake_dump)
-    monkeypatch.setattr(scanner.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(scanner.ios.time, "monotonic", lambda: clock[0])
     sc.calls, sc.clock = calls, clock
     return sc
 
