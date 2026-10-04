@@ -75,7 +75,7 @@ def fake_adb(monkeypatch):
             out = "x=1\n" * 400  # keep the dump above the 5000-byte sanity floor
         return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
 
-    monkeypatch.setattr(scanner.subprocess, "run", fake_run)
+    monkeypatch.setattr(scanner.android.subprocess, "run", fake_run)
 
 
 def test_dump_file_is_redacted_normalized_and_parses(fake_adb, tmp_path, monkeypatch):
