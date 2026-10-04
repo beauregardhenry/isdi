@@ -1,7 +1,6 @@
 import pytest
 import re
 from isdi.scanner.blocklist import _regex_blocklist, app_title_and_flag
-import sys
 
 test_list = [
     ("com.spyware.app", True),

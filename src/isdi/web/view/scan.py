@@ -14,7 +14,6 @@ from isdi.scanner import db, blocklist
 from isdi.scanner.runcmd import is_valid_serial
 from isdi.scanner.db import (
     get_client_devices_from_db,
-    new_client_id,
     create_scan,
     create_mult_appinfo,
     first_element_or_none,

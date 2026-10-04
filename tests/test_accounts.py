@@ -10,10 +10,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
 from isdi import audit, users
-from isdi import cli as cli_mod
 from isdi.scanner import db
 from tests.conftest import TEST_PASSWORD, TEST_USERNAME
 from tests.test_audit import fresh_log  # noqa: F401
@@ -320,14 +318,6 @@ def test_migration_adds_the_users_table(tmp_path):
 
 
 # Command line
-
-
-@pytest.fixture
-def cli(monkeypatch, passphrase):
-    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    saved = audit.operator()
-    yield lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
-    audit.set_operator(saved)
 
 
 def test_cli_user_add_list_disable_enable(app, cli):

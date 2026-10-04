@@ -92,6 +92,28 @@ def client(app):
 
 
 @pytest.fixture
+def cli(monkeypatch, passphrase):
+    """Invoke the `isdi` command line, unlocked with the test passphrase."""
+    from click.testing import CliRunner
+
+    from isdi import cli as cli_mod
+
+    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
+    saved = audit.operator()
+    yield lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
+    audit.set_operator(saved)
+
+
+@pytest.fixture
+def keys():
+    """Put the unlocked keys back after a test that changes them; yields
+    them, for tests that switch keys midway."""
+    saved = crypto._state()
+    yield saved
+    crypto._restore(saved)
+
+
+@pytest.fixture
 def client_of(app):
     """A signed-in test client working with a given client: scans are
     opened and changed only in their own client's session."""

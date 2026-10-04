@@ -5,6 +5,16 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## 1.7.0
+
+- **`isdi reset` is harder to run by mistake.** It now needs the
+  passphrase, a backup first (`-o FILE`, or `--no-backup` to skip it), and
+  typing `DELETE EVERYTHING`. The reset is recorded in the audit log, which
+  the backup keeps. To delete one client's data, use `isdi erase`.
+- **Reproducible installs.** Each release now has a `constraints.txt`
+  listing the dependency versions it was tested with on each Python
+  version; see the README for the install command.
+
 ## 1.6.0
 
 - **Backups.** `isdi backup -o FILE` writes all ISDi data to one encrypted

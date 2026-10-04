@@ -367,7 +367,7 @@ class AndroidDump(PhoneDump):
                     )
                     return {"foreground": "unknown", "background": "unknown"}
                 else:
-                    uid, rxBytes, rxPackets, txBytes, txPackets = s
+                    _uid, rxBytes, _rxPackets, txBytes, _txPackets = s
                     res["data_used"] = "{:.2f} MB".format(
                         (int(rxBytes) + int(txBytes)) / (1024 * 1024)
                     )
@@ -391,7 +391,6 @@ class AndroidDump(PhoneDump):
         else:
             t = b[0].split(":")
             return t[1]
-        return b
 
     @staticmethod
     def _find_packages_section(section):

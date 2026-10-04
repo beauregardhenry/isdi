@@ -6,10 +6,8 @@ import sqlite3
 import uuid
 
 import pytest
-from click.testing import CliRunner
 
 from isdi import audit, users
-from isdi import cli as cli_mod
 from isdi.scanner import db
 from tests.test_accounts import PASSWORD, _sign_in
 from tests.test_consult import _valid_form_data
@@ -138,14 +136,6 @@ def test_deleting_a_device_keeps_other_clients_scans_of_it(
     with app.app_context():
         assert db.get_scan_res_from_db(r1["scanid"]) is None
         assert db.get_scan_res_from_db(r2["scanid"]) is not None
-
-
-@pytest.fixture
-def cli(monkeypatch, passphrase):
-    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    saved = audit.operator()
-    yield lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
-    audit.set_operator(saved)
 
 
 def test_cli_roles(app, cli):

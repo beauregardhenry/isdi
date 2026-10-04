@@ -4,7 +4,6 @@ import uuid
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
 from isdi import audit, crypto
 from isdi.scanner import db
@@ -195,16 +194,6 @@ def test_export_includes_the_trail_and_erase_is_recorded(app, phone):  # noqa: F
         assert counts["audit_details"] == 1
         assert audit.entries(clientid)[0]["details"] is None
         assert audit.verify()["ok"]
-
-
-@pytest.fixture
-def cli(monkeypatch, passphrase):
-    from isdi import cli as cli_mod
-
-    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    saved = audit.operator()
-    yield lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
-    audit.set_operator(saved)
 
 
 def test_cli_audit_verify(app, cli):

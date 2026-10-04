@@ -90,6 +90,15 @@ Or, without git, install the wheel attached to the release:
 pip install https://github.com/beauregardhenry/isdi/releases/download/v1.6.0/isdi_scanner-1.6.0-py3-none-any.whl
 ```
 
+To install exactly the dependency versions the release was tested with
+(recommended for clinics; releases from 1.7.0 on), add its
+`constraints.txt`:
+
+```bash
+pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.6.0/constraints.txt \
+  https://github.com/beauregardhenry/isdi/releases/download/v1.6.0/isdi_scanner-1.6.0-py3-none-any.whl
+```
+
 > **Note:** this fork uses the same package name, `isdi-scanner`, as
 > upstream's PyPI release. Installing it replaces upstream's version, but
 > `pip install -U isdi-scanner` (without a URL) would download upstream's
@@ -139,6 +148,7 @@ isdi backup -o FILE               # Encrypted backup of all ISDi data
 isdi restore FILE                 # Restore it (here or on a new computer)
 isdi export CLIENTID -o file.json # Everything stored about a client, decrypted
 isdi erase CLIENTID               # Delete everything stored about a client
+isdi reset -o FILE                # Delete ALL data (backup first; asks to confirm)
 isdi audit verify                 # Check the audit log for tampering
 isdi audit anchor -o FILE         # Signed record of the log, to send off-site
 isdi audit verify --anchor FILE   # Check the log still matches that record

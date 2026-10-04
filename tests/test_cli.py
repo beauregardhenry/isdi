@@ -4,6 +4,7 @@ erasure, and the informational commands."""
 import json
 import os
 import shutil
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -22,22 +23,6 @@ from isdi.scanner import db
 from tests.test_audit import _three_entries, fresh_log  # noqa: F401
 from tests.test_config import run_cli  # noqa: F401
 from tests.test_data_protection import _live_scan, phone  # noqa: F401
-
-
-@pytest.fixture
-def cli(monkeypatch, passphrase):
-    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    saved = audit.operator()
-    yield lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
-    audit.set_operator(saved)
-
-
-@pytest.fixture
-def keys():
-    """Put the unlocked keys back after a test that changes them."""
-    saved = crypto._state()
-    yield
-    crypto._restore(saved)
 
 
 @pytest.fixture
@@ -369,10 +354,15 @@ def test_info_and_paths(cli):
     assert json.loads(res.output)["secrets"]["keyfile"] == str(config.keyfile)
 
 
-def test_reset_deletes_the_data(tmp_path):
-    """In a process of its own: it deletes the database."""
+RESET_PASSPHRASE = "the reset test passphrase"
+
+
+@pytest.fixture
+def isolated(tmp_path):
+    """A separate ISDi home with a client in its database, and a way to run
+    `isdi` there in a process of its own (reset deletes the database)."""
     # Link the suite's downloaded app-info.db into the new cache, so it is
-    # not downloaded again (reset deletes the link, not the file).
+    # not downloaded again.
     cache = tmp_path / "cache" / "isdi"
     cache.mkdir(parents=True)
     (cache / "app-info.db").symlink_to(
@@ -383,37 +373,90 @@ def test_reset_deletes_the_data(tmp_path):
         XDG_DATA_HOME=str(tmp_path / "data"),
         XDG_CONFIG_HOME=str(tmp_path / "config"),
         XDG_CACHE_HOME=str(tmp_path / "cache"),
+        ISDI_PASSPHRASE=RESET_PASSPHRASE,
+        ISDI_OPERATOR="Reset Tester",
     )
-    code = (
-        "from isdi.config import get_config; c = get_config();"
-        "c.database_path.parent.mkdir(parents=True, exist_ok=True);"
-        "c.database_path.write_text('db');"
+    setup = (
+        "from isdi import crypto, audit; from isdi.config import get_config;"
+        "c = get_config(); crypto.setup(c.keyfile, %r);"
+        "from isdi.app import create_app;"
+        "app = create_app(c);"
+        "from isdi.scanner import db;"
+        "ctx = app.app_context(); ctx.push();"
+        'db.get_db().execute("INSERT INTO clients_notes (clientid) '
+        "VALUES ('20260101_009')\"); db.get_db().commit();"
         "(c.dumps_dir / 'x.txt').write_text('dump')"
-    )
-    subprocess.run([sys.executable, "-c", code], env=env, check=True)
-    res = subprocess.run(
-        [sys.executable, "-m", "isdi", "reset", "--yes"],
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    assert res.returncode == 0, res.stderr
-    assert "All data has been reset" in res.stdout
-    (cache / "app-info.db").symlink_to(
-        Path(get_config().APP_INFO_SQLITE_FILE.replace("sqlite:///", "")).resolve()
-    )
-    out = subprocess.run(
-        [sys.executable, "-m", "isdi", "paths"],
-        env=env,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    assert "Downloading" not in out
-    paths = json.loads(out)
-    assert str(tmp_path) in paths["data"]["database"]
-    assert not Path(paths["data"]["database"]).exists()
-    assert os.listdir(paths["data"]["dumps"]) == []
+    ) % RESET_PASSPHRASE
+    subprocess.run([sys.executable, "-c", setup], env=env, check=True)
+
+    def run(*args, input=None, passphrase=RESET_PASSPHRASE):
+        return subprocess.run(
+            [sys.executable, "-m", "isdi", *args],
+            env=dict(env, ISDI_PASSPHRASE=passphrase),
+            input=input,
+            capture_output=True,
+            text=True,
+        )
+
+    paths = json.loads(run("paths").stdout)
+    return run, Path(paths["data"]["database"]), Path(paths["data"]["dumps"])
+
+
+def test_reset_writes_a_backup_first_then_deletes(isolated, tmp_path):
+    run, database, dumps = isolated
+    backup_file = tmp_path / "before-reset.backup"
+    res = run("reset", "-o", str(backup_file), input="DELETE EVERYTHING\n")
+    assert res.returncode == 0, res.stderr + res.stdout
+    assert "All client data has been deleted" in res.stdout
+    assert not database.exists() and os.listdir(dumps) == []
+    assert (database.parent.parent.parent / "cache" / "isdi" / "app-info.db").exists()
+
+    # The backup holds the client and the reset itself.
+    # The keys were kept, so restoring needs --replace.
+    res = run("restore", "--replace", str(backup_file), input=f"{RESET_PASSPHRASE}\n")
+    assert res.returncode == 0, res.stderr + res.stdout
+    conn = sqlite3.connect(database)
+    assert conn.execute("SELECT clientid FROM clients_notes").fetchall() == [
+        ("20260101_009",)
+    ]
+    actions = [r[0] for r in conn.execute("SELECT action FROM audit_log")]
+    assert actions[-2:] == ["data_reset", "restored_from_backup"]
+
+
+@pytest.mark.parametrize(
+    "args, input, passphrase, message",
+    [
+        (["reset"], "", RESET_PASSPHRASE, "Give either -o FILE"),
+        (
+            ["reset", "--no-backup", "-o", "x.backup"],
+            "",
+            RESET_PASSPHRASE,
+            "Give either -o FILE",
+        ),
+        (["reset", "--no-backup"], "yes\n", RESET_PASSPHRASE, "Not confirmed"),
+        (
+            ["reset", "--no-backup"],
+            "DELETE EVERYTHING\n",
+            "a wrong passphrase!",
+            "not the passphrase",
+        ),
+    ],
+)
+def test_reset_refuses_without_every_safeguard(
+    isolated, args, input, passphrase, message
+):
+    run, database, dumps = isolated
+    res = run(*args, input=input, passphrase=passphrase)
+    assert res.returncode == 1 and message in res.stdout + res.stderr
+    clients = sqlite3.connect(database).execute("SELECT clientid FROM clients_notes")
+    assert clients.fetchall() == [("20260101_009",)]
+
+
+def test_reset_without_a_backup_when_asked(isolated):
+    run, database, _ = isolated
+    res = run("reset", "--no-backup", input="DELETE EVERYTHING\n")
+    assert res.returncode == 0, res.stderr + res.stdout
+    assert not database.exists()
 
 
 @pytest.mark.parametrize(

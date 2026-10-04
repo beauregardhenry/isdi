@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
 from isdi import audit, backup, crypto
 from isdi import cli as cli_mod
@@ -19,14 +18,6 @@ from isdi.scanner import db
 from tests.test_data_protection import _live_scan, phone  # noqa: F401
 
 KEYFILE = get_config().keyfile  # the suite's, before any test moves it
-
-
-@pytest.fixture
-def cli(monkeypatch, passphrase):
-    monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    saved = audit.operator()
-    yield lambda *a, **kw: CliRunner().invoke(cli_mod.cli, list(a), **kw)
-    audit.set_operator(saved)
 
 
 @pytest.fixture
@@ -116,13 +107,6 @@ def test_restore_with_the_recovery_key(tmp_path, new_home, cli, keys):
     crypto.unlock(new_home / "datakey.json", passphrase="the other passphrase")
     notes = _rows(new_home / "database.db", "SELECT * FROM clients_notes")
     assert notes[0]["general_notes"] == "restored note"
-
-
-@pytest.fixture
-def keys():
-    saved = crypto._state()
-    yield saved
-    crypto._restore(saved)
 
 
 def test_restore_keeps_the_current_data_when_replacing(made, cli, new_home, passphrase):
