@@ -10,7 +10,7 @@ from isdi.web.view.index import get_device
 from flask import jsonify, render_template, request, session, redirect, url_for
 from markupsafe import escape
 from isdi.scanner import db, blocklist
-from isdi.scanner.runcmd import is_valid_hmac_serial, is_valid_serial
+from isdi.scanner.runcmd import is_valid_serial
 from isdi.scanner.db import (
     get_client_devices_from_db,
     new_client_id,
@@ -211,6 +211,7 @@ def _scan_and_save(clientid, device, device_owner, ser, job_id=None, preserve=Fa
         ],
         details=sc.dump_details(apps),
     )
+    template_d["app_rows"] = db.app_row_ids(scanid)
     audit.record(
         "scan_saved",
         clientid=clientid,
@@ -435,104 +436,108 @@ def scan():
         template_d["error"] = error
         return render_template("main.html", **template_d), 201
 
-    # Only explicit from_dump requests should load old results.
-    # Some real device serials are long hex strings and were mis-detected as hashed.
-    from_dump = get_param("from_dump") == "1"
+    result_d, status_code = _run_live_scan(
+        clientid,
+        device,
+        device_owner,
+        ser,
+        preserve=get_param("preserve_evidence") == "1",
+    )
+    result_d["device_primary_user_sel"] = device_primary_user
+    return render_template("main.html", **result_d), status_code
 
-    if from_dump:
-        # Load scan data from database — do NOT run ADB/iOS commands with hashed serial
-        if not is_valid_hmac_serial(ser):
-            template_d["error"] = "Invalid device id."
-            return render_template("main.html", **template_d), 201
-        scanid = db.get_most_recent_scan_id(ser)
-        if not scanid:
-            template_d["error"] = (
-                "No scan found for this device. Please connect the device and scan again."
-            )
-            return render_template("main.html", **template_d), 201
 
-        scan_res = db.get_scan_res_from_db(scanid)
-        if not scan_res:
-            template_d["error"] = "Scan record not found in database."
-            return render_template("main.html", **template_d), 201
+def _client_scan(scanid):
+    """The scan record if it belongs to this session's client, else None.
+    Scan ids are sequential: without this check, any id could be opened."""
+    scan_res = db.get_scan_res_from_db(scanid)
+    if not scan_res or scan_res.get("clientid") != session.get("clientid"):
+        return None
+    return scan_res
 
-        manufacturer = scan_res.get("device_manufacturer") or ""
-        model = scan_res.get("device_model") or ""
-        device_name_print = f"{manufacturer} {model}".strip() or "<Unknown device>"
 
-        app_rows = db.get_app_info_from_db(scanid)
-        apps = {}
-        # Pre-fetch titles from the app-info cache database for this device type
-        _title_cache = {}
-        if sc and scan_res.get("device") == "android" and sc.app_info_conn:
-            try:
-                appids_in_scan = [r["appid"] for r in app_rows if r.get("appid")]
-                if appids_in_scan:
-                    cur = sc.app_info_conn.cursor()
-                    placeholders = ",".join("?" * len(appids_in_scan))
-                    cur.execute(
-                        f"SELECT appid, title FROM apps WHERE appid IN ({placeholders})",
-                        appids_in_scan,
-                    )
-                    for r in cur.fetchall():
-                        if isinstance(r, dict):
-                            _title_cache[r["appid"]] = r.get("title") or ""
-                        else:
-                            _title_cache[r[0]] = r[1] or ""
-            except Exception:
-                pass
-        for row in app_rows:
-            appid = row["appid"]
-            try:
-                flags = json.loads(row["flags"]) if row["flags"] else []
-            except (json.JSONDecodeError, TypeError):
-                flags = []
-            title = _title_cache.get(appid, "")
-            title = title.encode("ascii", errors="ignore").decode("ascii")
-            apps[appid] = {
-                "title": title,
-                "flags": flags,
-                "score": blocklist.score(flags),
-                "class_": blocklist.assign_class(flags),
-                "html_flags": blocklist.flag_str(flags),
-            }
+@bp.route("/scan/saved/<int:scanid>", methods=["GET"])
+def saved_scan(scanid):
+    """A saved scan, read from the database. The URL carries only the scan
+    id: serials, nicknames and app ids in URLs end up in browser history."""
+    if "clientid" not in session:
+        return redirect(url_for("main.index"))
+    scan_res = _client_scan(scanid)
+    if not scan_res:
+        return "Unknown scan", 404
+    device = scan_res.get("device")
+    sc = get_device(device)
 
-        rooted = scan_res.get("is_rooted")
+    manufacturer = scan_res.get("device_manufacturer") or ""
+    model = scan_res.get("device_model") or ""
+    device_name_print = f"{manufacturer} {model}".strip() or "<Unknown device>"
+
+    app_rows = db.get_app_info_from_db(scanid)
+    apps = {}
+    # Pre-fetch titles from the app-info cache database for this device type
+    _title_cache = {}
+    if sc and device == "android" and sc.app_info_conn:
         try:
-            rooted_reason = json.loads(scan_res.get("rooted_reasons") or "[]")
+            appids_in_scan = [r["appid"] for r in app_rows if r.get("appid")]
+            if appids_in_scan:
+                cur = sc.app_info_conn.cursor()
+                placeholders = ",".join("?" * len(appids_in_scan))
+                cur.execute(
+                    f"SELECT appid, title FROM apps WHERE appid IN ({placeholders})",
+                    appids_in_scan,
+                )
+                for r in cur.fetchall():
+                    if isinstance(r, dict):
+                        _title_cache[r["appid"]] = r.get("title") or ""
+                    else:
+                        _title_cache[r[0]] = r[1] or ""
+        except Exception:
+            pass
+    for row in app_rows:
+        appid = row["appid"]
+        try:
+            flags = json.loads(row["flags"]) if row["flags"] else []
         except (json.JSONDecodeError, TypeError):
-            rooted_reason = []
+            flags = []
+        title = _title_cache.get(appid, "")
+        title = title.encode("ascii", errors="ignore").decode("ascii")
+        apps[appid] = {
+            "title": title,
+            "flags": flags,
+            "score": blocklist.score(flags),
+            "class_": blocklist.assign_class(flags),
+            "html_flags": blocklist.flag_str(flags),
+        }
 
-    else:
-        # Live scan — device must be connected
-        result_d, status_code = _run_live_scan(
-            clientid,
-            device,
-            device_owner,
-            ser,
-            preserve=get_param("preserve_evidence") == "1",
-        )
-        result_d["device_primary_user_sel"] = device_primary_user
-        return render_template("main.html", **result_d), status_code
+    rooted = scan_res.get("is_rooted")
+    try:
+        rooted_reason = json.loads(scan_res.get("rooted_reasons") or "[]")
+    except (json.JSONDecodeError, TypeError):
+        rooted_reason = []
 
     apps_sorted = sorted(
         apps.items(),
         key=lambda item: (-item[1].get("score", 0.0), item[0]),
     )
-    currently_scanned = get_client_devices_from_db(session["clientid"])
-    isrooted_str = _isrooted_html(rooted, rooted_reason)
-
-    template_d.update(
-        dict(
-            isrooted=isrooted_str,
-            device_name=device_name_print,
-            apps=apps,
-            apps_sorted=apps_sorted,
-            scanid=scanid,
-            sysapps=set(),
-            serial=ser,
-            from_dump=True,
-            currently_scanned=currently_scanned,
-        )
+    template_d = dict(
+        task="home",
+        title=config.TITLE,
+        platform=config.PLATFORM,
+        is_termux=bool(os.environ.get("PREFIX")),
+        is_debug=config.DEBUG,
+        device=device,
+        device_primary_user=config.DEVICE_PRIMARY_USER,
+        device_primary_user_sel=scan_res.get("device_primary_user"),
+        clientid=session["clientid"],
+        isrooted=_isrooted_html(rooted, rooted_reason),
+        device_name=device_name_print,
+        apps=apps,
+        apps_sorted=apps_sorted,
+        app_rows={r["appid"]: r["id"] for r in app_rows},
+        scanid=scanid,
+        sysapps=set(),
+        serial=scan_res.get("serial"),
+        from_dump=True,
+        currently_scanned=get_client_devices_from_db(session["clientid"]),
     )
     return render_template("main.html", **template_d), 200

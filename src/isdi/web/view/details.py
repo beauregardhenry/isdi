@@ -1,27 +1,28 @@
-from flask import request, render_template
+from flask import render_template, session
 from isdi.web import bp
 from isdi.web.view.index import get_device
 from isdi.config import get_config
-from isdi.scanner.runcmd import is_valid_appid, is_valid_hmac_serial, is_valid_serial
+from isdi.scanner import db
 import os
 
 config = get_config()
 
 
-@bp.route("/details/app/<device>", methods=["GET"])
-def app_details(device):
-    sc = get_device(device)
-    if sc is None:
-        return "Unknown device type", 400
-    appid = request.args.get("appId")
-    ser = request.args.get("serial")
-    # Saved-scan links only carry the HMAC of the serial; their details
-    # come from the database, never from adb/pymobiledevice3.
-    stored = request.args.get("from_dump") == "1"
-    valid_serial = is_valid_hmac_serial(ser) if stored else is_valid_serial(ser)
-    if not is_valid_appid(appid) or not valid_serial:
-        return "Invalid app id or device serial", 400
-    d, info = sc.app_details(ser, appid, stored=stored)
+@bp.route("/scan/<int:scanid>/app/<int:row>", methods=["GET"])
+def app_details(scanid, row):
+    """One app of a scan. The URL holds only ids: a serial or app id in it
+    would be kept in the browser's history. Details come from the database,
+    never from the phone."""
+    scan_res = db.get_scan_res_from_db(scanid)
+    if not scan_res or scan_res.get("clientid") != session.get("clientid"):
+        return "Unknown scan", 404
+    appid = next(
+        (r["appid"] for r in db.get_app_info_from_db(scanid) if r["id"] == row), None
+    )
+    sc = get_device(scan_res.get("device"))
+    if appid is None or sc is None:
+        return "Unknown app", 404
+    d, info = sc.app_details(scan_res["serial"], appid, stored=True)
     d["appId"] = appid
 
     return render_template(
@@ -31,7 +32,7 @@ def app_details(device):
         device_primary_user=config.DEVICE_PRIMARY_USER,
         app=d,
         info=info,
-        device=device,
+        device=scan_res.get("device"),
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,
     )

@@ -65,13 +65,10 @@ def test_privacy_rejects_injected_serial(client, no_subprocess):
     assert not no_subprocess
 
 
-def test_details_rejects_injected_params(client, no_subprocess):
-    r = client.get(
-        "/details/app/android", query_string={"appId": "a;id", "serial": "ok"}
-    )
-    assert r.status_code == 400
-    r = client.get("/details/app/nope", query_string={"appId": "a", "serial": "b"})
-    assert r.status_code == 400
+def test_details_take_only_integer_ids(client, no_subprocess):
+    for path in ("/scan/1;id/app/1", "/scan/1/app/a;id", "/details/app/android"):
+        assert client.get(path).status_code == 404
+    assert not no_subprocess
 
 
 def test_scan_start_rejects_injected_serial(app, client, no_subprocess):

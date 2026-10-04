@@ -35,7 +35,7 @@ def _store_scan(app, serial_hmac, details):
                 "device_version": "1",
                 "device_manufacturer": "x",
                 "last_full_charge": "",
-                "device_primary_user": "o",
+                "device_primary_user": "Nickname-7f",
                 "is_rooted": False,
                 "rooted_reasons": "[]",
             }
@@ -55,74 +55,59 @@ def no_phone(monkeypatch):
     monkeypatch.setattr(subprocess, "run", refuse)
 
 
-def test_saved_scan_details_come_from_the_database(app, client, no_phone, tmp_path):
-    serial = get_config().hmac_serial("SAVED-PHONE-1")
-    _store_scan(app, serial, _details(tmp_path))
-    r = client.get(
-        "/details/app/test",
-        query_string={"appId": "com.example.spy", "serial": serial, "from_dump": "1"},
+def _row(app, scanid, appid="com.example.spy"):
+    with app.app_context():
+        return db.app_row_ids(scanid)[appid]
+
+
+def test_details_come_from_the_database(app, client, no_phone, tmp_path):
+    scanid = _store_scan(
+        app, get_config().hmac_serial("SAVED-PHONE-1"), _details(tmp_path)
     )
+    r = client.get(f"/scan/{scanid}/app/{_row(app, scanid)}")
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     assert "10234" in html and "2.1" in html  # userId and versionName from the dump
 
 
-def test_live_details_use_the_latest_scan_of_that_phone(
-    app, client, no_phone, tmp_path
-):
-    _store_scan(app, get_config().hmac_serial("LIVE-PHONE-1"), _details(tmp_path))
-    r = client.get(
-        "/details/app/test",
-        query_string={"appId": "com.example.spy", "serial": "LIVE-PHONE-1"},
+def test_details_of_another_clients_scan_are_refused(app, no_phone, tmp_path):
+    scanid = _store_scan(
+        app, get_config().hmac_serial("SAVED-PHONE-3"), _details(tmp_path)
     )
-    assert r.status_code == 200 and "10234" in r.get_data(as_text=True)
+    other = app.test_client()
+    with other.session_transaction() as s:
+        s["clientid"] = "20260101_999"
+    assert other.get(f"/scan/{scanid}/app/{_row(app, scanid)}").status_code == 404
+    assert other.get(f"/scan/saved/{scanid}").status_code == 404
 
 
-def test_saved_scan_details_require_a_stored_serial(client, no_phone):
-    r = client.get(
-        "/details/app/test",
-        query_string={
-            "appId": "com.example.spy",
-            "serial": "RAWSERIAL",
-            "from_dump": "1",
-        },
+@pytest.mark.parametrize("path", ["/scan/{s}/app/999999", "/scan/999999/app/1"])
+def test_unknown_scan_or_app_is_404(app, client, no_phone, tmp_path, path):
+    scanid = _store_scan(
+        app, get_config().hmac_serial("SAVED-PHONE-4"), _details(tmp_path)
     )
-    assert r.status_code == 400
+    assert client.get(path.format(s=scanid)).status_code == 404
 
 
-def test_saved_scan_links_mark_from_dump(app, client, no_phone):
-    from isdi.scanner import db
+def _links(html):
+    return re.findall(r'href="([^"]*)"', html)
 
+
+def test_links_carry_no_serial_nickname_or_app_id(app, client, tmp_path):
+    """Browser history keeps every URL visited: links must hold only ids."""
     serial = get_config().hmac_serial("SAVED-PHONE-2")
-    with client.session_transaction() as s:
-        s["clientid"] = "20260101_001"
-    with app.app_context():
-        scanid = db.create_scan(
-            {
-                "clientid": "20260101_001",
-                "serial": serial,
-                "device": "test",
-                "device_model": "m",
-                "device_version": "1",
-                "device_manufacturer": "x",
-                "last_full_charge": "",
-                "device_primary_user": "o",
-                "is_rooted": False,
-                "rooted_reasons": "[]",
-            }
-        )
-        db.create_mult_appinfo([(scanid, "com.example.spy", "[]", "", "<new>")])
-    r = client.get(
-        "/scan",
-        query_string={
-            "device": "test",
-            "device_owner": "o",
-            "devid": serial,
-            "from_dump": "1",
-        },
-    )
-    details_links = re.findall(r'href="(/details/app/[^"]*)"', r.get_data(as_text=True))
-    assert details_links and all("from_dump=1" in link for link in details_links)
+    scanid = _store_scan(app, serial, _details(tmp_path))
+    home = client.get("/").get_data(as_text=True)
+    assert f"/scan/saved/{scanid}" in _links(home)
+
+    page = client.get(f"/scan/saved/{scanid}").get_data(as_text=True)
+    details = [l for l in _links(page) if "/app/" in l]
+    assert details == [f"/scan/{scanid}/app/{_row(app, scanid)}"] * len(details)
+    assert details
+    internal = [l for l in _links(home) + _links(page) if l.startswith("/")]
+    for link in internal:
+        for secret in (serial, "Nickname-7f", "com.example.spy", "serial=", "devid="):
+            assert secret not in link, link
 
 
 def test_one_phones_details_are_not_shown_for_another(app, tmp_path):
@@ -146,3 +131,17 @@ def test_never_scanned_phone_gives_no_device_info(app, no_phone):
             get_config().hmac_serial("NEVER-SCANNED"), "x", stored=True
         )
     assert info == {}
+
+
+def test_live_scan_results_link_by_id_only(app, client, no_csrf):
+    r = client.post(
+        "/scan",
+        data={"device": "test", "device_owner": "Nickname-9c", "devid": "testdevice1"},
+    )
+    assert r.status_code == 200
+    links = [l for l in _links(r.get_data(as_text=True)) if l.startswith("/")]
+    details = [l for l in links if "/app/" in l]
+    assert details and all(re.fullmatch(r"/scan/\d+/app/\d+", l) for l in details)
+    assert client.get(details[0]).status_code == 200
+    for link in links:
+        assert "testdevice1" not in link and "Nickname-9c" not in link

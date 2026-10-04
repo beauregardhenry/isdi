@@ -79,19 +79,6 @@ def test_unknown_scan_job(client):
         ({"device_owner": "x"}, b"Please choose one device"),
         ({"device": "test"}, b"Please give the device a nickname"),
         ({"device": "test", "device_owner": "x", "devid": "a;b"}, b"Invalid device id"),
-        (
-            {"device": "test", "device_owner": "x", "devid": "a;b", "from_dump": "1"},
-            b"Invalid device id",
-        ),
-        (
-            {
-                "device": "test",
-                "device_owner": "x",
-                "devid": "f" * 64,
-                "from_dump": "1",
-            },
-            b"No scan found for this device",
-        ),
     ],
 )
 def test_scan_page_reports_bad_input(client, query, message):
