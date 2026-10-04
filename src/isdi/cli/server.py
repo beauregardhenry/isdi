@@ -7,7 +7,7 @@ from time import perf_counter
 import click
 
 from isdi import __version__
-from isdi.cli import _unlock, cli
+from isdi.cli.common import _unlock, cli
 from isdi.cli.accounts import _add_user_interactively
 
 ANCHOR_REMINDER_DAYS = 7

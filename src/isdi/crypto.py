@@ -190,6 +190,8 @@ def change_passphrase(
     re-encrypted, and the recovery key stays valid."""
     check_passphrase(new_passphrase)
     unlock(path, passphrase=passphrase, recovery_key=recovery_key)
+    if _data_key is None:  # unlock() sets it or raises
+        raise LockedError("the keyfile could not be unlocked")
     data = _read_keyfile(path)
     data["passphrase"] = _wrap(new_passphrase, _data_key)
     _write_keyfile(Path(path), data)

@@ -2,7 +2,7 @@
 
 import click
 
-from isdi.cli import _data, _operator_option, cli
+from isdi.cli.common import _data, _operator_option, cli
 
 
 def _add_user_interactively(username=None, name=None, role="staff"):

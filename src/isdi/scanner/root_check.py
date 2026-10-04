@@ -1,11 +1,12 @@
-from typing import Tuple, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+import asyncio
+import inspect
 import logging
 import shlex
-import socket
 from pymobiledevice3.lockdown import create_using_usbmux
 from isdi.scanner.runcmd import run_command, catch_err
 
-ANDROID_ROOT_INDICATORS = [
+ANDROID_ROOT_INDICATORS: List[Dict[str, Any]] = [
     {
         # low confidence, easily spoofed by Magisk/KernelSU build prop editors
         "name": "build_tags",
@@ -161,6 +162,31 @@ def check_android_root(serial: str, cli_path: str) -> Tuple[bool, List[str]]:
 # ----------------------------------------------------------------
 
 
+AFC2_TIMEOUT = 5.0
+
+
+async def _maybe_await(value):
+    """pymobiledevice3 made its lockdown API async; accept either."""
+    return await value if inspect.isawaitable(value) else value
+
+
+async def _afc2_query(serial: str) -> bool:
+    client = await _maybe_await(create_using_usbmux(serial=serial))
+    try:
+        service = await _maybe_await(client.start_lockdown_service("com.apple.afc2"))
+        await _maybe_await(service.close())
+        return True
+    finally:
+        await _maybe_await(client.close())
+
+
+def _afc2_service_opens(serial: str) -> bool:
+    """Whether the phone grants the afc2 service (root filesystem over USB),
+    which only jailbroken phones do. Raises when the phone refuses it, and
+    asyncio.TimeoutError when it does not answer."""
+    return asyncio.run(asyncio.wait_for(_afc2_query(serial), AFC2_TIMEOUT))
+
+
 def check_ios_jailbreak(
     serial: str, cli_path: str, apps: List[dict]
 ) -> Tuple[Optional[bool], List[str]]:
@@ -169,28 +195,25 @@ def check_ios_jailbreak(
     timed_out = False
 
     # Check if afc2 is active (indicates root filesystem access over USB)
-    orig_timeout = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(5.0)
     try:
-        client = create_using_usbmux(udid=serial)
-        client.start_service("com.apple.afc2")
-
-        msg = (
+        afc2 = _afc2_service_opens(serial)
+    except asyncio.TimeoutError:
+        logging.warning(
+            "Jailbreak check (iOS): afc2 query timed out (device may be locked or untrusted)."
+        )
+        timed_out = True
+        afc2 = False
+    except Exception as e:
+        # Expected on a phone that is not jailbroken: the service is refused.
+        logging.info("Jailbreak check (iOS): afc2 not available (%s)", type(e).__name__)
+        afc2 = False
+    if afc2:
+        reasons.append(
             f"Failed rootcheck 'afc2_service'. "
             f"Detected: 'com.apple.afc2 active'. "
             f"Apple File Conduit 2 (afc2) service is active. This permits full root filesystem access over a USB connection. "
             f"Command to reproduce: `{cli_path} lockdown service com.apple.afc2 --udid {serial}`"
         )
-        reasons.append(msg)
-    except socket.timeout:
-        logging.warning(
-            "Jailbreak check (iOS): afc2 query timed out (device may be locked or untrusted)."
-        )
-        timed_out = True
-    except Exception as e:
-        logging.warning(f"Jailbreak check (iOS): afc2 query failed: {e}")
-    finally:
-        socket.setdefaulttimeout(orig_timeout)
 
     for app in apps:
         appid = app.get("Identifier", "")

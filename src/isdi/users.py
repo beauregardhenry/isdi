@@ -183,7 +183,7 @@ def create(username: str, name: str, password: str, role: str = STAFF) -> dict:
     )
     db.commit()
     audit.record("user_created", details={"username": username, "role": role})
-    return by_username(username)
+    return require(username)
 
 
 def require(username: str) -> dict:
@@ -279,7 +279,9 @@ def can_open(user: dict, clientid: str) -> bool:
 
 def is_locked(user: dict, now: Optional[datetime] = None) -> bool:
     until = user.get("locked_until")
-    return bool(until) and datetime.fromisoformat(until) > (now or _now())
+    if not until:
+        return False
+    return datetime.fromisoformat(until) > (now or _now())
 
 
 def authenticate(username: str, password: str) -> Tuple[Optional[dict], str]:

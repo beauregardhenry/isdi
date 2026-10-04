@@ -109,3 +109,22 @@ jobs:
         run: |
           python -m pip install "black==26.5.1"
           python -m black --check src/ tests/
+
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # Settings are in pyproject.toml ([tool.mypy]). mypy is pinned like
+      # black: a new release must not fail CI on unchanged code.
+      - name: Check types
+        run: |
+          python -m pip install -e . "mypy==2.4.0"
+          python -m mypy

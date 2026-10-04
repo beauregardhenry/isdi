@@ -31,7 +31,7 @@ class Encrypted(TypeDecorator):
         return crypto.decrypt(self.column, value)
 
 
-class Client(sa.Model):
+class Client(sa.Model):  # type: ignore[name-defined]  # sa.Model is made at runtime
     __tablename__ = "clients_notes"
     _d = {"default": "", "server_default": ""}  # makes migrations smooth
     _d0 = {"default": "0", "server_default": "0"}

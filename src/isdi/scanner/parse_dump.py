@@ -9,7 +9,7 @@ from isdi.config import get_config
 from collections import OrderedDict
 from functools import reduce
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, List, Optional
 from rsonlite import simpleparse
 
 config = get_config()
@@ -18,7 +18,7 @@ config = get_config()
 def complexparse(lines: list[str]) -> dict:
     """Binary search how much str can be parsed without error"""
 
-    def _find_length_of_valid_string(text: str, s: int, e: int) -> int:
+    def _find_length_of_valid_string(text: list, s: int, e: int) -> int:
         """Finds the length of the valid string"""
         if s == e:
             return s
@@ -138,8 +138,8 @@ def retrieve(dict_: dict, nest: list) -> str | dict:
 ################ CUSTOM ANDROID PARSING #########################
 def parse_procstats(text: str) -> dict:
     """Parses the output of `adb shell dumsys procstats`"""
-    apps = {}
-    current_app = None
+    apps: Dict[str, dict] = {}
+    current_app: Optional[dict] = None
 
     app_re = re.compile(r"^\s*\* ([^ ]+) / ([^ ]+) / (v\d+):")
     stat_re = re.compile(
@@ -169,21 +169,22 @@ def parse_procstats(text: str) -> dict:
 
 
 class PhoneDump(object):
+    """A parsed phone dump. Subclasses parse the dump (load_file), once."""
+
     def __init__(self, dev_type, fname):
-        # Subclasses parse the dump (load_file) themselves, once.
         self.device_type = dev_type
         self.dumpf = fname
 
-    def apps(self):
-        raise Exception("Not Implemented")
-
     def load_file(self):
-        raise Exception("Not Implemented")
+        raise NotImplementedError
 
     def info(self, appid):
-        raise Exception("Not Implemented")
+        raise NotImplementedError
 
-    def offstore_apps(self):
+    def system_apps(self) -> list:
+        return []
+
+    def offstore_apps(self) -> list:
         return []
 
 
@@ -212,9 +213,9 @@ class AndroidDump(PhoneDump):
             logging.error("File: {!r} does not exists".format(fname))
         with open(fname) as fh:
             data = fh.readlines()
-        d = {}
+        d: Dict[str, Any] = {}
         service = ""
-        join_lines = []
+        join_lines: List[str] = []
         custom_parse_services = {"appops", "procstats"}
 
         def _clean_dictionary(d):

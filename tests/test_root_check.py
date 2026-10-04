@@ -2,7 +2,6 @@
 being scanned, so each indicator's pass/fail rule is pinned down here."""
 
 import shlex
-import socket
 
 import pytest
 
@@ -123,22 +122,77 @@ def test_reasons_accumulate(device):
 # ---------------------------------------------------------------- iOS
 
 
-@pytest.fixture
-def lockdown(monkeypatch):
-    """Fake pymobiledevice3 lockdown client; set .afc2 to the outcome."""
+@pytest.fixture(params=["async", "sync"])
+def lockdown(monkeypatch, request):
+    """Fake pymobiledevice3 lockdown client, async (current pymobiledevice3)
+    or blocking (older); set .afc2 to the outcome."""
+    import asyncio
+
+    asynchronous = request.param == "async"
+
+    def call(result):
+        if not asynchronous:
+            return result()
+
+        async def run():
+            return result()
+
+        return run()
+
+    class Service:
+        closed = False
+
+        def close(self):
+            return call(lambda: setattr(Service, "closed", True))
 
     class Client:
         afc2 = "refused"
+        closed = False
 
-        def start_service(self, name):
+        def start_lockdown_service(self, name):
             assert name == "com.apple.afc2"
-            if Client.afc2 == "timeout":
-                raise socket.timeout()
-            if Client.afc2 == "refused":
-                raise RuntimeError("InvalidService")
 
-    monkeypatch.setattr(root_check, "create_using_usbmux", lambda udid: Client())
+            def outcome():
+                if Client.afc2 == "refused":
+                    raise RuntimeError("InvalidService")
+                return Service()
+
+            if Client.afc2 == "timeout":
+
+                async def hang():
+                    await asyncio.sleep(10)
+
+                return hang()
+            return call(outcome)
+
+        def close(self):
+            return call(lambda: setattr(Client, "closed", True))
+
+    def create_using_usbmux(serial):
+        assert serial == "UDID"
+        return call(Client)
+
+    monkeypatch.setattr(root_check, "create_using_usbmux", create_using_usbmux)
+    monkeypatch.setattr(root_check, "AFC2_TIMEOUT", 0.05)
+    Client.service = Service
     return Client
+
+
+def test_the_installed_pymobiledevice3_matches_how_it_is_called():
+    """The afc2 check was silently dead: it passed udid= and called
+    start_service, neither of which pymobiledevice3 has."""
+    import inspect
+
+    from pymobiledevice3.lockdown import LockdownClient, create_using_usbmux
+
+    assert "serial" in inspect.signature(create_using_usbmux).parameters
+    assert hasattr(LockdownClient, "start_lockdown_service")
+
+
+def test_ios_afc2_client_is_closed(lockdown):
+    lockdown.afc2 = "open"
+    root_check.check_ios_jailbreak("UDID", "pmd3", [])
+    assert lockdown.closed and lockdown.service.closed
 
 
 def test_ios_clean_device(lockdown):
@@ -166,10 +220,3 @@ def test_ios_timeout_is_inconclusive(lockdown):
     lockdown.afc2 = "timeout"
     rooted, reasons = root_check.check_ios_jailbreak("UDID", "pmd3", [])
     assert rooted is None and any("timed out" in r for r in reasons)
-
-
-def test_ios_restores_socket_timeout(lockdown):
-    before = socket.getdefaulttimeout()
-    lockdown.afc2 = "timeout"
-    root_check.check_ios_jailbreak("UDID", "pmd3", [])
-    assert socket.getdefaulttimeout() == before

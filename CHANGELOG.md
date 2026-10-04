@@ -17,6 +17,11 @@ have no section here.
   falls back to the app's name. A malformed data-usage line no longer
   hides the "data used" rows, and an empty dump section can no longer
   replace the data from a full one.
+- **iPhone jailbreak check repaired.** One of its signals (whether the
+  phone grants root file access over USB, "afc2") never actually ran: it
+  called pymobiledevice3 in a way the library does not support, and the
+  error was only logged. It now runs. The other signal, known jailbreak
+  apps, was not affected.
 - **Reproducible installs.** Each release now has a `constraints.txt`
   listing the dependency versions it was tested with on each Python
   version; see the README for the install command.
