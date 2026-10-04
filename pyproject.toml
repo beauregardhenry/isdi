@@ -73,4 +73,4 @@ branch = true
 
 [tool.coverage.report]
 # A ratchet: raise it when coverage goes up, never lower it.
-fail_under = 84
+fail_under = 90

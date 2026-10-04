@@ -26,23 +26,9 @@ def test_match_keys():
     # }
 
 
-def test_prune_leaves():
-    keys = pdump.match_keys(D, "^a$//^b.*$//^.*d11$")
-    assert pdump.prune_empty_leaves(keys) == {"a": {"bc1": ["cd11"]}}
-    assert pdump.prune_empty_leaves(pdump.match_keys(D, "a//^b.*1$//^.*d11$")) == {
-        "a": {"bc1": ["cd11"]},
-    }
-
-
-def test_extract():
-    keys = pdump.prune_empty_leaves(pdump.match_keys(D, "^a$//^b.*$//^.*d11$"))
-    assert keys == {"a": {"bc1": ["cd11"]}}
-    assert pdump.extract(D, keys) == [[1, 3]]
-
-
 def test_get_all_leaves():
     assert sorted(pdump.get_all_leaves(D)) == [1, 2, 3]
-    keys = pdump.prune_empty_leaves(pdump.match_keys(D, "^a$//^b.*$//^.*d"))
+    keys = pdump.match_keys(D, "^a$//^b.*$//^.*d")
     assert sorted(pdump.get_all_leaves(keys)) == ["cd11", "cd21"]
 
 

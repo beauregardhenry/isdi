@@ -4,7 +4,6 @@ import json
 import operator
 import os
 import re
-import sys
 import logging
 from isdi.config import get_config
 from collections import OrderedDict
@@ -73,14 +72,6 @@ def normalize_dumpsys(text: str) -> str:
     return text
 
 
-def clean_json(d):
-    if not any(d.values()):
-        return list(d.keys())
-    else:
-        for k, v in d.items():
-            d[k] = clean_json(v)
-
-
 def _match_keys_w_one(d, key: str) -> list:
     """Returns a list of keys that matches @key"""
     sk = re.compile(key)
@@ -118,57 +109,11 @@ def match_keys(d, keys: str | list) -> OrderedDict | list:
     return result
 
 
-def prune_empty_leaves(dkeys: list | dict) -> dict | list:
-    """Remove the entries from dkeys all the paths that lead to empty keys"""
-    if isinstance(dkeys, list):
-        return dkeys
-    for k, v in dkeys.items():
-        dkeys[k] = prune_empty_leaves(v)
-    return {k: v for k, v in dkeys.items() if v}
-
-
 def get_all_leaves(d: dict) -> list:
     """Returns all leaves in a dictionary"""
     if not isinstance(d, dict):
         return d
     return list(itertools.chain(*(get_all_leaves(v) for v in d.values())))
-
-
-def extract(d: list | dict, lkeys_dict: list | dict) -> list:
-    """Extracts the values from d that match the keys in lkeys_dict"""
-    if isinstance(d, list):
-        d = d[0]
-    if isinstance(lkeys_dict, list):
-        return [d[k] for k in lkeys_dict if k in d]
-    r = []
-    for k, v in lkeys_dict.items():
-        if k in d:
-            r.extend(extract(d[k], v))
-    return r
-
-
-def prune_empty_keys(d: dict) -> dict | list:
-    """d is an multi-layer dictionary. The function
-    converts a sequence of keys into
-    array if all have empty values. Also, if keys are of the
-    format {"key=value": []}, then convert this into
-    a dictionary of {key: value}."""
-    if not isinstance(d, dict):
-        return d
-    if not any(d.values()):
-        return list(d.keys())
-    remove_keys = []
-    for k, v in d.items():
-        if len(k.split("=")) == 2 and len(v) == 0:
-            remove_keys.append(k)
-        else:
-            d[k] = prune_empty_keys(v)
-    for k in remove_keys:
-        if k in d:
-            t = k.split("=")
-            del d[k]
-            d[t[0]] = t[1]
-    return d
 
 
 def retrieve(dict_: dict, nest: list) -> str | dict:
@@ -225,10 +170,9 @@ def parse_procstats(text: str) -> dict:
 
 class PhoneDump(object):
     def __init__(self, dev_type, fname):
+        # Subclasses parse the dump (load_file) themselves, once.
         self.device_type = dev_type
         self.dumpf = fname
-        # df must be a dictionary
-        self.df = self.load_file()
 
     def apps(self):
         raise Exception("Not Implemented")
@@ -263,7 +207,7 @@ class AndroidDump(PhoneDump):
             return parse_procstats("\n".join(lines))
 
     def new_parse_dump_file(self, fname: str) -> dict:
-        """Not used working using simple parse to parse the files."""
+        """Parse a dump: one entry per "DUMP OF SERVICE/SETTINGS" section."""
         if not Path(fname).exists():
             logging.error("File: {!r} does not exists".format(fname))
         with open(fname) as fh:
@@ -288,6 +232,8 @@ class AndroidDump(PhoneDump):
             return d
 
         def _parse(lines):
+            if not any(line.strip() for line in lines):
+                return {}
             try:
                 if service in custom_parse_services:
                     return AndroidDump.custom_parse(service, lines)
@@ -362,10 +308,8 @@ class AndroidDump(PhoneDump):
             s = str(l).split()
             if s and s[0] == process_uid:
                 if len(s) != 5:
-                    logging.error(
-                        f"Error parsing net_stats for {appid} with uid {process_uid}: {s}"
-                    )
-                    return {"foreground": "unknown", "background": "unknown"}
+                    logging.error("Unexpected net_stats row for an app")
+                    return res
                 else:
                     _uid, rxBytes, _rxPackets, txBytes, _txPackets = s
                     res["data_used"] = "{:.2f} MB".format(
@@ -388,9 +332,8 @@ class AndroidDump(PhoneDump):
         )
         if not b:
             return "0 (mAh)"
-        else:
-            t = b[0].split(":")
-            return t[1]
+        _, sep, usage = str(b[0]).partition(":")
+        return usage if sep else "unknown"
 
     @staticmethod
     def _find_packages_section(section):
@@ -710,26 +653,3 @@ class IosDump(PhoneDump):
             return []
         logging.info(f"parse_dump (installed_apps): >> {len(self.df)}")
         return [app.get("appId", "") for app in self.df if app.get("appId")]
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python parse_dump.py <dump_file> <android|ios>")
-        sys.exit(1)
-    fname = sys.argv[1]
-    # data = [l.strip() for l in open(fname)]
-    ddump: PhoneDump
-    if sys.argv[2] == "android":
-        ddump = AndroidDump(fname)
-        json.dump(
-            ddump.new_parse_dump_file(fname),
-            open(fname.rsplit(".", 1)[0] + ".json", "w"),
-            indent=2,
-        )
-        # print(json.dumps(ddump.info("ru.kidcontrol.gpstracker"), indent=2))
-        print(ddump.df["appops"].keys())
-        # print(ddump.info("com.isharing.isharing"))
-    elif sys.argv[2] == "ios":
-        ddump = IosDump(fname)
-        print(ddump.installed_apps())
-        print(ddump.installed_apps_titles())
