@@ -77,17 +77,17 @@ See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Android device setup.
 ### Option 1: Install a release (Recommended)
 
 Install the latest release of this fork straight from GitHub (replace
-`v1.5.0` with the newest tag on the
+`v1.6.0` with the newest tag on the
 [releases page](https://github.com/beauregardhenry/isdi/releases)):
 
 ```bash
-pip install "git+https://github.com/beauregardhenry/isdi@v1.5.0"
+pip install "git+https://github.com/beauregardhenry/isdi@v1.6.0"
 ```
 
 Or, without git, install the wheel attached to the release:
 
 ```bash
-pip install https://github.com/beauregardhenry/isdi/releases/download/v1.5.0/isdi_scanner-1.5.0-py3-none-any.whl
+pip install https://github.com/beauregardhenry/isdi/releases/download/v1.6.0/isdi_scanner-1.6.0-py3-none-any.whl
 ```
 
 > **Note:** this fork uses the same package name, `isdi-scanner`, as
