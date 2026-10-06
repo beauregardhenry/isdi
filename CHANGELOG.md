@@ -24,6 +24,23 @@ have no section here.
   not flagged, so check for a newer release. The date is recorded with
   each scan and in evidence packages (`blocklist_updated`), next to the
   list's checksum.
+- **iPhones: supervision and configuration profiles are checked.** Much
+  iPhone monitoring is done by managing the phone rather than with an
+  app. The scan results now say whether the phone is supervised (and by
+  which organisation) and list its configuration profiles; the details
+  are saved, encrypted, with the scan. Work and school phones are often
+  managed legitimately. A phone that is locked or does not trust the
+  computer shows "could not check", not "not managed". Not yet
+  confirmed on a range of real iPhones.
+- **A plain-language summary for the client.** "Summary for the client"
+  on the scan results opens a one-page summary: what was checked, what
+  was found and what it may mean, what the check cannot tell, and what
+  to consider before removing anything. It is meant to be gone through
+  on screen; printing is offered with a reminder that a paper copy could
+  be found by someone else. The page's title and headings are neutral.
+  Opening it is recorded in the audit log.
+- The database is upgraded to schema 7 (a column for the iPhone check)
+  the first time 1.8.0 opens it.
 
 ## 1.7.0
 

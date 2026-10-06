@@ -262,6 +262,10 @@ $(document).on('click', '[data-action]', function (e) {
             e.preventDefault();
             delete_app($el.attr('data-appid'), this);
             break;
+        case 'print':
+            e.preventDefault();
+            window.print();
+            break;
         case 'privacy-get':
             e.preventDefault();
             get($el.attr('data-url'));

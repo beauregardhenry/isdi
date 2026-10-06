@@ -227,9 +227,16 @@ itself. Preinstalled (system) apps are not flagged.
 See details about the services in [notes.md](notes.md)
 
 ##### iOS 
-Only the `appIds`, and their names. Also, I got "permissions" granted
-to the application. I don't know how to get install date, resource usage, etc.
-(Any help will be greatly welcomed.)
+The `appIds`, their names, and the "permissions" granted to each app;
+install dates and resource use are not available.
+
+ISDi also asks the phone whether it is supervised, and which
+configuration profiles are installed (pymobiledevice3's
+`MobileConfigService`, read-only). On iPhones, monitoring is often done
+through management rather than an app. Work and school phones are often
+managed for ordinary reasons. If the phone is locked or does not trust
+the computer, the result says "could not check", never "not managed".
+This check has not yet been confirmed on a range of real iPhones.
 
 
 ## Code Structure  
@@ -252,6 +259,7 @@ to the application. I don't know how to get install date, resource usage, etc.
   - `parse_dump.py` - Parses device dumps (Android/iOS)
   - `privacy_scan_android.py` - Android privacy scanning
   - `root_check.py` - Root and jailbreak checks
+  - `ios_management.py` - iPhone supervision and configuration profiles
   - `runcmd.py` - Shell command helpers and input validation
   - `blocklist.py` - Stalkerware/spyware blocklist management
   - `db.py` - SQLite database operations

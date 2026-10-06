@@ -99,6 +99,12 @@ class IosScanner(AppScanner):
         apps = self.ddump.appinfo if isinstance(self.ddump, parse_dump.IosDump) else []
         return check_ios_jailbreak(serial, self.cli, apps)
 
+    def device_management(self, serial: str) -> Optional[Dict]:
+        """Supervision and configuration profiles (ios_management)."""
+        from isdi.scanner import ios_management
+
+        return ios_management.check(serial)
+
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
         cmd = "{cli} apps uninstall --udid {serial} {appid}"

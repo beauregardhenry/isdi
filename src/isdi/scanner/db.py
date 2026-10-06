@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS scan_res (
   how_obtained TEXT,
   time DATETIME DEFAULT (datetime('now', 'localtime')),
   operator TEXT,
+  device_management TEXT,
   FOREIGN KEY(clientid) REFERENCES clients_notes(clientid)
 );
 
@@ -191,7 +192,7 @@ ENCRYPTED_COLUMNS = {
     "scan_res": (
         "note device_model device_manufacturer device_version is_rooted "
         "rooted_reasons last_full_charge device_primary_user device_access "
-        "how_obtained operator"
+        "how_obtained operator device_management"
     ).split(),
     "app_info": (
         "appid flags remark action_taken apk_path install_date last_updated "
@@ -203,7 +204,7 @@ ENCRYPTED_COLUMNS = {
     "users": ["name"],
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 def _enc(column, value):
@@ -327,6 +328,8 @@ def _migrate(db) -> None:
         db.execute("ALTER TABLE app_info ADD COLUMN details TEXT")
     if "operator" not in _columns(db, "scan_res"):
         db.execute("ALTER TABLE scan_res ADD COLUMN operator TEXT")
+    if "device_management" not in _columns(db, "scan_res"):
+        db.execute("ALTER TABLE scan_res ADD COLUMN device_management TEXT")
     audit = SCHEMA_SQL[SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS audit_log") :]
     db.executescript(audit)
     if "unredacted" not in _columns(db, "evidence"):
@@ -412,8 +415,8 @@ def create_scan(scan_d):
     """
     return insert(
         "insert into scan_res "
-        "(clientid, serial, device, device_model, device_version, device_manufacturer, last_full_charge, device_primary_user, is_rooted, rooted_reasons, operator) "
-        "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "(clientid, serial, device, device_model, device_version, device_manufacturer, last_full_charge, device_primary_user, is_rooted, rooted_reasons, operator, "
+        "device_management) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         args=(
             scan_d["clientid"],
             scan_d["serial"],
@@ -426,6 +429,7 @@ def create_scan(scan_d):
             _enc("is_rooted", scan_d["is_rooted"]),
             _enc("rooted_reasons", scan_d["rooted_reasons"]),
             _enc("operator", scan_d.get("operator")),
+            _enc("device_management", scan_d.get("device_management")),
         ),
     )
 

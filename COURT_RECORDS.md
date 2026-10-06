@@ -28,10 +28,16 @@ S&P 2018). This version is a maintained fork:
 - **What it reads.** The phone, connected by USB, is queried through the
   standard developer interfaces:
   - On Android: `adb`, the system's own `dumpsys` output.
-  - On iOS: pymobiledevice3, the app list and device information.
+  - On iOS: pymobiledevice3, the app list and device information, and
+    (from 1.8.0) whether the phone is supervised and which configuration
+    profiles are installed, as the phone reports them.
 - **What it concludes.** Each installed app is compared with a blocklist,
   which includes the public stalkerware-indicators list maintained by
-  Échap, and with name patterns. Matching apps are flagged.
+  Échap, and with name patterns. Matching apps are flagged. From 1.8.0,
+  Android apps the user installed are also flagged when they hold
+  accessibility, notification access or device administrator powers;
+  many legitimate apps hold these too, so such a flag is not a finding of
+  monitoring by itself.
 - **What it does not do.**
   - It does not make a forensic image of the phone.
   - It does not recover deleted data or read messages, photos or
@@ -46,7 +52,8 @@ S&P 2018). This version is a maintained fork:
   alert whoever installed the app. ISDi warns before every uninstall.
 - **It can change.** Results depend on the ISDi version and the blocklist
   in use. Both are recorded with each scan (the blocklist by its SHA-256),
-  so a result can be checked against the same version.
+  so a result can be checked against the same version. From 1.8.0 the
+  blocklist's date is recorded too.
 
 ### Limits of earlier versions
 
@@ -71,7 +78,7 @@ All are stored encrypted on the clinic's computer (see
 
 | Record | Contents |
 |---|---|
-| Scan | Time; the signed-in user (full name and username); device type, model and OS version; a pseudonym of the serial number (HMAC); root or jailbreak findings; each app with its flags; per app, what the phone reported (install and update times, permissions, data use) |
+| Scan | Time; the signed-in user (full name and username); device type, model and OS version; a pseudonym of the serial number (HMAC); root or jailbreak findings; on iPhones, supervision and configuration profiles (1.8.0 on); each app with its flags; per app, what the phone reported (install and update times, permissions, data use) |
 | Consultation notes | The clinic's intake form |
 | Audit log | Every scan, note, edit (old and new values), uninstall attempt, export and erasure, with time (UTC) and the signed-in user (or, on the command line, the name given); sign-ins and sign-outs |
 | Evidence copy (optional) | When "Keep an encrypted evidence copy" is ticked: the raw dump of the phone, and its SHA-256 recorded at the time of the scan. For Android, either with email addresses blanked out (the default) or, if "keep it unredacted" is ticked, the output as received |

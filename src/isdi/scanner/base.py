@@ -418,6 +418,11 @@ class AppScanner:
         """Check if device is rooted/jailbroken."""
         return False, []
 
+    def device_management(self, serial: str) -> Optional[Dict[str, Any]]:
+        """Supervision and configuration profiles (iPhone only), or None
+        where the scanner does not check them."""
+        return None
+
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app (not implemented in base class)."""
         return False
