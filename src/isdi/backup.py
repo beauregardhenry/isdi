@@ -25,6 +25,7 @@ import struct
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -95,12 +96,32 @@ def write(output, database: Path, keyfile: Path) -> dict:
     }
 
 
+def _length(f) -> Optional[int]:
+    """A 4-byte length prefix; None at the end of the file. A partial one
+    means the file was cut short."""
+    raw = f.read(4)
+    if not raw:
+        return None
+    if len(raw) != 4:
+        raise BackupError("the backup is cut short")
+    return struct.unpack(">I", raw)[0]
+
+
+def _exactly(f, n: int) -> bytes:
+    data = f.read(n)
+    if len(data) != n:
+        raise BackupError("the backup is cut short")
+    return data
+
+
 def read_header(path) -> dict:
     with open(path, "rb") as f:
         if f.read(len(MAGIC)) != MAGIC:
             raise BackupError(f"{path} is not an ISDi backup")
-        (n,) = struct.unpack(">I", f.read(4))
-        header = json.loads(f.read(n))
+        n = _length(f)
+        if n is None:
+            raise BackupError("the backup is cut short")
+        header = json.loads(_exactly(f, n))
     if header.get("format") != FORMAT:
         raise BackupError(f"unsupported backup format {header.get('format')!r}")
     return header
@@ -111,14 +132,13 @@ def decrypt(path) -> bytes:
     (crypto.unlock on a copy of header["keyfile"])."""
     with open(path, "rb") as f:
         f.read(len(MAGIC))
-        (n,) = struct.unpack(">I", f.read(4))
-        header_bytes = f.read(n)
+        n = _length(f)
+        if n is None:
+            raise BackupError("the backup is cut short")
+        header_bytes = _exactly(f, n)
         records = []
-        while size := f.read(4):
-            (m,) = struct.unpack(">I", size)
-            nonce, sealed = f.read(12), f.read(m)
-            if len(sealed) != m:
-                raise BackupError("the backup is cut short")
+        while (m := _length(f)) is not None:
+            nonce, sealed = _exactly(f, 12), _exactly(f, m)
             records.append((nonce, sealed))
     header = json.loads(header_bytes)
     digest = hashlib.sha256(header_bytes).digest()
@@ -147,9 +167,14 @@ def check_database(db_bytes: bytes, workdir: Path) -> None:
         f.write(db_bytes)
     try:
         conn = sqlite3.connect(tmp)
-        (result,) = conn.execute("PRAGMA integrity_check").fetchone()
-        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master")}
-        conn.close()
+        try:
+            (result,) = conn.execute("PRAGMA integrity_check").fetchone()
+            tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master")}
+        except sqlite3.DatabaseError as e:
+            # A badly damaged file fails before the check can report it.
+            raise BackupError(f"the database in the backup is damaged: {e}")
+        finally:
+            conn.close()
     finally:
         os.remove(tmp)
     if result != "ok":

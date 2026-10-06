@@ -215,3 +215,85 @@ def test_restored_files_never_linger_in_temporary_places(made, cli, new_home):
     ]
     assert leftovers == []
     assert not any(".backup-" in n for n in os.listdir(Path(db.DATABASE).parent))
+
+
+def _sealed(path, db_bytes, **header_changes):
+    """A backup sealed with the suite's key but holding what the test
+    chooses: the cases backup.write never produces, that restore must
+    still refuse cleanly."""
+    import hashlib
+    import struct
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    header = {
+        "format": backup.FORMAT,
+        "made_at": "2026-01-01T00:00:00+00:00",
+        "database_size": len(db_bytes),
+        "database_sha256": hashlib.sha256(db_bytes).hexdigest(),
+        "keyfile": json.loads(Path(KEYFILE).read_text()),
+        **header_changes,
+    }
+    header_bytes = json.dumps(header, sort_keys=True).encode()
+    digest = hashlib.sha256(header_bytes).digest()
+    nonce = os.urandom(12)
+    sealed = AESGCM(crypto.derived_key("backup")).encrypt(
+        nonce, db_bytes, backup._aad(digest, 0, True)
+    )
+    data = backup.MAGIC + struct.pack(">I", len(header_bytes)) + header_bytes
+    path.write_bytes(data + struct.pack(">I", len(sealed)) + nonce + sealed)
+    return data  # the file up to the end of its header
+
+
+def _isdi_db_bytes(tmp_path):
+    path = tmp_path / "source.db"
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE clients_notes (x TEXT)")
+    conn.executemany("INSERT INTO clients_notes VALUES (?)", [("n" * 400,)] * 100)
+    conn.commit()
+    conn.close()
+    return path.read_bytes()
+
+
+@pytest.mark.parametrize(
+    "case, message",
+    [
+        ("format", "unsupported backup format"),
+        ("magic_only", "cut short"),
+        ("partial_length", "cut short"),
+        ("no_parts", "cut short"),
+        ("partial_part_length", "cut short"),
+        ("hash", "does not match its hash"),
+        ("not_a_database", "is damaged"),
+        ("garbled_pages", "is damaged"),
+    ],
+)
+def test_restore_refuses_every_kind_of_damage_cleanly(
+    tmp_path, cli, new_home, passphrase, case, message
+):
+    """Each is refused with a message, never a traceback, before anything
+    is written where the data goes."""
+    good = _isdi_db_bytes(tmp_path)
+    out = tmp_path / f"{case}.backup"
+    if case == "format":
+        _sealed(out, good, format="isdi-backup/99")
+    elif case == "hash":
+        _sealed(out, good, database_sha256="0" * 64)
+    elif case == "not_a_database":
+        _sealed(out, b"this is not a database " * 200)
+    elif case == "garbled_pages":
+        _sealed(out, good[:100] + os.urandom(len(good) - 100))
+    else:
+        head = _sealed(out, good)
+        cut = {
+            "magic_only": len(backup.MAGIC),
+            "partial_length": len(backup.MAGIC) + 2,
+            "no_parts": len(head),
+            "partial_part_length": len(head) + 2,
+        }[case]
+        out.write_bytes(out.read_bytes()[:cut])
+    res = cli("restore", str(out), input=f"{passphrase}\n")
+    assert res.exit_code == 1, res.output
+    assert message in res.output and "Traceback" not in res.output, res.output
+    assert res.exception is None or isinstance(res.exception, SystemExit)
+    assert list(new_home.iterdir()) == []

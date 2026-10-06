@@ -177,7 +177,11 @@ def unlock(
         # Keyfiles made before signed exports: add a signing key once.
         _add_signing_key(data, data_key)
         _write_keyfile(Path(path), data)
-    _set_keys(data_key, pii_key, data)
+    try:
+        _set_keys(data_key, pii_key, data)
+    except InvalidTag as e:
+        lock()  # never left half unlocked
+        raise UnlockError("the keyfile is damaged") from e
 
 
 def change_passphrase(

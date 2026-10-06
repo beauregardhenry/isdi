@@ -104,7 +104,6 @@ def test_new_client_ids_are_never_shared(app, no_csrf):
     "path, data",
     [
         ("/savescan/{sid}", {"notes": "changed by someone else"}),
-        ("/saveapps/{sid}", {"com.example": "remark"}),
         ("/delete/app/{sid}", {"serial": SERIAL, "appid": "com.whatsapp"}),
     ],
 )

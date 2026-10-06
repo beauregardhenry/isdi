@@ -540,6 +540,17 @@ class AndroidDump(PhoneDump):
         return res
 
 
+def ios_title(app: dict) -> str:
+    """The app's name as the home screen shows it, which is what the client
+    recognises (stalkerware often names itself after a system app); the
+    executable's name only when the phone gives no other."""
+    for key in ("CFBundleDisplayName", "CFBundleName", "CFBundleExecutable"):
+        name = app.get(key)
+        if isinstance(name, str) and name.strip():
+            return name.strip()
+    return ""
+
+
 class IosDump(PhoneDump):
     # COLS = ['ApplicationType', 'BuildMachineOSBuild', 'CFBundleDevelopmentRegion',
     #    'CFBundleDisplayName', 'CFBundleExecutable', 'CFBundleIdentifier',
@@ -679,7 +690,7 @@ class IosDump(PhoneDump):
             # permissions are an array that returns the permission id and an explanation.
             permissions = self.get_permissions(app)
         res["permissions"] = [(p.capitalize(), r) for p, r in permissions]
-        res["title"] = app.get("CFBundleExecutable", "")
+        res["title"] = ios_title(app)
         res["App Version"] = app.get("CFBundleVersion", "")
         res["Install Date"] = """
         Apple does not officially record iOS app installation dates.  To view when
@@ -714,9 +725,7 @@ class IosDump(PhoneDump):
         if not self.df:
             return {}
         return {
-            app.get("appId", ""): app.get("CFBundleExecutable", "")
-            for app in self.df
-            if app.get("appId")
+            app.get("appId", ""): ios_title(app) for app in self.df if app.get("appId")
         }
 
     def installed_apps(self):
