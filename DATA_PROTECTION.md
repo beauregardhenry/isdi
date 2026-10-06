@@ -16,7 +16,7 @@ compliant with either.
 | Data | Where | Protection |
 |---|---|---|
 | Consultation notes (every field of the form) | database | encrypted |
-| Scan results: device model and version, nickname, root/jailbreak findings, notes | database | encrypted |
+| Scan results: device model and version, nickname, root/jailbreak findings, iPhone supervision and profile names, notes | database | encrypted |
 | Per scan: app ids, flags, remarks, actions taken, and what the phone reported about each app (install dates, permissions, data usage) | database | encrypted |
 | Device serials | database | pseudonymised (HMAC-SHA256 with a secret key) |
 | Client ids (`YYYYMMDD_NNN`), device type (android/ios), row ids, timestamps | database | **not encrypted**: queries need them. They reveal when consultations and scans took place, and how many. |

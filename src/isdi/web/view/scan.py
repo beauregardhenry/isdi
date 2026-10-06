@@ -10,7 +10,7 @@ from isdi.web.access import session_scan
 from isdi.web.view.index import get_device
 from flask import jsonify, render_template, request, session, redirect, url_for
 from markupsafe import escape
-from isdi.scanner import db, blocklist
+from isdi.scanner import db, blocklist, ios_management
 from isdi.scanner.runcmd import is_valid_serial
 from isdi.scanner.db import (
     get_client_devices_from_db,
@@ -51,6 +51,15 @@ def _isrooted_html(rooted, rooted_reason):
         # Reasons include raw device output, so escape before rendering |safe.
         s += f". Reason(s): {escape(str(rooted_reason))}"
     return s
+
+
+def _management(scan_res):
+    """A saved scan's supervision and profiles check, or None."""
+    try:
+        value = json.loads(scan_res.get("device_management") or "null")
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def _create_scan_job(clientid, device, device_owner, serial):
@@ -225,6 +234,12 @@ def _scan_and_save(
     scan_d["is_rooted"] = rooted
     scan_d["rooted_reasons"] = json.dumps(rooted_reason)
 
+    management = None
+    if device == "ios":
+        progress(88, "Management check", "Checking supervision and profiles")
+        management = sc.device_management(ser)
+    scan_d["device_management"] = json.dumps(management) if management else None
+
     progress(94, "Saving", "Writing scan results to the local database")
     scan_d["operator"] = audit.operator()
     scanid = create_scan(scan_d)
@@ -250,6 +265,11 @@ def _scan_and_save(
             "nickname": device_owner,
             "rooted": rooted,
             "rooted_reasons": rooted_reason,
+            "managed": (
+                ios_management.is_managed(management)
+                if management and management.get("checked")
+                else None
+            ),
             "apps": len(apps),
             "flagged": {a: i["flags"] for a, i in apps.items() if i["flags"]},
             "isdi_version": config.VERSION,
@@ -275,6 +295,7 @@ def _scan_and_save(
     template_d.update(
         dict(
             isrooted=isrooted_str,
+            management=ios_management.summary_html(management),
             device_name=device_name_print,
             apps=apps,
             apps_sorted=apps_sorted,
@@ -491,24 +512,8 @@ def scan():
     return render_template("main.html", **result_d), status_code
 
 
-@bp.route("/scan/saved/<int:scanid>", methods=["GET"])
-def saved_scan(scanid):
-    """A saved scan, read from the database. The URL carries only the scan
-    id: serials, nicknames and app ids in URLs end up in browser history."""
-    if "clientid" not in session:
-        return redirect(url_for("main.index"))
-    # Scan ids are sequential: without this check, any id could be opened.
-    scan_res = session_scan(scanid)
-    if not scan_res:
-        return "Unknown scan", 404
-    device = scan_res.get("device")
-    sc = get_device(device)
-
-    manufacturer = scan_res.get("device_manufacturer") or ""
-    model = scan_res.get("device_model") or ""
-    device_name_print = f"{manufacturer} {model}".strip() or "<Unknown device>"
-
-    app_rows = db.get_app_info_from_db(scanid)
+def _saved_apps(sc, device, app_rows) -> dict:
+    """appid -> title, flags, score, class and flag HTML, for a saved scan."""
     apps = {}
     # Pre-fetch titles from the app-info cache database for this device type
     _title_cache = {}
@@ -544,12 +549,57 @@ def saved_scan(scanid):
             "class_": blocklist.assign_class(flags),
             "html_flags": blocklist.flag_str(flags),
         }
+    return apps
+
+
+@bp.route("/scan/<int:scanid>/client-summary", methods=["GET"])
+def client_summary(scanid):
+    """A plain-language summary of a scan for the client (isdi/client_summary.py)."""
+    from isdi import client_summary as summary
+
+    if "clientid" not in session:
+        return redirect(url_for("main.index"))
+    scan_res = session_scan(scanid)
+    if not scan_res:
+        return "Unknown scan", 404
+    device = scan_res.get("device")
+    apps = _saved_apps(get_device(device), device, db.get_app_info_from_db(scanid))
+    audit.record("client_summary_viewed", clientid=scan_res["clientid"], scanid=scanid)
+    return render_template(
+        "client_summary.html",
+        title=config.TITLE,
+        summary=summary.build(scan_res, apps),
+        scan_time=scan_res.get("time"),
+    )
+
+
+@bp.route("/scan/saved/<int:scanid>", methods=["GET"])
+def saved_scan(scanid):
+    """A saved scan, read from the database. The URL carries only the scan
+    id: serials, nicknames and app ids in URLs end up in browser history."""
+    if "clientid" not in session:
+        return redirect(url_for("main.index"))
+    # Scan ids are sequential: without this check, any id could be opened.
+    scan_res = session_scan(scanid)
+    if not scan_res:
+        return "Unknown scan", 404
+    device = scan_res.get("device")
+    sc = get_device(device)
+
+    manufacturer = scan_res.get("device_manufacturer") or ""
+    model = scan_res.get("device_model") or ""
+    device_name_print = f"{manufacturer} {model}".strip() or "<Unknown device>"
+
+    app_rows = db.get_app_info_from_db(scanid)
+    apps = _saved_apps(sc, device, app_rows)
 
     rooted = scan_res.get("is_rooted")
     try:
         rooted_reason = json.loads(scan_res.get("rooted_reasons") or "[]")
     except (json.JSONDecodeError, TypeError):
         rooted_reason = []
+
+    management = _management(scan_res)
 
     apps_sorted = sorted(
         apps.items(),
@@ -565,6 +615,7 @@ def saved_scan(scanid):
         device_primary_user_sel=scan_res.get("device_primary_user"),
         clientid=session["clientid"],
         isrooted=_isrooted_html(rooted, rooted_reason),
+        management=ios_management.summary_html(management),
         device_name=device_name_print,
         apps=apps,
         apps_sorted=apps_sorted,

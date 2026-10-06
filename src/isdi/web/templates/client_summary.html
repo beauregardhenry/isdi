@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='bootstrap.min.css') }}?v=4.6.2">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}?234">
+    <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='myjscript.js') }}?7"></script>
+    {# A neutral title: it shows in the tab, the history and on paper. #}
+    <title>Phone check summary</title>
+</head>
+<body class="client-summary">
+<main class="container my-4" style="max-width: 46rem">
+    <div class="alert alert-warning d-print-none" id="print-warning">
+        <strong>For staff:</strong> show this on screen. Print it only if
+        the client wants a copy and has somewhere safe to keep it: a paper
+        copy found by someone else could put them at risk.
+        <button type="button" class="btn btn-sm btn-outline-dark ml-2" data-action="print">Print</button>
+    </div>
+
+    <h1 class="h3">Phone check summary</h1>
+    <p class="text-muted">{{ summary.phone }}{% if scan_time %}, checked {{ scan_time }}{% endif %}</p>
+
+    <h2 class="h5 mt-4">What we checked</h2>
+    <ul>
+        {% for item in summary.checked %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+    {% if summary.management_unchecked %}
+    <p class="small">We could not check whether this phone is managed by an
+        organisation. This can be checked again with the phone unlocked.</p>
+    {% endif %}
+
+    <h2 class="h5 mt-4">What we found</h2>
+    {% if summary.findings %}
+        {% for f in summary.findings %}
+        <section class="mb-3">
+            <h3 class="h6 mb-1">{{ f.title }}</h3>
+            {% if f['items'] %}
+            <ul class="mb-1">{% for item in f['items'] %}<li>{{ item }}</li>{% endfor %}</ul>
+            {% endif %}
+            <p class="mb-0">{{ f.meaning }}</p>
+        </section>
+        {% endfor %}
+    {% else %}
+        <p>We did not find any apps known to be used for monitoring, or other
+            signs we check for.</p>
+    {% endif %}
+
+    <h2 class="h5 mt-4">What this check cannot tell you</h2>
+    <ul>
+        <li>It looks for known signs. A new or rare app may not be recognised.</li>
+        <li>Someone who knows your passwords can see a lot from your online
+            accounts (email, Apple ID or Google account, social media) without
+            any app on the phone.</li>
+        <li>A finding is not proof that someone is watching you, and finding
+            nothing is not proof that no one is.</li>
+    </ul>
+
+    <h2 class="h5 mt-4">Before changing anything</h2>
+    <ul>
+        <li>Talk through a safety plan with your advocate first.</li>
+        <li>Removing an app or profile can alert the person who set it up,
+            and removes information that may matter later, for example in
+            court. A record can be kept before anything is removed.</li>
+        <li>If you decide to change passwords, do it from a device you trust,
+            and turn on two-step verification where you can.</li>
+    </ul>
+</main>
+</body>
+</html>

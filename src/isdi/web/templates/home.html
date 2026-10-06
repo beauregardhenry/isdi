@@ -192,6 +192,13 @@
             {% if device_name %}
             <label>Scanned: <b>{{ device_name }}</b></label><br/>
   	    <label>Jailbroken or rooted? {{ isrooted | safe }}</label>
+            {% if management %}<br/>
+            <label data-toggle="tooltip" title="A supervised iPhone, or one with configuration profiles, can be controlled and monitored by whoever manages it. Work and school phones are often managed legitimately: ask the client whether they know who set this up.">Managed (supervision, profiles)? {{ management | safe }}</label>
+            {% endif %}
+            {% if scanid %}<br/>
+            <a class="small" href="{{ url_for('main.client_summary', scanid=scanid) }}" target="_blank" rel="noopener"
+               data-toggle="tooltip" title="A plain-language summary to go through with the client, on screen. Print only if they want a copy.">Summary for the client</a>
+            {% endif %}
             {% if evidence_sha256 %}<br/>
             <label class="small">Evidence copy kept, encrypted (SHA-256
                 <code>{{ evidence_sha256[:16] }}…</code>). Export it with
