@@ -3,6 +3,12 @@
 notes. Exits 1 if there is none.
 
     python scripts/release_notes.py 1.6.0
+
+With --unreleased, print the CHANGELOG.md versions newer than the given
+one (changes on main not yet released) and exit 1 if there are any: a
+blocklist-only patch release must not ship them unannounced.
+
+    python scripts/release_notes.py --unreleased 1.7.1
 """
 
 import re
@@ -20,7 +26,23 @@ def section(text: str, version: str):
     return "## What changes for staff\n\n" + match.group(1).strip() + "\n"
 
 
+def _key(version: str):
+    return tuple(int(part) for part in version.split("."))
+
+
+def newer_sections(text: str, version: str) -> list:
+    """The "## X.Y.Z" versions in the changelog newer than `version`."""
+    found = re.findall(r"^## (\d+(?:\.\d+)+)[ \t]*$", text, re.M)
+    return [v for v in found if _key(v) > _key(version)]
+
+
 def main(argv) -> int:
+    if argv[1] == "--unreleased":
+        changelog = Path(argv[3] if len(argv) > 3 else "CHANGELOG.md")
+        newer = newer_sections(changelog.read_text(encoding="utf-8"), argv[2])
+        for v in newer:
+            print(v)
+        return 1 if newer else 0
     version = argv[1]
     changelog = Path(argv[2] if len(argv) > 2 else "CHANGELOG.md")
     notes = section(changelog.read_text(encoding="utf-8"), version)

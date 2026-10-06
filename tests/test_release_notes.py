@@ -48,3 +48,24 @@ def test_the_changelog_has_the_released_versions():
     text = (ROOT / "CHANGELOG.md").read_text()
     for version in ("1.5.0", "1.6.0"):
         assert release_notes.section(text, version), version
+
+
+def test_unreleased_versions(tmp_path, capsys):
+    assert release_notes.newer_sections(CHANGELOG, "2.0.0") == ["2.1.0"]
+    assert release_notes.newer_sections(CHANGELOG, "2.0.10") == ["2.1.0"]
+    assert release_notes.newer_sections(CHANGELOG, "2.1.0") == []
+    assert release_notes.newer_sections(CHANGELOG, "2.1.1") == []
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(CHANGELOG)
+    args = ["x", "--unreleased"]
+    assert release_notes.main(args + ["2.0.1", str(changelog)]) == 1
+    assert capsys.readouterr().out == "2.1.0\n"
+    assert release_notes.main(args + ["2.1.0", str(changelog)]) == 0
+
+
+def test_the_real_changelog_has_no_section_beyond_the_next_release():
+    """At most one unreleased section, for the next version."""
+    import isdi
+
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert len(release_notes.newer_sections(text, isdi.__version__)) <= 1

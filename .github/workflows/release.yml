@@ -79,6 +79,12 @@ jobs:
               exit 1
             fi
           fi
+          # Releasing an older version than CHANGELOG.md describes would
+          # ship those changes under the wrong number and notes.
+          if ! pending=$(python scripts/release_notes.py --unreleased "$version"); then
+            echo "::error::CHANGELOG.md has a section for $(echo $pending) but this release would be v$version. Bump to that version (VERSION_PART=minor make bump-version) and release it instead."
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The release notes start with the version's CHANGELOG.md section
