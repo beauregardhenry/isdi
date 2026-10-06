@@ -77,17 +77,17 @@ See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Android device setup.
 ### Option 1: Install a release (Recommended)
 
 Install the latest release of this fork straight from GitHub (replace
-`v1.7.0` with the newest tag on the
+`v1.8.0` with the newest tag on the
 [releases page](https://github.com/beauregardhenry/isdi/releases)):
 
 ```bash
-pip install "git+https://github.com/beauregardhenry/isdi@v1.7.0"
+pip install "git+https://github.com/beauregardhenry/isdi@v1.8.0"
 ```
 
 Or, without git, install the wheel attached to the release:
 
 ```bash
-pip install https://github.com/beauregardhenry/isdi/releases/download/v1.7.0/isdi_scanner-1.7.0-py3-none-any.whl
+pip install https://github.com/beauregardhenry/isdi/releases/download/v1.8.0/isdi_scanner-1.8.0-py3-none-any.whl
 ```
 
 To install exactly the dependency versions the release was tested with
@@ -95,8 +95,8 @@ To install exactly the dependency versions the release was tested with
 `constraints.txt`:
 
 ```bash
-pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.7.0/constraints.txt \
-  https://github.com/beauregardhenry/isdi/releases/download/v1.7.0/isdi_scanner-1.7.0-py3-none-any.whl
+pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.8.0/constraints.txt \
+  https://github.com/beauregardhenry/isdi/releases/download/v1.8.0/isdi_scanner-1.8.0-py3-none-any.whl
 ```
 
 > **Note:** this fork uses the same package name, `isdi-scanner`, as
