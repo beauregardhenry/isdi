@@ -564,11 +564,19 @@ def client_summary(scanid):
         return "Unknown scan", 404
     device = scan_res.get("device")
     apps = _saved_apps(get_device(device), device, db.get_app_info_from_db(scanid))
-    audit.record("client_summary_viewed", clientid=scan_res["clientid"], scanid=scanid)
+    lang = summary.language(request.args.get("lang"))
+    audit.record(
+        "client_summary_viewed",
+        clientid=scan_res["clientid"],
+        scanid=scanid,
+        details={"lang": lang},
+    )
     return render_template(
         "client_summary.html",
         title=config.TITLE,
-        summary=summary.build(scan_res, apps),
+        summary=summary.build(scan_res, apps, lang),
+        languages=summary.LANGUAGES,
+        scanid=scanid,
         scan_time=scan_res.get("time"),
     )
 

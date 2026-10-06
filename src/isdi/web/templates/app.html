@@ -1,6 +1,6 @@
 <div class="container isdi-page">
     <br/>
-    <h2>Information about "{{ app.title }}"</h2>
+    <h1 class="h2">Information about "{{ app.title }}"</h1>
     <div class="container form-group">
         <div class="table-wrap">
         <table class="table table-bordered">
@@ -20,7 +20,7 @@
         </table>
         </div>
 	    <div class="text-sm-left">
-		<h4> The app used {{ app.permissions| length }} app permissions recently:</h4>
+		<h2 class="h4"> The app used {{ app.permissions| length }} app permissions recently:</h2>
 		<br>
 	    </div>
         <ul class="list-group">
@@ -31,14 +31,14 @@
     </div>
 
     <div class="jumbotron" style="padding: 1em">
-        <h3>{% if device=="android" %} Google Play Store {% endif %} {% if device=="ios" %} Apple App Store {% endif %} Description of the app</h3>
+        <h2 class="h3">{% if device=="android" %} Google Play Store {% endif %} {% if device=="ios" %} Apple App Store {% endif %} Description of the app</h2>
         <span style="margin-bottom: 2em; display:block"><mark><b>{{ app.summary|safe }}</b></mark></span>
         {{ app.descriptionHTML|safe }}
     </div>
     
     {% if device=="android" %} 
     <div class="jumbotron" style="padding: 1em">
-        <h3>Recently used permissions</h3>
+        <h2 class="h3">Recently used permissions</h2>
         <p>(Here, <code>mode=allow</code> only means the permission is requested, not necessarily granted.)</p>
         {{ app.non_hf_permissions_html | safe }}
     </div>

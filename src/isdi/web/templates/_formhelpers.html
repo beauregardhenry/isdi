@@ -1,8 +1,9 @@
+{# Each field is a <div> holding one <dt>/<dd> pair: the only shape a <dl>
+   may contain, so screen readers announce label and field together. #}
 {% macro render_field(field, class_to_use) %}
+  <div>
   <dt>{{ field.label }}</dt>
-  <div class="col-auto">
-    <dd>{{ field(class_=class_to_use, **kwargs)|safe }}
-  </div>
+  <dd class="col-auto">{{ field(class_=class_to_use, **kwargs)|safe }}
   {% if field.errors %}
     <ul class=errors>
     {% for error in field.errors %}
@@ -11,4 +12,5 @@
     </ul>
   {% endif %}
   </dd>
+  </div>
 {% endmacro %}

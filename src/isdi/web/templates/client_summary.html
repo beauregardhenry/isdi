@@ -1,38 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
+{% set t = summary.t %}<!DOCTYPE html>
+<html lang="{{ summary.lang }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='bootstrap.min.css') }}?v=4.6.2">
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}?234">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}?235">
     <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
     <script src="{{ url_for('static', filename='myjscript.js') }}?7"></script>
     {# A neutral title: it shows in the tab, the history and on paper. #}
-    <title>Phone check summary</title>
+    <title>{{ t.page_title }}</title>
 </head>
 <body class="client-summary">
-<main class="container my-4" style="max-width: 46rem">
+<a class="skip-link" href="#main">{{ "Ir al contenido" if summary.lang == "es" else "Skip to main content" }}</a>
+<main id="main" tabindex="-1" class="container my-4" style="max-width: 46rem">
     <div class="alert alert-warning d-print-none" id="print-warning">
-        <strong>For staff:</strong> show this on screen. Print it only if
-        the client wants a copy and has somewhere safe to keep it: a paper
-        copy found by someone else could put them at risk.
-        <button type="button" class="btn btn-sm btn-outline-dark ml-2" data-action="print">Print</button>
+        {{ t.staff_note | safe }}
+        <button type="button" class="btn btn-sm btn-outline-dark ml-2" data-action="print">{{ t.print }}</button>
+        <nav class="mt-2 small" aria-label="{{ t.language }}">
+            {{ t.language }}:
+            {% for code, name in languages.items() %}
+                {% if code == summary.lang %}<strong aria-current="page" lang="{{ code }}">{{ name }}</strong>
+                {% else %}<a href="{{ url_for('main.client_summary', scanid=scanid, lang=code) }}" lang="{{ code }}" hreflang="{{ code }}">{{ name }}</a>{% endif %}
+                {% if not loop.last %} · {% endif %}
+            {% endfor %}
+        </nav>
     </div>
 
-    <h1 class="h3">Phone check summary</h1>
-    <p class="text-muted">{{ summary.phone }}{% if scan_time %}, checked {{ scan_time }}{% endif %}</p>
+    <h1 class="h3">{{ t.page_title }}</h1>
+    <p class="text-muted">{{ summary.phone }}{% if scan_time %}, {{ t.checked_on }} {{ scan_time }}{% endif %}</p>
 
-    <h2 class="h5 mt-4">What we checked</h2>
+    <h2 class="h5 mt-4">{{ t.h_checked }}</h2>
     <ul>
         {% for item in summary.checked %}<li>{{ item }}</li>{% endfor %}
     </ul>
     {% if summary.management_unchecked %}
-    <p class="small">We could not check whether this phone is managed by an
-        organisation. This can be checked again with the phone unlocked.</p>
+    <p class="small">{{ t.management_unchecked }}</p>
     {% endif %}
 
-    <h2 class="h5 mt-4">What we found</h2>
+    <h2 class="h5 mt-4">{{ t.h_found }}</h2>
     {% if summary.findings %}
         {% for f in summary.findings %}
         <section class="mb-3">
@@ -44,28 +50,17 @@
         </section>
         {% endfor %}
     {% else %}
-        <p>We did not find any apps known to be used for monitoring, or other
-            signs we check for.</p>
+        <p>{{ t.nothing_found }}</p>
     {% endif %}
 
-    <h2 class="h5 mt-4">What this check cannot tell you</h2>
+    <h2 class="h5 mt-4">{{ t.h_limits }}</h2>
     <ul>
-        <li>It looks for known signs. A new or rare app may not be recognised.</li>
-        <li>Someone who knows your passwords can see a lot from your online
-            accounts (email, Apple ID or Google account, social media) without
-            any app on the phone.</li>
-        <li>A finding is not proof that someone is watching you, and finding
-            nothing is not proof that no one is.</li>
+        {% for item in t.limits %}<li>{{ item }}</li>{% endfor %}
     </ul>
 
-    <h2 class="h5 mt-4">Before changing anything</h2>
+    <h2 class="h5 mt-4">{{ t.h_next }}</h2>
     <ul>
-        <li>Talk through a safety plan with your advocate first.</li>
-        <li>Removing an app or profile can alert the person who set it up,
-            and removes information that may matter later, for example in
-            court. A record can be kept before anything is removed.</li>
-        <li>If you decide to change passwords, do it from a device you trust,
-            and turn on two-step verification where you can.</li>
+        {% for item in t.next %}<li>{{ item }}</li>{% endfor %}
     </ul>
 </main>
 </body>
