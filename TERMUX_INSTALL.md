@@ -39,7 +39,7 @@ Install some dependencies first to reduce the amount of local compilation:
 
 ```bash
 pip install qh3 zeroconf pydantic-core gpxpy psutil pyyaml markupsafe hexdump rsonlite
-pip install --prefer-binary "git+https://github.com/beauregardhenry/isdi@v1.8.0"
+pip install --prefer-binary "git+https://github.com/beauregardhenry/isdi@v1.8.1"
 ```
 
 Keeping the phone screen on during installation can help prevent Android from pausing Termux while packages are compiling. The installation can take a while, so keep the device charged.
