@@ -227,3 +227,43 @@ body.isdi-body {
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+
+/* Accessibility (WCAG 2.1 AA). Bootstrap 4's default colours fall below
+   the 4.5:1 text contrast minimum on this app's backgrounds (white and
+   #f5f7fa); these keep the same hues, darker. */
+a, .btn-link { color: #0056b3; }
+a:hover, a:focus, .btn-link:hover, .btn-link:focus { color: #004085; }
+/* Links inside text are underlined, not told apart by colour alone. */
+a:not(.btn), .btn-link { text-decoration: underline; }
+.btn-primary { background-color: #0056b3; border-color: #0056b3; }
+.btn-primary:hover, .btn-primary:focus { background-color: #004085; border-color: #004085; }
+.text-primary { color: #0056b3 !important; }
+.text-muted { color: #5a6268 !important; }
+.text-warning { color: #856404 !important; }
+.text-danger { color: #b02a37 !important; }
+.text-info { color: #0c6b7a !important; }
+.text-success { color: #1e7b34 !important; }
+code { color: #a8255e; }
+
+/* A visible focus ring for keyboard users. */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid #004085;
+  outline-offset: 2px;
+}
+
+/* "Skip to main content": hidden until focused with the keyboard. */
+.skip-link {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  z-index: 1000;
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  color: #004085;
+}
+.skip-link:focus { left: 0.5rem; top: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

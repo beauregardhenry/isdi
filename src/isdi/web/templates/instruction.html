@@ -3,17 +3,17 @@
     <a href="#" data-action="close-window" data-confirm="Close these device setup instructions?">close these instructions</a>
         <div class="row">
             <div class="border p-4">
-		    <h3>Documentation of <span style="color: green; font-family: monospace; font-size: 0.3in">{{ title.title }}</span></h3>
+		    <h1 class="h3">Documentation of <span style="color: #1e7b34; font-family: monospace; font-size: 0.3in">{{ title.title }}</span></h1>
                 Simple tool to check Android or iOS mobile devices for IPS-spyware.
                 Code: <code><a href="https://github.com/stopipv/isdi">available on GitHub</a></code>
 
-                <h4>Prepare your device for scanning</h4>
+                <h2 class="h4">Prepare your device for scanning</h2>
 		You must connect your Android or iOS device with a USB charging cable to the computer that is running
 		the {{ title.title }}. In order to allow the scanner to communicate with your device, please follow the
 		steps below for the type of device you own.<br><br>
 
-                <h5>iOS (iPhone, iPad)</h5>
-        <img class="content-image" src="/webstatic/images/apple.resized.png">
+                <h3 class="h5">iOS (iPhone, iPad)</h3>
+        <img class="content-image" src="{{ url_for('static', filename='images/apple.resized.png') }}" alt="Apple logo">
                 There is not much preparation required for iOS, just connect the USB cable, on
                 the device you should see a prompt asking for the device passcode (sometimes called a "pin" code)
                 number. The passcode has to be entered to unlock the device, and trust the
@@ -22,8 +22,8 @@
                 iOS device. Try opening iTunes on macOS, and see if the device is
                 listed. Disconnect the device from the USB cable, reconnect, and try scanning again. 
 
-                <h5>Android Devices</h5>
-        <img class="content-image" src="/webstatic/images/android.resiz.png">
+                <h3 class="h5">Android Devices</h3>
+        <img class="content-image" src="{{ url_for('static', filename='images/android.resiz.png') }}" alt="Android logo">
                 For an Android device, the <code>developer options</code> on the device need to be
 		activated. Developer options provide functionality for {{ title.title }} to communicate with 
 		the device. The exact steps might vary from device manufacturer and version of
@@ -52,7 +52,7 @@
                         Tap on the toggle switch to turn it on.
 
 			<br></br>
-            <img class="content-image" src="/webstatic/images/usb_android.resized.png" style="display: block; margin: 0 auto;"><br>
+            <img class="content-image" src="{{ url_for('static', filename='images/usb_android.resized.png') }}" alt="Android notification: 'Use USB for' with File Transfer selected" style="display: block; margin: 0 auto;"><br>
 			<b>Note:</b> You may need to check the device's notification tray to ensure the 
 			connection is being used for <code>'File Transfer'</code>. If there is a message from
 			the system with 'Charging this device via USB', tap it and select <code>'File Transfer'</code> under 'Use USB For'.

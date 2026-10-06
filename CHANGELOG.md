@@ -39,6 +39,21 @@ have no section here.
   on screen; printing is offered with a reminder that a paper copy could
   be found by someone else. The page's title and headings are neutral.
   Opening it is recorded in the audit log.
+- **The client summary in Spanish.** "en español" next to the summary
+  link (or the language switch on the page) shows it in Spanish; the
+  page's language is recorded in the audit log. The translation has not
+  yet been reviewed by a native speaker who works with clients: please
+  have it reviewed before relying on it.
+- **Accessibility.** Every page now passes an automated WCAG 2.1 AA check
+  (axe-core): colours darkened to meet the 4.5:1 contrast minimum (the
+  yellow flag text was 1.6:1), links underlined, a "Skip to main content"
+  link and page landmarks, one main heading per page in order, labels for
+  every field, scan progress and messages announced to screen readers,
+  a visible keyboard focus ring, and less motion for people who ask
+  their system for it. An automated check finds only part of what
+  matters; a test with a screen reader user is still worth doing.
+- The pictures on the scan instructions and privacy checkup pages
+  showed as broken images; they are back.
 - The database is upgraded to schema 7 (a column for the iPhone check)
   the first time 1.8.0 opens it.
 

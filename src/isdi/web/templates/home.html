@@ -1,6 +1,6 @@
 <div class="isdi-page">
     <div class="isdi-header">
-        <h4 class="isdi-title"><b>{{ title }}</b>{% if platform %} <span class="isdi-subtitle">({{ platform }})</span>{% endif %}</h4>
+        <h1 class="h4 isdi-title"><b>{{ title }}</b>{% if platform %} <span class="isdi-subtitle">({{ platform }})</span>{% endif %}</h1>
         <div class="isdi-actions">
             <a class='btn btn-normal' href="/instruction" target="_blank" rel="noopener" data-toggle="tooltip" title="Instruction for preparing your
                       device for a scan."><u>Scan Instructions</u></a>
@@ -46,6 +46,7 @@
 		    {% endfor %}
                 </div>
                 <br/><br/>
+                <label class="sr-only" for="device_owner">Nickname for the device (whose is it?)</label>
                 <input class="form-control" name="device_owner" id="device_owner" 
                        placeholder="Nickname for device? Whose is it?"
                        rows="2" value="{% if device_primary_user_sel %}{{ device_primary_user_sel }}{% endif %}"/>
@@ -187,7 +188,7 @@
     </div>
     <div class="col-lg-8 col-xl-9">
         <div class="isdi-panel isdi-results">
-        <div id="msg" class="alert alert-primary">  {{ error | safe }}   </div>
+        <div id="msg" class="alert alert-primary" role="status" aria-live="polite">  {{ error | safe }}   </div>
         <div class="w-100 isdi-scroll-region">
             {% if device_name %}
             <label>Scanned: <b>{{ device_name }}</b></label><br/>
@@ -198,6 +199,7 @@
             {% if scanid %}<br/>
             <a class="small" href="{{ url_for('main.client_summary', scanid=scanid) }}" target="_blank" rel="noopener"
                data-toggle="tooltip" title="A plain-language summary to go through with the client, on screen. Print only if they want a copy.">Summary for the client</a>
+            (<a class="small" href="{{ url_for('main.client_summary', scanid=scanid, lang='es') }}" target="_blank" rel="noopener" lang="es" hreflang="es">en español</a>)
             {% endif %}
             {% if evidence_sha256 %}<br/>
             <label class="small">Evidence copy kept, encrypted (SHA-256
@@ -255,7 +257,7 @@
                  aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
             </div>
         </div>
-        <div id="scan-progress-text" class="small text-muted mt-2" style="display:none;"></div>
+        <div id="scan-progress-text" class="small text-muted mt-2" style="display:none;" role="status" aria-live="polite"></div>
         </div>
     </div>
 </div>

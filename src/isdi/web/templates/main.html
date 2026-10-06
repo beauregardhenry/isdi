@@ -8,7 +8,7 @@
         <link rel=stylesheet type=text/css
               href="{{ url_for('static', filename='bootstrap.min.css') }}?v=4.6.2">
         <link rel=stylesheet type=text/css
-              href="{{ url_for('static', filename='style.css') }}?234">
+              href="{{ url_for('static', filename='style.css') }}?235">
         <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
         <script src="{{ url_for('static', filename='bootstrap-4.6.2.bundle.min.js') }}"></script>
         <script src="{{ url_for('static', filename='myjscript.js') }}?7"></script>
@@ -106,16 +106,18 @@
     </head>
 
     <body class="container-fluid isdi-body">
+      <a class="skip-link" href="#main">Skip to main content</a>
       {% if g.user %}
-      <div class="small text-right text-muted py-1">
+      <header class="small text-right text-muted py-1">
         Signed in as {{ g.user.name }} ({{ g.user.username }}) ·
         <a href="{{ url_for('main.change_password') }}">Change password</a> ·
         <form method="post" action="{{ url_for('main.logout') }}" class="d-inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-link btn-sm p-0 align-baseline">Sign out</button>
         </form>
-      </div>
+      </header>
       {% endif %}
+      <main id="main" tabindex="-1">
       {% block content %}
         {% if task == 'home' %}
           {% include 'home.html' %}
@@ -142,5 +144,6 @@
           {% include "formedit.html" %}
         {% endif %}
       {% endblock %}
+      </main>
   </body>
 </html>
