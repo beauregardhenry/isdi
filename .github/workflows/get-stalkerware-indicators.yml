@@ -42,13 +42,19 @@ jobs:
 
     # A new blocklist only reaches installed copies through a release, so
     # bump the patch version in the same PR: merging it publishes a release
-    # (release.yml runs on changes to app-flags.csv).
+    # (release.yml runs on changes to app-flags.csv). Not when CHANGELOG.md
+    # has a section for a version not yet released: main then carries
+    # other changes, which a patch release would ship unannounced. The new
+    # list goes out with that version instead.
     - name: Bump the patch version if the blocklist changed
       env:
         VERSION_PART: patch
       run: |
+        version=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
         if git diff --quiet -- src/isdi/data/app-flags.csv; then
           echo "Blocklist unchanged"
+        elif ! pending=$(python scripts/release_notes.py --unreleased "$version"); then
+          echo "::notice::Not bumping: CHANGELOG.md has unreleased version(s) $pending; the new blocklist ships with that release."
         else
           python scripts/bump_version.py
         fi
