@@ -198,6 +198,7 @@ def export_package(scanid: int, outdir, public: bytes) -> Path:
             else None
         ),
         "blocklist_sha256": blocklist.BLOCKLIST_SHA256,
+        "blocklist_updated": blocklist.blocklist_status()["updated"],
         "files": files,
     }
     manifest_bytes = json.dumps(manifest, indent=2, default=str).encode() + b"\n"

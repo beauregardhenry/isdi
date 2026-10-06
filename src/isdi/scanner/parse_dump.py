@@ -9,7 +9,7 @@ from isdi.config import get_config
 from collections import OrderedDict
 from functools import reduce
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from rsonlite import simpleparse
 
 config = get_config()
@@ -171,6 +171,9 @@ def parse_procstats(text: str) -> dict:
 class PhoneDump(object):
     """A parsed phone dump. Subclasses parse the dump (load_file), once."""
 
+    # package -> powers it holds (special_access_from_dump); Android only.
+    special_access: Dict[str, Set[str]] = {}
+
     def __init__(self, dev_type, fname):
         self.device_type = dev_type
         self.dumpf = fname
@@ -194,11 +197,79 @@ def _package_json(name: str):
         return json.load(fh)
 
 
+# Powers an app can be granted that monitoring apps rely on, with the
+# secure setting that lists the apps holding each (colon-separated
+# "package/component" entries).
+SPECIAL_ACCESS_SETTINGS = {
+    "enabled_accessibility_services": "accessibility",
+    "enabled_notification_listeners": "notification-access",
+}
+_SECTION_RE = re.compile(r"^DUMP OF (?:SERVICE|SETTINGS) (.+?)\s*$", re.M)
+_COMPONENT_RE = re.compile(r"^\s*([A-Za-z][\w.]*)/[^\s:]+:?\s*$")
+
+
+def _sections(text: str) -> Dict[str, str]:
+    """The dump's "DUMP OF SERVICE/SETTINGS <name>" sections, by name."""
+    marks = list(_SECTION_RE.finditer(text))
+    return {
+        m.group(1): text[m.end() : marks[i + 1].start() if i + 1 < len(marks) else None]
+        for i, m in enumerate(marks)
+    }
+
+
+def _device_admins(text: str) -> Set[str]:
+    """Packages listed under "Enabled Device Admins" in `dumpsys
+    device_policy`: one "package/receiver:" line per admin, indented below
+    the heading. Lenient about the rest, which differs between Android
+    versions."""
+    admins: Set[str] = set()
+    heading_indent = None
+    for line in text.splitlines():
+        indent = len(line) - len(line.lstrip())
+        if "Enabled Device Admins" in line:
+            heading_indent = indent
+            continue
+        if heading_indent is None or not line.strip():
+            continue
+        if indent <= heading_indent:
+            heading_indent = None
+            continue
+        m = _COMPONENT_RE.match(line)
+        if m:
+            admins.add(m.group(1))
+    return admins
+
+
+def special_access_from_dump(text: str) -> Dict[str, Set[str]]:
+    """package -> the powers it holds: "accessibility" (can read and act
+    on the screen), "notification-access" (reads every notification) and
+    "device-admin" (can lock or wipe the phone; harder to uninstall)."""
+    sections = _sections(text)
+    found: Dict[str, Set[str]] = {}
+    for line in sections.get("secure", "").splitlines():
+        key, sep, value = line.strip().partition("=")
+        flag = SPECIAL_ACCESS_SETTINGS.get(key)
+        if not sep or not flag:
+            continue
+        for component in value.split(":"):
+            package = component.split("/", 1)[0].strip()
+            if package and package != "null" and "/" in component:
+                found.setdefault(package, set()).add(flag)
+    for package in _device_admins(sections.get("device_policy", "")):
+        found.setdefault(package, set()).add("device-admin")
+    return found
+
+
 class AndroidDump(PhoneDump):
     def __init__(self, fname):
         super(AndroidDump, self).__init__("android", fname)
         self.df = self.load_file()
         self.apps = None
+        try:
+            with open(self.dumpf.rsplit(".", 1)[0] + ".txt", errors="replace") as fh:
+                self.special_access = special_access_from_dump(fh.read())
+        except OSError as ex:
+            logging.warning("Special access not read: %s", type(ex).__name__)
 
     @staticmethod
     def custom_parse(service, lines):

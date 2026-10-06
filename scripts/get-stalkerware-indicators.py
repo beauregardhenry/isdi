@@ -5,7 +5,9 @@ and update the app-flags.csv file with the latest package names.
 """
 
 import csv
+import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import urlretrieve
 from collections import defaultdict
@@ -23,6 +25,8 @@ IOC_URL = "https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/ma
 # Paths relative to project root
 PROJECT_ROOT = Path(__file__).parent.parent
 APP_FLAGS_CSV = PROJECT_ROOT / "src" / "isdi" / "data" / "app-flags.csv"
+# When the list last changed: ISDi shows it, and warns when it is old.
+APP_FLAGS_META = APP_FLAGS_CSV.with_name("app-flags.meta.json")
 TEMP_IOC_FILE = PROJECT_ROOT / "ioc.yaml.tmp"
 
 
@@ -125,6 +129,20 @@ def update_app_flags(stalkerware_packages):
     return added, updated
 
 
+def record_update_date(before):
+    """Date the list in APP_FLAGS_META if this run changed it."""
+    after = APP_FLAGS_CSV.read_bytes()
+    if after == before:
+        print("Blocklist unchanged; its date stays as it was")
+        return
+    meta = {
+        "updated": datetime.now(timezone.utc).date().isoformat(),
+        "source": "https://github.com/AssoEchap/stalkerware-indicators",
+    }
+    APP_FLAGS_META.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    print(f"✓ Dated the blocklist {meta['updated']}")
+
+
 def cleanup():
     """Remove temporary files."""
     if TEMP_IOC_FILE.exists():
@@ -150,7 +168,9 @@ def main():
             return 1
         
         # Step 3: Update app-flags.csv
+        before = APP_FLAGS_CSV.read_bytes() if APP_FLAGS_CSV.exists() else b""
         added, updated = update_app_flags(stalkerware_packages)
+        record_update_date(before)
         
         print("=" * 60)
         print("✓ Successfully updated stalkerware indicators!")

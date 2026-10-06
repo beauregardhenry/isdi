@@ -57,6 +57,7 @@ class AndroidScanner(AppScanner):
             "usagestats",
             "activity",
             "appops",
+            "device_policy",
         ]
 
         def _run(*args, timeout=120) -> str:

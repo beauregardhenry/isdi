@@ -71,6 +71,7 @@ jobs:
       with:
         add-paths: |
           src/isdi/data/app-flags.csv
+          src/isdi/data/app-flags.meta.json
           pyproject.toml
           src/isdi/__init__.py
           README.md

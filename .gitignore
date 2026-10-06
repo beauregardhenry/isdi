@@ -44,6 +44,7 @@ htmlcov/
 
 # User data (DO NOT COMMIT!)
 data/
+!src/isdi/data/
 dumps/
 reports/
 logs/
