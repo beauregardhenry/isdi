@@ -452,19 +452,6 @@ def update_appinfo(scanid, appid, remark, action):
     return True
 
 
-def update_mul_appinfo(args):
-    """args: (remark, scanid, appid) tuples."""
-    ids = {}
-    updates = []
-    for remark, scanid, appid in args:
-        if scanid not in ids:
-            ids[scanid] = app_row_ids(scanid)
-        rowid = ids[scanid].get(appid)
-        if rowid is not None:
-            updates.append((_enc("remark", remark), rowid))
-    return insert_many("update app_info set remark=? where id=?", updates)
-
-
 def create_mult_appinfo(args, details=None):
     """args: (scanid, appid, flags, remark, action_taken) tuples. details:
     appid -> what the phone's dump said about the app, kept so the dump

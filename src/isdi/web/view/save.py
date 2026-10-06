@@ -9,28 +9,12 @@ from isdi.scanner.db import (
     get_serial_from_db,
     save_note,
     update_appinfo,
-    update_mul_appinfo,
 )
 from isdi.web.access import session_scan
 from isdi.web.view.index import get_device
 from isdi.scanner.runcmd import is_valid_appid, is_valid_serial
 
 config = get_config()
-
-
-@bp.route("/saveapps/<int:scanid>", methods=["POST"])
-def record_applist(scanid):
-    if not session_scan(scanid):
-        return "Unknown scan", 404
-    d = request.form
-    update_mul_appinfo([(remark, scanid, appid) for appid, remark in d.items()])
-    audit.record(
-        "app_remarks_saved",
-        clientid=get_clientid_for_scan(scanid),
-        scanid=scanid,
-        details={"remarks": dict(d)},
-    )
-    return "Success", 200
 
 
 @bp.route("/savescan/<int:scanid>", methods=["POST"])

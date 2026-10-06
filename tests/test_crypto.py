@@ -130,3 +130,45 @@ def test_setup_refuses_to_overwrite_a_keyfile(keyfile):
     crypto.setup(keyfile, "a long passphrase")
     with pytest.raises(FileExistsError):
         crypto.setup(keyfile, "a long passphrase")
+
+
+@pytest.mark.parametrize("part", ["pii_key", "signing_key"])
+def test_a_damaged_keyfile_is_reported_as_damaged(keyfile, part):
+    """The right passphrase, but a sealed key in the file was altered:
+    a clear refusal, not a crash."""
+    crypto.setup(keyfile, "a long passphrase")
+    data = json.loads(keyfile.read_text())
+    sealed = bytearray(data[part].encode())
+    sealed[-3] = ord("A") if sealed[-3] != ord("A") else ord("B")
+    data[part] = sealed.decode()
+    keyfile.write_text(json.dumps(data))
+    crypto.lock()
+    with pytest.raises(crypto.UnlockError, match="damaged"):
+        crypto.unlock(keyfile, passphrase="a long passphrase")
+    with pytest.raises(crypto.LockedError):
+        crypto.encrypt("note", "x")  # a failed unlock leaves ISDi locked
+
+
+def test_keyfiles_of_another_version_and_unlocking_without_a_secret(keyfile):
+    crypto.setup(keyfile, "a long passphrase")
+    with pytest.raises(crypto.UnlockError, match="a passphrase or the recovery key"):
+        crypto.unlock(keyfile)
+    data = json.loads(keyfile.read_text())
+    data["version"] = 99
+    keyfile.write_text(json.dumps(data))
+    with pytest.raises(crypto.UnlockError, match="unsupported keyfile version"):
+        crypto.unlock(keyfile, passphrase="a long passphrase")
+
+
+def test_nothing_secret_is_usable_while_locked(keyfile):
+    crypto.setup(keyfile, "a long passphrase")
+    crypto.lock()
+    for use in (
+        lambda: crypto.encrypt("note", "x"),
+        lambda: crypto.sign(b"x"),
+        crypto.pii_key,
+        lambda: crypto.derived_key("audit"),
+    ):
+        with pytest.raises(crypto.LockedError):
+            use()
+    assert crypto.encrypt("note", None) is None  # missing stays missing

@@ -5,6 +5,26 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## 1.8.1
+
+- **iPhone apps are listed under the name on the home screen.** Scan
+  results showed an iPhone app's internal program name (for example
+  "Helper") rather than the name the client sees ("System Helper").
+  Staff ask clients whether they recognise each app, and stalkerware
+  often names itself after a system app, so the names now match the
+  phone. The program name is used only when the phone gives no other.
+- **A damaged backup is refused with a message, never a crash.** A
+  backup cut off inside its header, or one holding a corrupted database,
+  stopped `isdi restore` with a Python error instead of "the backup is
+  cut short" or "the database in the backup is damaged". The existing
+  data was never at risk (the check runs before anything is replaced).
+- **A damaged keyfile is reported as damaged.** If the signing key in
+  the keyfile was altered, unlocking failed with a Python error and
+  could leave ISDi partly unlocked. It now says the keyfile is damaged
+  and stays locked.
+- Unused code behind a hidden "Submit" button on the results page was
+  removed, with the route it called.
+
 ## 1.8.0
 
 - **Android: apps holding powers monitoring apps rely on are flagged.**
