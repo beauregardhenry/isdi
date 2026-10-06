@@ -17,6 +17,21 @@
                 for scanning Android and iOS devices to find apps that
                 can be used to spy, track, or otherwise monitor a person.
             </p>
+            {% if blocklist %}
+            <p class="small mb-0 {% if blocklist.stale %}alert alert-warning p-2{% else %}text-muted{% endif %}" id="blocklist-date">
+              {% if blocklist.updated %}
+                Stalkerware list last updated {{ blocklist.updated }}
+                ({{ blocklist.age_days }} days ago).
+              {% else %}
+                This copy of ISDi does not record when its stalkerware list
+                was last updated.
+              {% endif %}
+              {% if blocklist.stale %}
+                Apps added to the list since then will not be flagged:
+                check for a newer ISDi release before relying on the results.
+              {% endif %}
+            </p>
+            {% endif %}
             <hr/>
             <label class="font-weight-bold lead">What type of device is this?</label>
             <form id="scan_select" method="GET" action="/scan" data-action="start-scan">

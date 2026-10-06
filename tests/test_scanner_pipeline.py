@@ -30,6 +30,19 @@ Packages:
       firstInstallTime=2025-01-01 09:00:00
 """
 
+SECURE_SETTINGS = f"""\
+accessibility_enabled=1
+enabled_accessibility_services={STALKER}/{STALKER}.Watcher
+enabled_notification_listeners=com.whatsapp/com.whatsapp.Listener
+"""
+
+DEVICE_POLICY = f"""\
+Current Device Policy Manager state:
+  Enabled Device Admins (User 0, provisioningState: 0):
+    {STALKER}/.Admin:
+      uid=10234
+"""
+
 FAKE_ADB = f"""\
 import sys
 args = sys.argv[1:]
@@ -54,6 +67,10 @@ elif rest[:1] == ["uninstall"]:
     print("Success" if rest[1] == "com.whatsapp" else "Failure [DELETE_FAILED]")
 elif rest == ["shell", "dumpsys", "package"]:
     sys.stdout.write({PACKAGE_DUMPSYS!r})
+elif rest == ["shell", "settings", "list", "secure"]:
+    sys.stdout.write({SECURE_SETTINGS!r})
+elif rest == ["shell", "dumpsys", "device_policy"]:
+    sys.stdout.write({DEVICE_POLICY!r})
 else:
     sys.stdout.write("x=1\\n" * 400)
 """
@@ -111,7 +128,10 @@ def test_android_find_spyapps_end_to_end(android, monkeypatch):
     assert list(apps) == [STALKER, "com.whatsapp"]
     flags = apps[STALKER]["flags"]
     assert {"stalkerware", "offstore-app", "device-owner"} <= set(flags)
-    assert apps["com.whatsapp"]["flags"] == []
+    assert {"accessibility", "device-admin"} <= set(flags)
+    assert "notification-access" not in flags
+    assert apps["com.whatsapp"]["flags"] == ["notification-access"]
+    assert apps["com.whatsapp"]["class_"] == "alert-warning"
     assert android.ddump.info(STALKER)["firstInstallTime"] == "2026-09-01 12:00:00"
 
 

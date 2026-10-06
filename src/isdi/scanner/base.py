@@ -388,6 +388,22 @@ class AppScanner:
                             "html_flags": blocklist.flag_str(flags),
                         }
 
+        # Powers held by apps the user installed (Android only): monitoring
+        # apps need them, though many ordinary apps hold them too.
+        special = getattr(self.ddump, "special_access", None) or {}
+        for appid, powers in special.items():
+            app = result.get(appid)
+            if not app or "system-app" in app["flags"]:
+                continue
+            flags = app["flags"] + sorted(p for p in powers if p not in app["flags"])
+            result[appid] = {
+                **app,
+                "flags": flags,
+                "score": blocklist.score(flags),
+                "class_": blocklist.assign_class(flags),
+                "html_flags": blocklist.flag_str(flags),
+            }
+
         # Sort by risk score descending, then by appId ascending
         sorted_apps = sorted(result.items(), key=lambda x: (-x[1]["score"], x[0]))
 

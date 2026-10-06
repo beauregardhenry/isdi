@@ -213,7 +213,16 @@ following.
 * `location`, `media.camera`, `netpolicy`, `mount` Resource information:
 * `cpuinfo`, `dbinfo`, `meminfo` Resource consumption: `procstats`,
 * `batterystats`, `netstats`, `usagestats` App running information: `activity`,
-* `appops`
+* `appops` Device administrators: `device_policy`
+
+The secure settings (`settings list secure`) are read too: they list the
+apps allowed to use accessibility services and to read notifications.
+Apps the user installed that hold either power, or are device
+administrators, are flagged (`accessibility`, `notification-access`,
+`device-admin`). These are powers monitoring apps rely on, but many
+legitimate apps hold them too (password managers, smartwatch apps, work
+profiles), so a flag is a reason to ask about the app, not a finding by
+itself. Preinstalled (system) apps are not flagged.
 
 See details about the services in [notes.md](notes.md)
 

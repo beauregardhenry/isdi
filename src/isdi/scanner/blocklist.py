@@ -13,7 +13,12 @@ Flags added to them are from the following four classes
 """
 
 import csv
+import json
 import re
+from datetime import date
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 from isdi.config import get_config
 
 config = get_config()
@@ -39,6 +44,37 @@ APP_FLAGS = _load_app_flags(config.APP_FLAGS_FILE)
 # Recorded with each scan: which blocklist the results came from.
 with open(config.APP_FLAGS_FILE, "rb") as _f:
     BLOCKLIST_SHA256 = __import__("hashlib").sha256(_f.read()).hexdigest()
+# When the stalkerware list last changed (scripts/get-stalkerware-indicators.py
+# writes it), or None for a copy without the file.
+STALE_AFTER_DAYS = 120
+
+
+def _load_updated(path) -> Optional[date]:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return date.fromisoformat(json.load(f)["updated"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+BLOCKLIST_UPDATED = _load_updated(
+    Path(config.APP_FLAGS_FILE).with_name("app-flags.meta.json")
+)
+
+
+def blocklist_status(today: Optional[date] = None) -> Dict[str, Any]:
+    """The blocklist's date, its age in days and whether it is old enough
+    that a newer ISDi release may carry a newer list."""
+    if BLOCKLIST_UPDATED is None:
+        return {"updated": None, "age_days": None, "stale": True}
+    age = ((today or date.today()) - BLOCKLIST_UPDATED).days
+    return {
+        "updated": BLOCKLIST_UPDATED.isoformat(),
+        "age_days": age,
+        "stale": age > STALE_AFTER_DAYS,
+    }
+
+
 # appId -> row, built once (lookups happen for every app on every scan).
 _FLAGS_BY_APPID = {r["appId"]: r for r in APP_FLAGS if r.get("appId")}
 
@@ -96,6 +132,9 @@ def _regex_blocklist(app):
     )
 
 
+SPECIAL_ACCESS_FLAGS = ("accessibility", "notification-access", "device-admin")
+
+
 def score(flags):
     """The weights are completely arbitrary"""
     weight = {
@@ -112,6 +151,10 @@ def score(flags):
         "odds-ratio": 0.2,
         "system-app": -0.1,
         "device-owner": 1.0,
+        # Powers monitoring apps rely on; ordinary apps hold them too.
+        "accessibility": 0.5,
+        "notification-access": 0.4,
+        "device-admin": 0.4,
     }
     return sum(map(lambda x: weight.get(x, 0.0), flags))
 
@@ -131,7 +174,11 @@ def flag_str(flags):
         return (
             "primary"
             if "spyware" in flag or flag in ("stalkerware", "device-owner")
-            else "warning" if "dual-use" in flag else "info" if "spy" in flag else ""
+            else (
+                "warning"
+                if "dual-use" in flag or flag in SPECIAL_ACCESS_FLAGS
+                else "info" if "spy" in flag else ""
+            )
         )
 
     def _info(flag):
@@ -152,6 +199,21 @@ def flag_str(flags):
             "dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",
             "system-app": "This app came preinstalled with the device.",
             "device-owner": "This app has device owner privilege, allowing it to have almost full control over the device.",
+            "accessibility": (
+                "This app is allowed to use accessibility services: it can read "
+                "what is on the screen and act on it. Monitoring apps use this, "
+                "as do many legitimate apps (password managers, screen readers)."
+            ),
+            "notification-access": (
+                "This app is allowed to read every notification, including "
+                "message previews. Monitoring apps use this, as do smartwatch "
+                "and car apps."
+            ),
+            "device-admin": (
+                "This app is a device administrator: it can lock or erase the "
+                "phone and is harder to uninstall. Monitoring apps use this, as "
+                "do work and find-my-phone apps."
+            ),
         }.get(flag.lower(), flag)
 
     # If spyware <span class='text-danger'>{}</span>

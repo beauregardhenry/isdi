@@ -254,6 +254,7 @@ def _scan_and_save(
             "flagged": {a: i["flags"] for a, i in apps.items() if i["flags"]},
             "isdi_version": config.VERSION,
             "blocklist_sha256": blocklist.BLOCKLIST_SHA256,
+            "blocklist_updated": blocklist.blocklist_status()["updated"],
         },
     )
     if preserve:

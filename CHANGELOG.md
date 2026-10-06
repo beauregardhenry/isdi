@@ -5,6 +5,26 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## 1.8.0
+
+- **Android: apps holding powers monitoring apps rely on are flagged.**
+  An app the user installed that can use accessibility services (read
+  and act on the screen), read every notification, or is a device
+  administrator (can lock or erase the phone, and is harder to uninstall)
+  gets the flag `accessibility`, `notification-access` or `device-admin`
+  and is listed higher. Many legitimate apps hold these powers too, so a
+  flag is a reason to ask about the app, not proof of monitoring.
+  Preinstalled apps are not flagged. Android scans now also read
+  `dumpsys device_policy`. The parsing follows the output of recent
+  Android versions and has not yet been checked against every version
+  or manufacturer: an unrecognised layout means no flag, not an error.
+- **The stalkerware list's date is shown.** The home page says when the
+  stalkerware list in this copy of ISDi was last updated, and warns when
+  it is more than 120 days old: apps added to the list since then are
+  not flagged, so check for a newer release. The date is recorded with
+  each scan and in evidence packages (`blocklist_updated`), next to the
+  list's checksum.
+
 ## 1.7.0
 
 - **`isdi reset` is harder to run by mistake.** It now needs the
