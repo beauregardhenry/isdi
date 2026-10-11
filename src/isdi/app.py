@@ -66,6 +66,10 @@ def create_app(config=None):
 
     # Templates mark their own <script> blocks with nonce="{{ csp_nonce() }}".
     app.jinja_env.globals["csp_nonce"] = _csp_nonce
+    # Store descriptions are written by whoever publishes an app.
+    from isdi.htmlclean import clean_description
+
+    app.jinja_env.filters["clean_html"] = clean_description
 
     @app.after_request
     def _security_headers(resp):

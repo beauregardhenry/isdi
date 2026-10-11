@@ -355,13 +355,16 @@ def _scan_job(job_id, clientid, device, device_owner, ser, preserve, unredacted)
                 error=template_d.get("error", "Scan failed"),
             )
     except Exception as exc:
+        # The page shows the error as HTML, and the text can come from the
+        # phone (a device name, adb's output).
+        text = escape(str(exc))
         _update_scan_job(
             job_id,
             status="error",
             percent=100,
             step="Failed",
-            message=str(exc),
-            error=str(exc),
+            message=text,
+            error=text,
         )
 
 

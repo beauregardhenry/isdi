@@ -63,6 +63,15 @@ have no section here.
   id instead of `""`, and the empty store description box is replaced by
   a line saying there is none. The permission descriptions come from
   Sherloc.
+- **Store descriptions can no longer add links or forms to ISDi's
+  pages.** App descriptions come from store crawls, and whoever publishes
+  an app writes them, so a stalkerware vendor could put a link, a form
+  asking for a password, or a redirect on the app page. The content
+  security policy already stopped scripts. Descriptions and summaries
+  are now reduced to a few formatting tags (bold, italics, paragraphs,
+  lists, line breaks) with no attributes, using Sherloc's cleaner. The
+  text of an unexpected scan error, which can include what the phone
+  reported, is shown as text.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
