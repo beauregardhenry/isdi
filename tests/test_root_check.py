@@ -1,7 +1,6 @@
 """Root / jailbreak verdicts. A wrong "Not Detected" misleads the person
 being scanned, so each indicator's pass/fail rule is pinned down here."""
 
-
 import pytest
 
 from isdi.scanner import root_check

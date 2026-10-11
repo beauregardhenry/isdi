@@ -79,7 +79,9 @@ def open_activity(ser, activity_name):
     # adb joins its arguments and runs them in the phone's shell, so quote
     # for that shell; otherwise the phone expands "$PrivacySettingsActivity"
     # in ".Settings$PrivacySettingsActivity" to "". No shell runs here.
-    out, err = run_command([*thiscli(ser), "shell", "am", "start", shlex.quote(activity_name)])
+    out, err = run_command(
+        [*thiscli(ser), "shell", "am", "start", shlex.quote(activity_name)]
+    )
     if err:
         logging.error("open_activity failed: %s", redact(err))
         return False

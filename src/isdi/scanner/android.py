@@ -121,7 +121,10 @@ class AndroidScanner(AppScanner):
 
     def get_device_owner_apps(self, serialno: str) -> set:
         """Return package names that hold device owner privilege on the device."""
-        s = catch_err(self.run_tool("-s", serialno, "shell", "dpm", "list-owners"), cmd="dpm list-owners")
+        s = catch_err(
+            self.run_tool("-s", serialno, "shell", "dpm", "list-owners"),
+            cmd="dpm list-owners",
+        )
         device_owner_apps: set = set()
         if not s:
             return device_owner_apps
@@ -190,5 +193,7 @@ class AndroidScanner(AppScanner):
 
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
-        output = catch_err(self.run_tool("-s", serial, "uninstall", appid), cmd="adb uninstall")
+        output = catch_err(
+            self.run_tool("-s", serial, "uninstall", appid), cmd="adb uninstall"
+        )
         return "Success" in output

@@ -104,5 +104,8 @@ class IosScanner(AppScanner):
 
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
-        output = catch_err(self.run_tool("apps", "uninstall", "--udid", serial, appid), cmd="apps uninstall")
+        output = catch_err(
+            self.run_tool("apps", "uninstall", "--udid", serial, appid),
+            cmd="apps uninstall",
+        )
         return "Success" in output or "uninstalled" in output.lower()

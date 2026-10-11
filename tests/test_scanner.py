@@ -1,7 +1,6 @@
 """Parsing of adb / pymobiledevice3 output and how a scan's results are
 assembled. A misparse here silently drops a phone or an app from the scan."""
 
-
 import pytest
 
 import isdi.scanner as scanner

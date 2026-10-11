@@ -136,7 +136,9 @@ def run_command(
     process waited for; callers read p.stdout and p.stderr afterwards.
     A program that cannot be started gives returncode 127."""
     if isinstance(args, (str, bytes)) or not all(isinstance(a, str) for a in args):
-        raise TypeError("run_command takes a list of string arguments, not a command line")
+        raise TypeError(
+            "run_command takes a list of string arguments, not a command line"
+        )
     shown = redact(shlex.join(args))
     try:
         p = subprocess.Popen(
@@ -154,7 +156,9 @@ def run_command(
         out, err = p.communicate()
         p.stdout, p.stderr = io.BytesIO(out), io.BytesIO(err)
         if p.returncode != 0:
-            logging.error("Error running command: %r. returncode: %s", shown, p.returncode)
+            logging.error(
+                "Error running command: %r. returncode: %s", shown, p.returncode
+            )
         else:
             logging.debug("Command %r executed successfully.", shown)
     return p
