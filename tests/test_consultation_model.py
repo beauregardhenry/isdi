@@ -237,3 +237,10 @@ def test_every_question_has_text():
         for section in part.values()
         for text in section.values()
     )
+
+
+def test_risks_are_not_stored_with_the_answers():
+    taq = TAQData(sharing={"share_phone_plan": "yes"})
+    stored = taq.to_dict()
+    assert "all_risks" not in stored and "risk_report" not in stored["sharing"]
+    assert taq.to_dict(derived=True)["all_risks"][0]["risk"] == "Shared phone plan"

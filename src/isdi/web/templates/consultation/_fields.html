@@ -1,0 +1,66 @@
+{# Consultation form fields. Radio and checkbox groups are a <fieldset>
+   whose <legend> is the question, so screen readers read the question with
+   each answer. #}
+{% macro field(f) %}
+  {% if f.type in ("RadioField", "CheckboxesField") %}
+    <fieldset class="form-group consult-question">
+      <legend class="col-form-label">{{ f.label.text }}</legend>
+      {% for option in f %}
+        <div class="form-check form-check-inline">
+          {{ option(class_="form-check-input") }}
+          {{ option.label(class_="form-check-label") }}
+        </div>
+      {% endfor %}
+      {{ errors(f) }}
+    </fieldset>
+  {% elif f.type == "BooleanField" %}
+    <div class="form-group form-check">
+      {{ f(class_="form-check-input") }} {{ f.label(class_="form-check-label") }}
+      {{ errors(f) }}
+    </div>
+  {% elif f.type == "HiddenField" %}
+    {{ f() }}
+  {% else %}
+    <div class="form-group consult-question">
+      {{ f.label(class_="col-form-label") }}
+      {% if f.type == "TextAreaField" %}
+        {{ f(class_="form-control", rows=2) }}
+      {% else %}
+        {{ f(class_="form-control") }}
+      {% endif %}
+      {{ errors(f) }}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro errors(f) %}
+  {% if f.errors %}
+    <ul class="errors text-danger small">
+      {% for e in f.errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+{% endmacro %}
+
+{# Every field of a sub-form, in order, under a heading. #}
+{% macro section(sub, heading_level=2) %}
+  <section class="consult-section">
+    <h{{ heading_level }} class="h5">{{ sub.form.title }}</h{{ heading_level }}>
+    {% for f in sub %}{{ field(f) }}{% endfor %}
+  </section>
+{% endmacro %}
+
+{% macro risks(list) %}
+  {% if list %}
+    <ul class="consult-risks">
+      {% for r in list %}<li><b>{{ r.risk }}</b>: {{ r.description }}</li>{% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">None found.</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro flashes() %}
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="alert {{ 'alert-success' if category == 'success' else 'alert-warning' }}" role="status">{{ message }}</div>
+  {% endfor %}
+{% endmacro %}

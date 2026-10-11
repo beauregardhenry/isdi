@@ -108,6 +108,12 @@
         {% if task == 'formedit' %}
           {% include "formedit.html" %}
         {% endif %}
+        {% if task == 'consultation' %}
+          {% include "consultation/overview.html" %}
+        {% endif %}
+        {% if task == 'consultation-questionnaire' %}
+          {% include "consultation/questionnaire.html" %}
+        {% endif %}
       {% endblock %}
       </main>
   </body>

@@ -12,7 +12,12 @@ have no section here.
   checked with the client, the questions asked about each app, and the
   consultation notes are now stored per client, encrypted like the rest
   of the client's records, and included when a client is exported or
-  erased. The pages that use them follow in the next changes.
+  erased.
+- **Consultation record page and questionnaire.** "Consultation record"
+  on the home page opens the record for the client of the session: the
+  technology assessment questionnaire (devices, passwords, sharing, smart
+  home, children's devices, legal proceedings), the risks the answers
+  point to, and notes for the whole consultation.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached

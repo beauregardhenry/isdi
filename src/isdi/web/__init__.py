@@ -16,6 +16,7 @@ def init_routes(flask_app):
     from isdi.web.view import (  # noqa: F401 (imported for their routes)
         auth,
         consult,
+        consultation,
         control,
         details,
         error,
