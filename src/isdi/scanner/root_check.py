@@ -167,6 +167,9 @@ async def _maybe_await(value):
 
 
 async def _afc2_query(serial: str) -> bool:
+    from .pmd3_wrapper import patch_if_termux
+
+    patch_if_termux()  # usbmuxd's socket lives elsewhere on Termux
     client = await _maybe_await(create_using_usbmux(serial=serial))
     try:
         service = await _maybe_await(client.start_lockdown_service("com.apple.afc2"))

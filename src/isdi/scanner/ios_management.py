@@ -68,7 +68,10 @@ async def _read(serial: str):
     from pymobiledevice3.lockdown import create_using_usbmux
     from pymobiledevice3.services.mobile_config import MobileConfigService
 
+    from .pmd3_wrapper import patch_if_termux
     from .root_check import _maybe_await
+
+    patch_if_termux()  # usbmuxd's socket lives elsewhere on Termux
 
     client = await _maybe_await(create_using_usbmux(serial=serial))
     try:

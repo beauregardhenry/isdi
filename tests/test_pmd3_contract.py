@@ -55,14 +55,25 @@ def test_mobile_config_service_reads_profiles_and_supervision():
         assert required == [], f"{name} now needs {required}"
 
 
-def test_termux_patches_still_have_something_to_patch():
+def test_termux_patches_still_take_effect(monkeypatch):
     """pmd3_wrapper sets these two attributes. Setting an attribute never
-    fails, so if the library renamed them the patch would do nothing."""
+    fails, so the test is whether pymobiledevice3 then connects to the
+    socket the patch names, not only whether the attribute exists."""
     import pymobiledevice3.osu.os_utils as os_utils
     import pymobiledevice3.usbmux as usbmux
 
+    from isdi.scanner import pmd3_wrapper
+
     assert callable(getattr(os_utils, "is_wsl", None))
-    assert hasattr(usbmux.MuxConnection, "USBMUXD_PIPE")
+    monkeypatch.setattr(os_utils, "is_wsl", os_utils.is_wsl)
+    monkeypatch.setattr(
+        usbmux.MuxConnection, "USBMUXD_PIPE", usbmux.MuxConnection.USBMUXD_PIPE
+    )
+    monkeypatch.delenv("USBMUXD_SOCKET_ADDRESS", raising=False)
+    monkeypatch.setattr(os_utils, "get_os_utils", os_utils.get_os_utils)
+    pmd3_wrapper.apply_patches()
+    address, _ = usbmux.MuxConnection._resolve_usbmux_address()
+    assert address == pmd3_wrapper.TERMUX_USBMUXD
 
 
 @pytest.mark.parametrize(
