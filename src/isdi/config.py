@@ -152,10 +152,10 @@ class Config:
             else:
                 self.LIBIMOBILEDEVICE_PATH = "pymobiledevice3.exe"
 
+        # Store titles and descriptions for app detail pages. Optional:
+        # fetched by `isdi run` (unless --offline) or `isdi fetch-app-info`,
+        # never on import, so importing ISDi reaches no network.
         self.APP_INFO_SQLITE_FILE = f'sqlite:///{self.dirs["cache"]}/app-info.db'
-
-        # Ensure app-info.db exists in cache for runtime lookups
-        self._ensure_app_info_db()
 
         # Logging
         import logging
@@ -218,7 +218,7 @@ class Config:
         # The stalkerware blocklist
         self.APP_FLAGS_FILE = self.package_data / "app-flags.csv"
 
-    def _ensure_app_info_db(self) -> None:
+    def ensure_app_info_db(self) -> None:
         """Download app-info.db if it is missing, from the first source that
         serves the file with the pinned hash."""
         dst_db = Path(self.dirs["cache"]) / "app-info.db"

@@ -133,13 +133,15 @@ passphrase (at least 12 characters). It then shows a **recovery key** once.
 Write it down and keep it safe, away from the computer: without the
 passphrase or the recovery key, nobody can read the data, including you.
 
-**Note:** On first run, ISDi will download the app information database (~47MB) from GitHub. This may take a minute depending on your internet connection. An internet connection is required for the first run.
+**Note:** When ISDi starts and the app information database (store titles and descriptions, about 47 MB) is missing, it downloads it from GitHub and checks it against a pinned SHA-256. Nothing is downloaded at any other time. Scans work without it: app pages then show only what the phone reports. To start without trying, use `isdi run --offline`; to download it ahead of time, run `isdi fetch-app-info`.
 
 ### Command Options
 
 ```bash
 isdi run                          # Normal mode
 isdi run --debug                  # Debug mode (verbose logging)
+isdi run --offline                # Never download app-info.db
+isdi fetch-app-info               # Download app-info.db if missing
 isdi change-passphrase            # New passphrase (--recovery if it is lost)
 isdi user add USERNAME            # Create a staff account (--supervisor to
                                   #   open every client; also: list, role,

@@ -13,11 +13,18 @@ from flask.testing import FlaskClient
 _TMP = Path(tempfile.mkdtemp(prefix="isdi-tests-"))
 os.environ["XDG_DATA_HOME"] = str(_TMP / "data")
 os.environ["XDG_CONFIG_HOME"] = str(_TMP / "config")
-# The cache only holds the downloaded app-info.db (plus logs); keep it
-# between runs so the database is not downloaded every time.
-os.environ["XDG_CACHE_HOME"] = str(
-    Path(__file__).resolve().parent.parent / ".pytest_cache" / "isdi"
-)
+os.environ["XDG_CACHE_HOME"] = str(_TMP / "cache")
+
+# The suite never downloads anything (app-info.db included). Tests of the
+# download replace urlopen with a fake.
+import urllib.request  # noqa: E402
+
+
+def _no_network(*args, **kwargs):
+    raise AssertionError("a test tried to reach the network")
+
+
+urllib.request.urlopen = _no_network
 os.environ.pop("PREFIX", None)  # Termux paths ignore the XDG variables
 
 from isdi import crypto  # noqa: E402

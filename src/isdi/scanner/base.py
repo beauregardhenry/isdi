@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sqlite3
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from isdi.config import get_config
@@ -91,10 +92,20 @@ class AppScanner:
             self._init_db()
 
     def _init_db(self) -> None:
-        """Initialize SQLite connection for app info database."""
+        """Open app-info.db read-only, if it is there. A missing or empty file
+        is left alone (opening it read-write would create an empty database,
+        and every lookup would then fail on "no such table")."""
+        path = Path(cfg.APP_INFO_SQLITE_FILE.replace("sqlite:///", "", 1)).absolute()
+        if not path.is_file() or path.stat().st_size == 0:
+            logging.info(
+                "No app-info.db: app details will show what the phone reports."
+            )
+            AppScanner.app_info_conn = None
+            return
         try:
-            db_path = cfg.APP_INFO_SQLITE_FILE.replace("sqlite:///", "")
-            AppScanner.app_info_conn = sqlite3.connect(db_path, check_same_thread=False)
+            AppScanner.app_info_conn = sqlite3.connect(
+                path.as_uri() + "?mode=ro", uri=True, check_same_thread=False
+            )
         except Exception as e:
             logging.error(f"Failed to connect to database: {e}")
             AppScanner.app_info_conn = None
