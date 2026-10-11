@@ -215,7 +215,7 @@ class AppScanner:
             logging.error(f"Dump failed with returncode {p.returncode}")
             return False
 
-        logging.info(f"Dump completed successfully: {dumpf}")
+        logging.info("Dump completed for %s", _pseudonym(serial))
         return os.path.exists(dumpf)
 
     def get_multiple_app_details(
@@ -347,7 +347,7 @@ class AppScanner:
             try:
                 app_titles_cache = self.get_app_titles(serialno)
             except Exception as e:
-                logging.warning(f"Failed to get app titles cache: {e}")
+                logging.warning("Failed to get app titles: %s", type(e).__name__)
                 app_titles_cache = {}
 
         # Convert to dict with appId as key
@@ -368,7 +368,7 @@ class AppScanner:
                     if row:
                         title = row[0] or ""
                 except Exception as e:
-                    logging.error(f"Error getting title for {appid}: {e}")
+                    logging.error("Error getting an app title: %s", type(e).__name__)
             elif self.device_type == "ios" and app_titles_cache:
                 # Use cached titles from iOS dump (loaded once, not in loop)
                 title = app_titles_cache.get(appid, "") or title

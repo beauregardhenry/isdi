@@ -438,7 +438,7 @@ class AndroidDump(PhoneDump):
         for k, v in app_d.items():
             m = re.match(r"Package \[(?P<appId>.*)\] \((?P<h>.*)", k)
             if not m:
-                logging.error(f"{k} is not an appId")
+                logging.error("A package entry in the dump has no app id")
                 continue
                 # k is a valid appId
             appId, h = m.groups()
@@ -498,7 +498,7 @@ class AndroidDump(PhoneDump):
             return {}
         a = self._get_apps()
         if appid not in a:
-            logging.error(f"AppId {appid} not found ({len(a)} apps in the dump)")
+            logging.error("App not found in the dump (%d apps in it)", len(a))
             return {}
         app = self._find_packages_section(d["package"])[a[appid]["packageKey"]]
         res = {
@@ -526,7 +526,7 @@ class AndroidDump(PhoneDump):
                 match_keys(d, "procstats//CURRENT STATS//* {} / .*".format(appid))
             )
         )
-        logging.info(f"UIDU match found: {uidu_match}")
+        logging.debug("UIDU matches: %d", len(uidu_match))
         if uidu_match:
             uidu = uidu_match[-1].split(" / ")
         else:
@@ -583,11 +583,10 @@ class IosDump(PhoneDump):
 
     def load_file(self):
         try:
-            logging.info(f"fname is: {self.dumpf}")
             with open(self.dumpf, "r") as app_data:
                 d = json.load(app_data)
         except Exception as ex:
-            logging.error(f"Could not load the json file: {self.dumpf}. Exception={ex}")
+            logging.error("Could not load the iOS dump: %s", type(ex).__name__)
             return [], {}
 
         apps = list(d.get("apps", {}).values())
@@ -678,7 +677,7 @@ class IosDump(PhoneDump):
         # self.df is a list of app dictionaries, find the matching app
         app = next((a for a in self.df if a.get("CFBundleIdentifier") == appid), None)
         if not app:
-            logging.warning(f"App with bundle identifier {appid} not found")
+            logging.warning("App not found in the iOS dump")
             return None
 
         party = app.get("ApplicationType", "").lower()

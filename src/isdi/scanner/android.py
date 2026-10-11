@@ -113,10 +113,10 @@ class AndroidScanner(AppScanner):
                     f"{self.cli} may not be reaching device {_pseudonym(serial)}"
                 )
                 return False
-            logging.info(f"Dump completed: {dumpf} ({size} bytes)")
+            logging.info("Dump completed for %s (%d bytes)", _pseudonym(serial), size)
             return True
         except Exception as e:
-            logging.error(f"Android dump failed: {e}")
+            logging.error("Android dump failed: %s", type(e).__name__)
             return False
 
     def get_device_owner_apps(self, serialno: str) -> set:
@@ -182,7 +182,7 @@ class AndroidScanner(AppScanner):
             info_str = f"{m['brand']} {m['model']} (Android {m['version']})"
             return info_str, m
         except Exception as e:
-            logging.error(f"Error getting device info: {e}")
+            logging.error("Error getting device info: %s", type(e).__name__)
             return "Unknown Device", {}
 
     def isrooted(self, serial: str) -> Tuple[bool, List[str]]:
