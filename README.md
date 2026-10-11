@@ -53,9 +53,10 @@ ISDi needs `adb` for scanning Android devices and `pymobiledevice3` for scanning
 
 **macOS:**
 ```bash
-brew bundle
+brew bundle   # in the isdi folder: adb, and Pango for PDF reports
 # Or manually:
 brew install --cask android-platform-tools
+brew install pango
 ```
 
 For iOS device support on macOS, `pymobiledevice3` will be installed automatically with ISDi. For Android device support, ensure `adb` (Android Debug Bridge) is installed via the android-platform-tools above.
@@ -63,6 +64,9 @@ For iOS device support on macOS, `pymobiledevice3` will be installed automatical
 **Linux (Debian/Ubuntu):**
 ```bash
 sudo apt install adb
+# For PDF reports (WeasyPrint), on Debian 11 or newer:
+sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+# On Ubuntu 20.04 or newer, add libharfbuzz0b.
 ```
 
 For iOS device support on Linux, `pymobiledevice3` will be installed automatically with ISDi. For Android device support, ensure `adb` is installed via the command above.
@@ -99,6 +103,17 @@ pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.8.1/
   https://github.com/beauregardhenry/isdi/releases/download/v1.8.1/isdi_scanner-1.8.1-py3-none-any.whl
 ```
 
+To make PDFs of the consultation report, install the `report` extra
+(WeasyPrint and pypdf; WeasyPrint needs Pango, above):
+
+```bash
+pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.8.1/constraints.txt \
+  "isdi-scanner[report] @ https://github.com/beauregardhenry/isdi/releases/download/v1.8.1/isdi_scanner-1.8.1-py3-none-any.whl"
+```
+
+Without it, everything else works, and the report can be printed or
+saved as PDF from the browser.
+
 > **Note:** this fork uses the same package name, `isdi-scanner`, as
 > upstream's PyPI release. Installing it replaces upstream's version, but
 > `pip install -U isdi-scanner` (without a URL) would download upstream's
@@ -134,6 +149,31 @@ Write it down and keep it safe, away from the computer: without the
 passphrase or the recovery key, nobody can read the data, including you.
 
 **Note:** When ISDi starts and the app information database (store titles and descriptions, about 47 MB) is missing, it downloads it from GitHub and checks it against a pinned SHA-256. Nothing is downloaded at any other time. Scans work without it: app pages then show only what the phone reports. To start without trying, use `isdi run --offline`; to download it ahead of time, run `isdi fetch-app-info`.
+
+### Consultation record
+
+"Consultation record" on the home page keeps what staff go through with
+the client of the session, next to that client's scans:
+
+- the technology assessment questionnaire (devices, passwords, sharing,
+  smart home, children's devices, legal proceedings) and the risks the
+  answers point to;
+- account checks (logins and devices, password, recovery settings,
+  two-factor authentication, security questions);
+- devices, from a scan or added by hand, and the questions asked about
+  each app;
+- screenshots, taken from a connected Android phone or uploaded;
+- notes for the whole consultation.
+
+The report puts it together for staff, or as a take-home copy that
+leaves out the client's name, the consultant's notes and the names of
+the clinic and of ISDi. It can be
+downloaded as a PDF, optionally protected with a password (the `report`
+extra, above). Like the rest of the client's records, the consultation
+record is encrypted, and it is exported and erased with the client.
+
+This part of ISDi came from [Sherloc](https://github.com/WISPR-lab/sherloc),
+which is no longer needed alongside ISDi.
 
 ### Command Options
 

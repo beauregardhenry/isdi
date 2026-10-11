@@ -77,6 +77,10 @@ have no section here.
   dump, or the text of an error from the phone to `isdi.log`, which
   DATA_PROTECTION.md says holds no app lists or device output. They now
   name the device by its pseudonym and the error by its type.
+- **`brew bundle` works again.** The README told macOS users to run it,
+  but the Brewfile had been removed. It now installs adb and Pango. The
+  README explains how to install the `report` extra for PDF reports, and
+  describes the consultation record.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
