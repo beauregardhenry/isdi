@@ -5,7 +5,12 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
-## Unreleased
+## 1.9.0
+
+This release brings Sherloc's consultation workflow into ISDi, so a
+clinic needs one tool. The database is upgraded automatically the first
+time 1.9.0 starts. For PDF reports, install the `report` extra (see the
+README).
 
 - **Client IDs are four random words**, such as
   `amber-otter-canyon-teapot`, instead of the date and a counter
@@ -16,7 +21,7 @@ have no section here.
 - **Privacy checks are started with POST**, with the CSRF token. They open
   screens on the phone or take a screenshot of it; a link or an image on
   another page could start one before.
-- **The consultation record from Sherloc, part 1: where it is kept.**
+- **The consultation record is kept per client.**
   The technology assessment questionnaire, the accounts and devices
   checked with the client, the questions asked about each app, and the
   consultation notes are now stored per client, encrypted like the rest
