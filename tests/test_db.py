@@ -117,15 +117,22 @@ def test_erase_client_deletes_only_that_client(ctx):
     assert len(db.export_client(other)["scans"]) == 1
 
 
-def test_new_client_id_format(ctx):
-    assert re.fullmatch(r"\d{8}_\d{3}", db.new_client_id())
+def test_new_client_id_is_four_words(ctx):
+    # The old ids (20261010_003) told anyone who saw one the day of the
+    # consultation and how many clients came before.
+    cid = db.new_client_id()
+    assert re.fullmatch(r"[a-z]{3,9}(-[a-z]{3,9}){3}", cid), cid
+    assert not re.search(r"\d", cid)
 
 
-def test_new_client_id_counts_up_and_ignores_other_ids(ctx):
-    first = db.new_client_id()
-    prefix, n = first.rsplit("_", 1)
-    db.insert("insert into clients_notes (clientid) values (?)", (first,))
-    # Ids in another format must neither crash nor reset the counter.
-    db.insert("insert into clients_notes (clientid) values (?)", ("other_format",))
-    db.insert("insert into clients_notes (clientid) values (?)", (prefix + "_x",))
-    assert db.new_client_id() == f"{prefix}_{int(n) + 1:03d}"
+def test_a_taken_client_id_is_drawn_again(ctx, monkeypatch):
+    from isdi import clientwords
+
+    db.insert(
+        "insert into scan_res (clientid) values (?)", ("amber-otter-canyon-teapot",)
+    )
+    draws = iter(
+        [["amber", "otter", "canyon", "teapot"], ["maple", "otter", "canyon", "teapot"]]
+    )
+    monkeypatch.setattr(clientwords, "_draw", lambda n, pool: next(draws))
+    assert db.new_client_id() == "maple-otter-canyon-teapot"

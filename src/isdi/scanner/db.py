@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS client_access (
 
 
 # Columns holding client data, encrypted at rest. Everything else is an id,
-# the non-identifying client counter (YYYYMMDD_NNN), the HMAC of a serial,
+# the client id (four random words), the HMAC of a serial,
 # the device type (android/ios) or a timestamp, which queries need.
 ENCRYPTED_COLUMNS = {
     "clients_notes": (
@@ -257,26 +257,30 @@ def today():
 
 
 def new_client_id():
-    """Today's date and a counter: 20260101_001, 20260101_002, ...
+    """A new client ID: four random words (isdi/clientwords.py), such as
+    "amber-otter-canyon-teapot". It says nothing about the date or how many
+    clients came before. An ID already given to a session (client_access),
+    or used by any record, is drawn again."""
+    from isdi import clientwords
 
-    Counts only today's ids in that format, so an id written some other way
-    (or a created_at in another time zone) cannot break or repeat it. Ids
-    already given to a session (client_access) or used by a scan count too,
-    so two people never get the same id before either saves notes."""
-    prefix = today() + "_"
-    rows = query_db(
-        " UNION ".join(
-            f"SELECT clientid FROM {table} WHERE substr(clientid, 1, ?) = ?"
-            for table in ("clients_notes", "scan_res", "client_access")
-        ),
-        (len(prefix), prefix) * 3,
+    tables = (
+        "clients_notes",
+        "scan_res",
+        "client_access",
+        "consultation_docs",
+        "screenshots",
     )
-    counters = [
-        int(r["clientid"][len(prefix) :])
-        for r in rows
-        if r["clientid"][len(prefix) :].isdigit()
-    ]
-    return "{}{:03d}".format(prefix, max(counters, default=0) + 1)
+
+    def taken(cid):
+        return bool(
+            query_db(
+                " UNION ".join(f"SELECT 1 FROM {t} WHERE clientid=?" for t in tables),
+                (cid,) * len(tables),
+            )
+        )
+
+    words = clientwords.installation_words(config.secrets_dir / "client-words.key")
+    return clientwords.make_client_id(taken, words)
 
 
 def make_dicts(cursor, row):

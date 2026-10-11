@@ -58,8 +58,8 @@ def test_hmac_serial_validation():
         assert not is_valid_hmac_serial(bad)
 
 
-def test_privacy_rejects_injected_serial(client, no_subprocess):
-    r = client.get("/privacy/android/account", query_string={"serial": INJECTION})
+def test_privacy_rejects_injected_serial(client, no_subprocess, no_csrf):
+    r = client.post("/privacy/android/account", query_string={"serial": INJECTION})
     assert r.status_code == 400
     assert not no_subprocess
 

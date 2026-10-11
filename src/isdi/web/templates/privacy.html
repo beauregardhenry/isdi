@@ -2,7 +2,7 @@
  function get(url){
      $('#loadingDiv').show();
      $('#msg').html("")
-     $.get(url, function(data) {
+     $.post(url, function(data) {
          $('#msg').html(data);
          $('#loadingDiv').hide();
      }).done(function(data) {
