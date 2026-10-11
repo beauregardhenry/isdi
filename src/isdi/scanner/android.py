@@ -4,7 +4,6 @@ import contextlib
 import logging
 import os
 import re
-import shlex
 import subprocess
 from datetime import datetime
 from typing import Dict, List, Tuple
@@ -12,7 +11,7 @@ from typing import Dict, List, Tuple
 from isdi.config import get_config
 
 from . import parse_dump
-from .runcmd import catch_err, run_command
+from .runcmd import catch_err
 
 cfg = get_config()
 from .base import AppScanner, _pseudonym, raw_path
@@ -63,7 +62,7 @@ class AndroidScanner(AppScanner):
         def _run(*args, timeout=120) -> str:
             try:
                 r = subprocess.run(
-                    [self.cli, "-s", serial, *args],
+                    self.tool("-s", serial, *args),
                     capture_output=True,
                     text=True,
                     timeout=timeout,
@@ -122,9 +121,9 @@ class AndroidScanner(AppScanner):
 
     def get_device_owner_apps(self, serialno: str) -> set:
         """Return package names that hold device owner privilege on the device."""
-        cmd = "{cli} -s {serial} shell dpm list-owners"
         s = catch_err(
-            run_command(cmd, cli=self.cli, serial=shlex.quote(serialno)), cmd=cmd
+            self.run_tool("-s", serialno, "shell", "dpm", "list-owners"),
+            cmd="dpm list-owners",
         )
         device_owner_apps: set = set()
         if not s:
@@ -138,12 +137,11 @@ class AndroidScanner(AppScanner):
 
     def devices(self) -> List[str]:
         """Get list of connected Android devices."""
-        cmd = "{cli} devices | tail -n +2"
-        p = run_command(cmd, cli=self.cli)
-        output = catch_err(p, cmd=cmd).strip()
+        output = catch_err(self.run_tool("devices"), cmd="adb devices").strip()
 
         devices = []
-        for line in output.split("\n"):
+        # The first line is the "List of devices attached" header.
+        for line in output.split("\n")[1:]:
             parts = line.split()
             if len(parts) == 2 and parts[1] == "device":
                 devices.append(parts[0])
@@ -175,11 +173,8 @@ class AndroidScanner(AppScanner):
             }
 
             for key, prop in props.items():
-                cmd = "{cli} -s {serial} shell getprop {prop}"
-                p = run_command(
-                    cmd, cli=self.cli, serial=shlex.quote(serial), prop=prop
-                )
-                output = catch_err(p, cmd=cmd).strip()
+                p = self.run_tool("-s", serial, "shell", "getprop", prop)
+                output = catch_err(p, cmd=f"getprop {prop}").strip()
                 m[key] = output or "Unknown"
 
             m["last_full_charge"] = datetime.now().isoformat()
@@ -198,9 +193,7 @@ class AndroidScanner(AppScanner):
 
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
-        cmd = "{cli} -s {serial} uninstall {appid}"
-        p = run_command(
-            cmd, cli=self.cli, serial=shlex.quote(serial), appid=shlex.quote(appid)
+        output = catch_err(
+            self.run_tool("-s", serial, "uninstall", appid), cmd="adb uninstall"
         )
-        output = catch_err(p, cmd=cmd)
         return "Success" in output

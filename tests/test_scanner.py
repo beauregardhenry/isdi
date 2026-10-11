@@ -1,8 +1,6 @@
 """Parsing of adb / pymobiledevice3 output and how a scan's results are
 assembled. A misparse here silently drops a phone or an app from the scan."""
 
-import shlex
-
 import pytest
 
 import isdi.scanner as scanner
@@ -11,19 +9,19 @@ from isdi.scanner import AndroidScanner, AppScanner, IosScanner
 
 @pytest.fixture
 def tool_output(monkeypatch):
-    """Fake run_command/catch_err: record the shell command, return canned
+    """Fake the tool and catch_err: record each argument list, return canned
     output. Set tool_output.text before calling the scanner."""
 
     class Out:
         text = ""
         commands = []
 
-    def fake_run_command(cmd, **kw):
-        Out.commands.append(cmd.format(**kw))
+    def fake_run_tool(self, *args, nowait=False):
+        Out.commands.append(self.tool(*args))
         return object()
 
+    monkeypatch.setattr(AppScanner, "run_tool", fake_run_tool)
     for module in (scanner.android, scanner.ios):
-        monkeypatch.setattr(module, "run_command", fake_run_command)
         monkeypatch.setattr(module, "catch_err", lambda p, cmd="": Out.text)
     Out.commands = []
     return Out
@@ -31,6 +29,7 @@ def tool_output(monkeypatch):
 
 def test_android_devices_only_lists_authorized_devices(tool_output):
     tool_output.text = (
+        "List of devices attached\n"
         "R58M12ABCDE\tdevice\n"
         "emulator-5554\tdevice\n"
         "ZY224F8TKG\tunauthorized\n"
@@ -90,7 +89,7 @@ def test_uninstall_passes_serial_and_appid_as_single_arguments(
     sc = cls()
     evil = "com.x; rm -rf ~"
     assert sc.uninstall(serial="SER 1", appid=evil) is True
-    argv = shlex.split(tool_output.commands[-1])
+    argv = tool_output.commands[-1]
     assert argv[-1] == evil
     joined = " ".join(argv)
     assert " ".join(expected_prefix) in joined

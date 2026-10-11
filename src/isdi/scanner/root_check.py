@@ -4,7 +4,7 @@ import inspect
 import logging
 import shlex
 from pymobiledevice3.lockdown import create_using_usbmux
-from isdi.scanner.runcmd import run_command, catch_err
+from isdi.scanner.runcmd import catch_err, run_command, tool_argv
 
 ANDROID_ROOT_INDICATORS: List[Dict[str, Any]] = [
     {
@@ -102,18 +102,14 @@ def check_android_root(serial: str, cli_path: str) -> Tuple[bool, List[str]]:
     reasons: List[str] = []
 
     for check in ANDROID_ROOT_INDICATORS:
-        # cmd_str is meant for the device shell; quote it so the host shell
-        # passes it through intact (several checks contain quotes and pipes).
-        cmd = "{cli} -s {serial} shell {cmd_str}"
-        fmt = dict(
-            cli=cli_path,
-            serial=shlex.quote(serial),
-            cmd_str=shlex.quote(check["cmd_str"]),
-        )
-        cmd_run = cmd.format(**fmt)
+        # cmd_str is for the phone's shell (several checks use pipes and
+        # quotes). It goes to adb as one argument; no shell runs here.
+        argv, env = tool_argv(cli_path)
+        args = [*argv, "-s", serial, "shell", check["cmd_str"]]
+        cmd_run = shlex.join(args)
         try:
-            p = run_command(cmd, **fmt)
-            output = catch_err(p, cmd=cmd).strip()
+            p = run_command(args, env=env or None)
+            output = catch_err(p, cmd=check["name"]).strip()
 
             if output == "" and check.get("skip_if_missing", False):
                 continue

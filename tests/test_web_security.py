@@ -1,5 +1,4 @@
 import os
-import shlex
 import stat
 from pathlib import Path
 
@@ -122,8 +121,8 @@ def test_root_check_quotes_device_command(monkeypatch):
     class _P:
         returncode = 0
 
-    def fake_run_command(cmd, **kwargs):
-        seen.append(cmd.format(**kwargs))
+    def fake_run_command(args, env=None):
+        seen.append(args)
         return _P()
 
     monkeypatch.setattr(root_check, "run_command", fake_run_command)
@@ -132,8 +131,7 @@ def test_root_check_quotes_device_command(monkeypatch):
 
     by_cmd = {c["cmd_str"]: c for c in root_check.ANDROID_ROOT_INDICATORS}
     assert len(seen) == len(by_cmd)
-    for line in seen:
-        argv = shlex.split(line)
+    for argv in seen:
         assert argv[:4] == ["adb", "-s", "SERIAL1", "shell"]
         assert len(argv) == 5 and argv[4] in by_cmd
 

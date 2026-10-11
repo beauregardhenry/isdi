@@ -3,14 +3,13 @@
 import json
 import logging
 import os
-import shlex
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
 from isdi.config import get_config
 
 from . import blocklist, parse_dump
-from .runcmd import run_command
+from .runcmd import run_command, tool_argv
 
 cfg = get_config()
 
@@ -59,6 +58,16 @@ class AppScanner:
 
     app_info_conn: Optional[sqlite3.Connection] = None
 
+    def tool(self, *args: str) -> List[str]:
+        """The argument list that runs this scanner's tool with `args`."""
+        argv, _ = tool_argv(self.cli)
+        return [*argv, *args]
+
+    def run_tool(self, *args: str, nowait: bool = False):
+        """Run this scanner's tool with `args`, without a shell."""
+        _, env = tool_argv(self.cli)
+        return run_command(self.tool(*args), nowait=nowait, env=env or None)
+
     def __init__(self, dev_type: str, cli: str):
         """
         Initialize scanner.
@@ -69,6 +78,8 @@ class AppScanner:
         """
         assert dev_type in cfg.DEV_SUPPORTED, f"Device type {dev_type} not supported"
         self.device_type: str = dev_type
+        # The tool's command prefix as configured (a path, or for
+        # pymobiledevice3 a python -m line); split by tool() to run it.
         self.cli: str = cli
         self.ddump: Optional[parse_dump.PhoneDump] = None
         # Phones whose next dump also keeps the unredacted output, for an
@@ -186,13 +197,7 @@ class AppScanner:
         logging.info("Dumping %s device %s...", self.device_type, _pseudonym(serial))
 
         # Run script: bash script.sh <serial> <output_file>
-        p = run_command(
-            "bash {script} {ser} {dump_file}",
-            script=shlex.quote(str(script_path)),
-            ser=shlex.quote(serial),
-            dump_file=shlex.quote(dumpf),
-            nowait=False,
-        )
+        p = run_command(["bash", str(script_path), serial, dumpf])
 
         # run_command() with nowait=False already waits and sets returncode
         if p.returncode != 0:

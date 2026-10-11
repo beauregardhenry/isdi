@@ -1,6 +1,4 @@
-"""Running shell commands."""
-
-import shlex
+"""Running commands."""
 
 
 def test_run_command_does_not_hang_on_large_output():
@@ -14,13 +12,8 @@ def test_run_command_does_not_hang_on_large_output():
     result = {}
 
     def go():
-        cmd = "{py} -c {code}"
-        p = run_command(
-            cmd,
-            py=shlex.quote(sys.executable),
-            code=shlex.quote("print('x' * 300000)"),
-        )
-        result["out"] = catch_err(p, cmd=cmd)
+        p = run_command([sys.executable, "-c", "print('x' * 300000)"])
+        result["out"] = catch_err(p)
         result["rc"] = p.returncode
 
     t = threading.Thread(target=go, daemon=True)
@@ -36,13 +29,8 @@ def test_a_failed_command_returns_no_output(caplog):
 
     from isdi.scanner.runcmd import catch_err, run_command
 
-    cmd = "{py} -c {code}"
-    p = run_command(
-        cmd,
-        py=shlex.quote(sys.executable),
-        code=shlex.quote("import sys; print('Pixel 8'); sys.exit(3)"),
-    )
-    assert catch_err(p, cmd=cmd) == ""
+    p = run_command([sys.executable, "-c", "import sys; print('Pixel 8'); sys.exit(3)"])
+    assert catch_err(p, cmd="python") == ""
     assert p.returncode == 3
     assert "Error running" in caplog.text
 

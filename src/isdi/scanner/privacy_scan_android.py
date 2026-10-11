@@ -51,11 +51,11 @@ LEGACY_SCREENSHOT = (
 )
 
 
-def run_command(cmd, **kwargs):
-    _cmd = cmd.format(**kwargs)
-    logging.debug("Running %s", redact(_cmd))
+def run_command(args):
+    """Run adb with these arguments (no shell); return (stdout, stderr)."""
+    logging.debug("Running %s", redact(shlex.join(args)))
     try:
-        p = Popen(_cmd, stdout=PIPE, stderr=PIPE, shell=True)
+        p = Popen(list(args), stdout=PIPE, stderr=PIPE)
         p.wait(4)
         return p.stdout.read().decode("utf-8"), p.stderr.read().decode("utf-8")
     except FileNotFoundError as e:
@@ -68,22 +68,20 @@ def run_command(cmd, **kwargs):
 
 
 def thiscli(ser):
-    if ser:
-        return "{adb} -s {ser}".format(adb=adb, ser=shlex.quote(ser))
-    else:
-        return "{adb}".format(adb=adb)
+    """adb, aimed at this phone when a serial is given."""
+    return [adb, "-s", ser] if ser else [adb]
 
 
 def open_activity(ser, activity_name):
     """
     Opens an activity
     """
-    cmd = "{cli} shell am start {act}"
     # adb joins its arguments and runs them in the phone's shell, so quote
-    # once for that shell and once for ours; otherwise the phone expands
-    # "$PrivacySettingsActivity" in ".Settings$PrivacySettingsActivity" to "".
-    act = shlex.quote(shlex.quote(activity_name))
-    out, err = run_command(cmd, cli=thiscli(ser), act=act)
+    # for that shell; otherwise the phone expands "$PrivacySettingsActivity"
+    # in ".Settings$PrivacySettingsActivity" to "". No shell runs here.
+    out, err = run_command(
+        [*thiscli(ser), "shell", "am", "start", shlex.quote(activity_name)]
+    )
     if err:
         logging.error("open_activity failed: %s", redact(err))
         return False
@@ -98,7 +96,7 @@ def keycode(ser, evt):
     if evt not in cmds:
         logging.error("keycode: no key %r", evt)
         return
-    run_command("{cli} shell input keyevent {key}", cli=thiscli(ser), key=cmds[evt])
+    run_command([*thiscli(ser), "shell", "input", "keyevent", cmds[evt]])
 
 
 def take_screenshot(ser):

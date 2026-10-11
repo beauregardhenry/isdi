@@ -5,6 +5,15 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## Unreleased
+
+- **Commands no longer go through a shell.** ISDi used to build each adb
+  and pymobiledevice3 command as text, quote the serial and app id into
+  it, and run it with a shell. One missed quote would have let text from a
+  phone or a web request run on the computer. Commands are now lists of
+  arguments, so there is nothing for a shell to interpret, and a test
+  fails if `shell=True` comes back.
+
 ## 1.8.1
 
 - **iPhone apps are listed under the name on the home screen.** Scan

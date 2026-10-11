@@ -1,8 +1,6 @@
 """Root / jailbreak verdicts. A wrong "Not Detected" misleads the person
 being scanned, so each indicator's pass/fail rule is pinned down here."""
 
-import shlex
-
 import pytest
 
 from isdi.scanner import root_check
@@ -29,9 +27,9 @@ def device(monkeypatch):
     Existence checks (su, packages, frida) print nothing on a clean phone."""
     outputs = {cmd: (out, 0) for cmd, out in CLEAN.items()}
 
-    def fake_run_command(cmd, **kw):
-        # cmd_str arrives shell-quoted for the host shell; undo that.
-        (device_cmd,) = shlex.split(kw["cmd_str"])
+    def fake_run_command(args, env=None):
+        # The phone's command is adb's last argument.
+        device_cmd = args[-1]
         out, rc = outputs.get(device_cmd, ("", 0))
         p = _Proc(rc)
         p.output = out
