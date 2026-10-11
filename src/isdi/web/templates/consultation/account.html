@@ -1,4 +1,4 @@
-{% from "consultation/_fields.html" import field, section, flashes %}
+{% from "consultation/_fields.html" import field, section, flashes, shot_controls, shot_forms %}
 <div class="isdi-page consultation">
   <div class="isdi-header">
     <h1 class="h4 isdi-title"><b>{{ "Check an account" if account_id is none else "Account check" }}</b></h1>
@@ -12,8 +12,19 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {{ field(form.platform) }}
     {{ field(form.username) }}
+    {% set targets = [] %}
     {% for name in ("suspicious_logins", "password_check", "recovery_settings", "two_factor_settings", "security_questions") %}
       {{ section(form[name]) }}
+      {% if name != "password_check" %}
+        {% if account_id is none %}
+          <p class="small text-muted">Save the account check to add screenshots.</p>
+        {% else %}
+          {% set target = "account:%d:%s"|format(account_id, name) %}
+          {% set fid = "shot-" ~ loop.index %}
+          {% set _ = targets.append((fid, target)) %}
+          {{ shot_controls(target, shots, android_serials, fid) }}
+        {% endif %}
+      {% endif %}
     {% endfor %}
     <section class="consult-section">
       <h2 class="h5">Notes</h2>
@@ -21,4 +32,5 @@
     </section>
     <button class="btn btn-primary">Save the account check</button>
   </form>
+  {% if account_id is not none %}{{ shot_forms(targets, android_serials) }}{% endif %}
 </div>

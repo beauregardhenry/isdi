@@ -1,4 +1,4 @@
-{% from "consultation/_fields.html" import field, flashes %}
+{% from "consultation/_fields.html" import field, flashes, shot_controls, shot_forms %}
 <div class="isdi-page consultation">
   <div class="isdi-header">
     <h1 class="h4 isdi-title"><b>Questions about the apps: {{ device.device_nickname or "device" }}</b></h1>
@@ -7,6 +7,12 @@
     </span>
   </div>
   {{ flashes() }}
+  {% set targets = [("shot-device", "device:" ~ device.key)] %}
+  <section class="consult-section">
+    <h2 class="h5">The device</h2>
+    <p class="small">For example its settings, a profile installed on it, or signs of rooting.</p>
+    {{ shot_controls("device:" ~ device.key, shots, android_serials, "shot-device") }}
+  </section>
   {% if not apps %}
   <p class="text-muted">No apps chosen for this device.</p>
   {% else %}
@@ -22,9 +28,14 @@
         {% for f in entry.install_info %}{{ field(f) }}{% endfor %}
         {% for f in entry.permission_info %}{{ field(f) }}{% endfor %}
         {% for f in entry.notes %}{{ field(f) }}{% endfor %}
+        {% set target = "app:" ~ device.key ~ ":" ~ (app.appId or app.title) %}
+        {% set fid = "shot-app-" ~ loop.index %}
+        {% set _ = targets.append((fid, target)) %}
+        {{ shot_controls(target, shots, android_serials, fid) }}
       </section>
     {% endfor %}
     <button class="btn btn-primary">Save the answers</button>
   </form>
   {% endif %}
+  {{ shot_forms(targets, android_serials) }}
 </div>
