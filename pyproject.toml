@@ -36,7 +36,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# PDF reports (isdi/consultation/report.py). WeasyPrint needs Pango.
+report = [
+    "weasyprint>=66",
+    "pypdf>=5",
+]
 dev = [
+    "isdi-scanner[report]",
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "black==26.5.1",  # keep in sync with .github/workflows/tests.yml

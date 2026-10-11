@@ -19,7 +19,7 @@ from flask import (
 
 from isdi import audit
 from isdi.config import get_config
-from isdi.consultation import forms, model, screenshots, store
+from isdi.consultation import forms, model, report, screenshots, store
 from isdi.scanner import blocklist, db
 from isdi.web import bp
 from isdi.scanner.runcmd import is_valid_serial
@@ -62,7 +62,13 @@ def consultation():
         notes=store.load(clientid, "notes"),
     )
     notes_form = forms.NotesForm(data=record.notes.to_dict())
-    return _page("consultation", consultation=record, notes_form=notes_form)
+    return _page(
+        "consultation",
+        consultation=record,
+        notes_form=notes_form,
+        report_name=store.load(clientid, "report_name"),
+        can_pdf=report.can_make_pdf(),
+    )
 
 
 @bp.route("/consultation/notes", methods=["POST"])
@@ -512,3 +518,58 @@ def consultation_screenshot_delete(shot_id):
     audit.record("screenshot_deleted", clientid=_clientid(), details={"id": shot_id})
     flash("Screenshot deleted.", "success")
     return _back()
+
+
+# --- the report --------------------------------------------------------------------
+
+
+def _copy():
+    copy = request.values.get("copy", "full")
+    if copy not in ("full", "takehome"):
+        abort(400)
+    return copy == "takehome"
+
+
+@bp.route("/consultation/report/name", methods=["POST"])
+def consultation_report_name():
+    name = request.form.get("report_name", "").strip()[:200]
+    store.save(_clientid(), "report_name", name)
+    _saved("report_name")
+    flash("Name for the report saved.", "success")
+    return redirect(url_for("main.consultation"))
+
+
+@bp.route("/consultation/report", methods=["GET"])
+def consultation_report():
+    takehome = _copy()
+    audit.record(
+        "report_viewed",
+        clientid=_clientid(),
+        details={"copy": "takehome" if takehome else "full"},
+    )
+    return report.html(_clientid(), takehome)
+
+
+@bp.route("/consultation/report.pdf", methods=["POST"])
+def consultation_report_pdf():
+    takehome = _copy()
+    # From the form body only; never logged or stored.
+    password = (request.form.get("password") or None) if takehome else None
+    try:
+        data = report.pdf(report.html(_clientid(), takehome), takehome, password)
+    except report.PdfUnavailable as e:
+        flash(str(e))
+        return redirect(url_for("main.consultation"))
+    audit.record(
+        "report_made",
+        clientid=_clientid(),
+        details={
+            "copy": "takehome" if takehome else "full",
+            "password": bool(password),
+        },
+    )
+    name = report.neutral_filename() if takehome else f"consultation-{_clientid()}.pdf"
+    resp = make_response(data)
+    resp.headers["Content-Type"] = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{name}"'
+    return resp

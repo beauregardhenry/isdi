@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ "Notes" if takehome else "Consultation report" }}</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm 20mm; @bottom-center { content: "Page " counter(page) " of " counter(pages); font: 9pt Georgia, serif; color: #555; } }
+  body { font: 11pt/1.45 Georgia, "Times New Roman", serif; color: #111; max-width: 50em; margin: 1.5em auto; padding: 0 1em; }
+  h1 { font-size: 20pt; margin: 0 0 .3em; }
+  h2 { font-size: 15pt; border-bottom: 1px solid #999; padding-bottom: .15em; margin-top: 1.6em; break-after: avoid; }
+  h3 { font-size: 12.5pt; margin: 1.2em 0 .3em; break-after: avoid; }
+  h4 { font-size: 11pt; font-style: italic; margin: .9em 0 .2em; break-after: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: .3em 0 .8em; }
+  th, td { border: 1px solid #bbb; padding: .3em .45em; vertical-align: top; text-align: left; }
+  th[scope=row] { width: 58%; font-weight: normal; }
+  .muted { color: #555; }
+  .risk { margin: .2em 0; }
+  .shot { break-inside: avoid; margin: .4em 0 1em; }
+  .shot img { max-width: 100%; max-height: 120mm; border: 1px solid #999; }
+  .shot figcaption { font-size: 9pt; color: #444; word-break: break-all; }
+  .cover { min-height: 60vh; }
+  .signature { display: inline-block; border-bottom: 1px solid #111; width: 20em; }
+  .noprint { margin: 1em 0; padding: .6em; background: #eef; border: 1px solid #99c; font-family: sans-serif; font-size: 10pt; }
+  .page-break { break-before: page; }
+  @media print { .noprint { display: none; } body { margin: 0; max-width: none; } }
+</style>
+</head>
+<body>
+
+{% macro fmt(v) -%}
+  {%- if v is none or v == "" or v == [] -%}Not answered
+  {%- elif v is string -%}{{ answer.get(v, v) }}
+  {%- elif v is sequence -%}{% for x in v %}{{ answer.get(x, x) }}{{ ", " if not loop.last }}{% endfor %}
+  {%- else -%}{{ v }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro answers(section, qs) %}
+  <table>
+    <tbody>
+    {% for name, q in qs.items() %}
+      <tr><th scope="row">{{ q }}</th><td>{{ fmt(section.get(name, "")) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% macro risk_list(list) %}
+  {% if list %}
+    <ul>{% for r in list %}<li class="risk"><b>{{ r.risk }}</b>: {{ r.description }}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">None found.</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro screenshots(target) %}
+  {% for s in shots.get(target, []) %}
+    <figure class="shot">
+      <img src="{{ s.uri }}" alt="Screenshot {{ loop.index }}">
+      <figcaption>Screenshot {{ loop.index }}, taken {{ s.created[:16]|replace("T", " ") }} UTC{% if not takehome %}. SHA-256 {{ s.sha256 }}{% endif %}</figcaption>
+    </figure>
+  {% endfor %}
+{% endmacro %}
+
+<div class="noprint">
+  Print this page, or save it as PDF from the browser's print dialog.
+  {% if takehome %}This copy leaves out the client's name, the consultant's notes and the names of the clinic and of the tool.{% endif %}
+</div>
+
+<section class="cover">
+{% if takehome %}
+  <h1>Notes</h1>
+  <p>{{ made[:10] }}</p>
+{% else %}
+  <h1>Consultation report</h1>
+  <p><b>Client:</b> {{ client_name or "(name not given)" }}<br>
+     <b>Client ID:</b> {{ clientid }}<br>
+     <b>Report made:</b> {{ made }}</p>
+  <p class="muted">Made with ISDi {{ version }} from the answers and scans recorded in this consultation. Risks are worked out from the answers by fixed rules; they are reasons to look further, not findings of monitoring.</p>
+  <p>Consultant signature: <span class="signature">&nbsp;</span></p>
+{% endif %}
+</section>
+
+<h2 class="page-break">Summary</h2>
+<h3>Questionnaire</h3>
+{{ risk_list(risks.taq) }}
+<h3>Devices ({{ consultation.devices|length }})</h3>
+{% if consultation.devices %}
+  {% for d in consultation.devices %}
+    <h4>{{ d.device_nickname or "Unnamed device" }}{% if d.device_model %} ({{ d.device_manufacturer }} {{ d.device_model }}){% endif %}</h4>
+    {{ risk_list(d.risk_report.risk_details) }}
+  {% endfor %}
+{% else %}<p class="muted">No devices recorded.</p>{% endif %}
+<h3>Accounts ({{ consultation.accounts|length }})</h3>
+{% if consultation.accounts %}
+  {% for a in consultation.accounts %}
+    <h4>{{ a.platform }}: {{ a.username }}</h4>
+    {{ risk_list(a.risk_report.risk_details) }}
+  {% endfor %}
+{% else %}<p class="muted">No accounts checked.</p>{% endif %}
+
+<h3>Notes</h3>
+<table><tbody>
+  <tr><th scope="row">What the client said</th><td>{{ consultation.notes.client_notes or "None" }}</td></tr>
+  {% if not takehome %}<tr><th scope="row">Consultant notes</th><td>{{ consultation.notes.consultant_notes or "None" }}</td></tr>{% endif %}
+</tbody></table>
+
+<h2 class="page-break">Questionnaire</h2>
+{% if consultation.taq.marked_done %}<p class="muted">Marked complete.</p>{% endif %}
+{% set section_titles = {"devices": "Devices", "accounts": "Accounts and passwords", "sharing": "Sharing", "smarthome": "Smart home devices", "kids": "Children's devices", "legal": "Legal proceedings"} %}
+{% for name, qs in questions.taq.items() %}
+  <h3>{{ section_titles[name] }}</h3>
+  {{ answers(consultation.taq[name], qs) }}
+{% endfor %}
+
+{% for d in consultation.devices %}
+  <h2 class="page-break">Device: {{ d.device_nickname or "Unnamed device" }}</h2>
+  <table><tbody>
+    <tr><th scope="row">Type</th><td>{{ d.device_type or "Not recorded" }}{% if d.manual %} (added by hand, not scanned){% endif %}</td></tr>
+    <tr><th scope="row">Manufacturer and model</th><td>{{ (d.device_manufacturer ~ " " ~ d.device_model)|trim or "Not recorded" }}</td></tr>
+    <tr><th scope="row">Operating system version</th><td>{{ d.device_version or "Not recorded" }}</td></tr>
+    <tr><th scope="row">Rooted or jailbroken</th><td>{{ fmt(d.is_rooted) if d.is_rooted is string else ("Signs found" if d.is_rooted else "No signs found") }}</td></tr>
+  </tbody></table>
+  {{ screenshots("device:" ~ d.key) }}
+  {% for app in d.selected_apps %}
+    <h3>{{ app.title }}</h3>
+    <table><tbody>
+      {% if app.appId and app.appId != app.title %}<tr><th scope="row">App id</th><td>{{ app.appId }}</td></tr>{% endif %}
+      <tr><th scope="row">Flags</th><td>{{ app.flags|join(", ") or "None" }}</td></tr>
+      {% if app.install_time %}<tr><th scope="row">Installed</th><td>{{ app.install_time }}</td></tr>{% endif %}
+      {% if app.app_version %}<tr><th scope="row">Version</th><td>{{ app.app_version }}</td></tr>{% endif %}
+    </tbody></table>
+    {{ answers(app.install_info, questions.apps.install_info) }}
+    {{ answers(app.permission_info, questions.apps.permission_info) }}
+    {% if app.notes.client_notes %}<p><b>What the client said:</b> {{ app.notes.client_notes }}</p>{% endif %}
+    {% if not takehome and app.notes.consultant_notes %}<p><b>Consultant notes:</b> {{ app.notes.consultant_notes }}</p>{% endif %}
+    {{ screenshots("app:" ~ d.key ~ ":" ~ (app.appId or app.title)) }}
+  {% endfor %}
+{% endfor %}
+
+{% set account_titles = {"suspicious_logins": "Devices and logins", "password_check": "Password", "recovery_settings": "Recovery settings", "two_factor_settings": "Two-factor authentication", "security_questions": "Security questions"} %}
+{% for a in consultation.accounts %}
+  <h2 class="page-break">Account: {{ a.platform }}: {{ a.username }}</h2>
+  {% for name, qs in questions.accounts.items() %}
+    <h3>{{ account_titles[name] }}</h3>
+    {{ answers(a[name], qs) }}
+    {{ screenshots("account:%d:%s"|format(a.account_id, name)) }}
+  {% endfor %}
+  {% if a.notes.client_notes %}<p><b>What the client said:</b> {{ a.notes.client_notes }}</p>{% endif %}
+  {% if not takehome and a.notes.consultant_notes %}<p><b>Consultant notes:</b> {{ a.notes.consultant_notes }}</p>{% endif %}
+{% endfor %}
+
+</body>
+</html>
