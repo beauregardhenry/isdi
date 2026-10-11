@@ -80,6 +80,42 @@
     <p><a class="btn btn-primary btn-sm" href="{{ url_for('main.consultation_account_new') }}">Check an account</a></p>
   </section>
 
+  <section aria-labelledby="h-report">
+    <h2 class="h5" id="h-report">Report</h2>
+    <form method="post" action="{{ url_for('main.consultation_report_name') }}" class="form-inline mb-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="report_name" class="mr-2">Client's name on the full report</label>
+      <input id="report_name" name="report_name" class="form-control form-control-sm mr-2" value="{{ report_name }}" autocomplete="off">
+      <button class="btn btn-outline-secondary btn-sm">Save name</button>
+    </form>
+    <div class="mb-3">
+      <a class="btn btn-primary btn-sm" href="{{ url_for('main.consultation_report') }}" target="_blank" rel="noopener">Open the full report</a>
+      {% if can_pdf %}
+      <form method="post" action="{{ url_for('main.consultation_report_pdf') }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="copy" value="full">
+        <button class="btn btn-outline-primary btn-sm">Download it as PDF</button>
+      </form>
+      {% endif %}
+    </div>
+    <h3 class="h6">Copy for the client to take home</h3>
+    <p class="small">Leaves out the client's name, the consultant's notes, screenshot hashes and the names of the clinic and of ISDi. Give it only if the client has somewhere safe to keep it.</p>
+    <p>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_report', copy='takehome') }}" target="_blank" rel="noopener">Open the take-home copy</a>
+    </p>
+    {% if can_pdf %}
+    <form method="post" action="{{ url_for('main.consultation_report_pdf') }}" class="form-inline mb-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="copy" value="takehome">
+      <label for="takehome_password" class="mr-2 small">Password for the PDF (optional; tell the client in person)</label>
+      <input type="password" id="takehome_password" name="password" class="form-control form-control-sm mr-2" autocomplete="new-password">
+      <button class="btn btn-outline-secondary btn-sm">Download the take-home PDF</button>
+    </form>
+    {% else %}
+    <p class="small text-muted mb-4">To download PDFs from ISDi, install it with <code>pip install "isdi-scanner[report]"</code>. Until then, use the browser's print dialog.</p>
+    {% endif %}
+  </section>
+
   <section aria-labelledby="h-notes">
     <h2 class="h5" id="h-notes">Notes for the whole consultation</h2>
     <form method="post" action="{{ url_for('main.consultation_notes') }}">

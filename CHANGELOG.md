@@ -33,6 +33,13 @@ have no section here.
   upload a PNG or JPEG, for a section of an account check, a device or an
   app. Screenshots are stored in the database, encrypted, with their
   SHA-256, never as files, and are exported and erased with the client.
+- **The consultation report and a take-home copy.** The consultation
+  record opens a full report (the client's name, every answer, the risks,
+  notes, screenshots with their hashes) and a copy for the client that
+  leaves out their name, the consultant's notes and the names of the
+  clinic and of ISDi. Both print or save as PDF from the browser. With
+  `pip install "isdi-scanner[report]"`, ISDi makes the PDFs itself, and the
+  take-home PDF gets a neutral file name and an optional password.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
