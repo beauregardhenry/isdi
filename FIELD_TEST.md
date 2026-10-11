@@ -77,9 +77,10 @@ phone. The report's `environment` section shows `"termux": true`.
 
 ## What to look for, and what to send
 
-Send the report file and your notes to the maintainers (open an issue at
-<https://github.com/beauregardhenry/isdi/issues>, or email them). Things that
-mean a check needs fixing:
+Send the report and your notes with the **Field test report** form:
+<https://github.com/beauregardhenry/isdi/issues/new?template=1-field-test.yml>.
+Issues are public, so read the report first. Things that mean a check needs
+fixing:
 
 - Android: `secure_settings` shows `"present": false` although you turned a
   power on, or `apps_per_power` is missing a power you set up;

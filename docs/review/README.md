@@ -20,8 +20,10 @@ one text:
 | `notes` | Anything else: a question, a regional alternative, a concern |
 
 Leave `source` and `key` as they are: they say where the text lives in the
-code. Save the file as CSV (UTF-8) and send it back as an attachment, not
-pasted into an email.
+code. Save the file as CSV (UTF-8) and attach it to the **Spanish
+translation review** form:
+<https://github.com/beauregardhenry/isdi/issues/new?template=2-translation-review.yml>.
+Issues are public: write about the words, never about clients.
 
 What to look for, in order of importance:
 

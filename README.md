@@ -21,6 +21,9 @@ package on PyPI is upstream's. When the stalkerware blocklist changes, a
 patch release is published, so upgrade regularly to detect newly listed apps.
 What each release changes for staff is in [CHANGELOG.md](CHANGELOG.md).
 
+Staff using ISDi with clients: start with the one-page
+[quick start for advocates](docs/STAFF_QUICKSTART.md).
+
 Client data is encrypted at rest and raw phone dumps are not kept unless an
 evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
 For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md)

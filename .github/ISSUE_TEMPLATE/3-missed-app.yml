@@ -1,0 +1,38 @@
+name: Monitoring app ISDi missed
+description: An app that can be used to monitor someone, which ISDi does not flag.
+title: "Missed app: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are **public**. Describe the app, never a client, a case, or where you saw it.
+        If the report itself would reveal something sensitive, use the private
+        [vulnerability report](https://github.com/beauregardhenry/isdi/security/advisories/new) instead.
+  - type: input
+    id: name
+    attributes:
+      label: App name
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Android
+        - iPhone
+    validations:
+      required: true
+  - type: input
+    id: id
+    attributes:
+      label: App id or store link
+      description: Android package name (e.g. com.example.app), or an App Store or Play Store link, if known.
+  - type: textarea
+    id: why
+    attributes:
+      label: What it can do, and how you know
+      description: e.g. the maker's website advertises reading another person's messages. Links are welcome.
+    validations:
+      required: true

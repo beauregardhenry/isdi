@@ -1,0 +1,43 @@
+name: Something is wrong
+description: A bug, an error, or something confusing in ISDi.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are **public**. Never include anything about a client: no names, client IDs,
+        phone numbers, app lists from a client's phone, screenshots of scan results or
+        consultation pages, or log lines you have not read. Security problems go to the private
+        [vulnerability report](https://github.com/beauregardhenry/isdi/security/advisories/new).
+  - type: checkboxes
+    id: safe
+    attributes:
+      label: Before you send
+      options:
+        - label: This report contains nothing about a client.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: ISDi version
+      description: The output of `isdi --version`.
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Computer and phone
+      description: e.g. Windows 11 laptop, iPhone 13 with iOS 18; or Termux on Android.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+      description: The steps, if you can repeat it.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Error messages
+      description: Read them first, and remove anything about a client.
+      render: text

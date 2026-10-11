@@ -1,0 +1,58 @@
+name: Field test report
+description: Send the report from `isdi field-test` on a test phone (see FIELD_TEST.md).
+title: "Field test: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing. Issues are **public**. Follow
+        [FIELD_TEST.md](https://github.com/beauregardhenry/isdi/blob/main/FIELD_TEST.md),
+        and use a spare phone or your own, never a client's.
+  - type: checkboxes
+    id: safe
+    attributes:
+      label: Before you send
+      options:
+        - label: I ran the test on a test phone, not a client's.
+          required: true
+        - label: I read the report. It has no names, app ids, serial numbers, email addresses or account details.
+          required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Phone
+      options:
+        - Android
+        - iPhone
+        - iPhone, with ISDi running in Termux on an Android phone
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Make, model and OS version
+      description: Only if the report shows them as missing or wrong.
+      placeholder: e.g. Samsung Galaxy A15, Android 14
+  - type: textarea
+    id: setup
+    attributes:
+      label: What you set up on the phone, and what Settings shows
+      description: |
+        Android: which accessibility services, notification access and device admin apps were on.
+        iPhone: how many profiles Settings → General → VPN & Device Management lists, whether the phone is supervised, and whether it is jailbroken.
+      placeholder: e.g. 1 accessibility service, 1 notification listener, Find My Device as admin
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The report
+      description: Paste the whole file that `isdi field-test ... -o FILE` wrote.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: Anything that looked wrong
+      description: See "What to look for" in FIELD_TEST.md.

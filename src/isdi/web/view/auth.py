@@ -6,6 +6,13 @@ static files. A session ends:
   cookie stops working too);
 - after IDLE_MINUTES without a request (automatic logoff);
 - when the account is disabled, or its password changed.
+
+Each sign-in starts a new client (isdi/web/view/index.py), except that the
+same person signing in again within RESUME_HOURS of being signed out for
+inactivity continues with the client they had: a consultation often has
+long stretches of talking without touching ISDi, and its records must not
+be split across two client IDs. Signing out on purpose always ends the
+client.
 """
 
 import time
@@ -26,6 +33,7 @@ from isdi.config import get_config
 from isdi.web import bp
 
 IDLE_MINUTES = 15
+RESUME_HOURS = 2
 OPEN_ENDPOINTS = {"main.login", "static"}
 
 
@@ -62,8 +70,18 @@ def _signed_in_user():
         session.clear()  # signed out since (the logout is already recorded)
         return None
     if time.time() - session.get("last_seen", 0) > _idle_seconds():
+        clientid = session.get("clientid")
         _end_session("idle")
-        session["notice"] = "You were signed out after a period of inactivity."
+        session["notice"] = (
+            "You were signed out after a period of inactivity. Sign in again "
+            "to continue with the same client."
+        )
+        if clientid:
+            session["resume"] = {
+                "user_id": user["id"],
+                "clientid": clientid,
+                "at": time.time(),
+            }
         return None
     return user
 
@@ -90,6 +108,22 @@ def ping():
     return "", 204
 
 
+def _resumed_client(user):
+    """The client to continue with after an idle sign-out, or None."""
+    resume = session.get("resume")
+    if not isinstance(resume, dict):
+        return None
+    clientid = resume.get("clientid")
+    if (
+        resume.get("user_id") == user["id"]
+        and time.time() - resume.get("at", 0) < RESUME_HOURS * 3600
+        and isinstance(clientid, str)
+        and users.can_open(user, clientid)
+    ):
+        return clientid
+    return None
+
+
 def _safe_next(target):
     """Only paths on this site: never redirect elsewhere after sign-in."""
     if target and target.startswith("/") and not target.startswith("//"):
@@ -106,12 +140,18 @@ def login():
         )
         if user:
             target = _safe_next(request.form.get("next"))
+            clientid = _resumed_client(user)
             session.clear()  # a new session: nothing carried over
+            if clientid:
+                session["clientid"] = clientid
             session["user_id"] = user["id"]
             session["token"] = users.session_token(user)
             session["signed_in_at"] = session["last_seen"] = time.time()
             with audit.acting_as(users.label(user)):
-                audit.record("login")
+                if clientid:
+                    audit.record("login", clientid=clientid, details={"resumed": True})
+                else:
+                    audit.record("login")
             return redirect(target)
         error = "Wrong username or password, or the account is locked or disabled."
     return (

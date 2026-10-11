@@ -171,6 +171,66 @@ def test_idle_sessions_end(app, anon, account, no_csrf):
     assert ("logout", f"Alex Advocate ({account})", {"reason": "idle"}) in _actions(app)
 
 
+def _client_after_idle(anon, username, then=None, idle_for=60 * 16):
+    """Sign in, open the home page (which starts a client), go idle, and
+    return the client before and the one after `then` signs in."""
+    _sign_in(anon, username)
+    anon.get("/")
+    with anon.session_transaction() as s:
+        before = s["clientid"]
+        s["last_seen"] = time.time() - idle_for
+    assert anon.get("/").status_code == 302  # signed out as idle
+    with anon.session_transaction() as s:
+        if "resume" in s:
+            s["resume"] = dict(s["resume"], at=time.time() - idle_for)
+    _sign_in(anon, then or username)
+    anon.get("/")
+    with anon.session_transaction() as s:
+        return before, s["clientid"]
+
+
+def test_signing_in_after_an_idle_sign_out_continues_with_the_client(
+    app, anon, account, no_csrf
+):
+    before, after = _client_after_idle(anon, account)
+    assert after == before
+    with app.app_context():
+        entry = audit.entries()[-1]
+    assert (entry["action"], entry["clientid"], entry["details"]) == (
+        "login",
+        before,
+        {"resumed": True},
+    )
+    assert b"continue with the same client" not in anon.get("/").data
+
+
+def test_someone_else_signing_in_after_an_idle_sign_out_starts_a_new_client(
+    app, anon, account, no_csrf
+):
+    other = f"u{uuid.uuid4().hex[:10]}"
+    with app.app_context():
+        users.create(other, "Sam Staff", PASSWORD)
+    before, after = _client_after_idle(anon, account, then=other)
+    assert after != before
+
+
+def test_an_old_idle_sign_out_starts_a_new_client(app, anon, account, no_csrf):
+    before, after = _client_after_idle(anon, account, idle_for=3 * 3600)
+    assert after != before
+
+
+def test_signing_out_on_purpose_starts_a_new_client(app, anon, account, no_csrf):
+    _sign_in(anon, account)
+    anon.get("/")
+    with anon.session_transaction() as s:
+        before = s["clientid"]
+    anon.post("/logout")
+    _sign_in(anon, account)
+    anon.get("/")
+    with anon.session_transaction() as s:
+        assert s["clientid"] != before
+
+
 def test_the_idle_limit_can_be_set(app, anon, account, no_csrf, monkeypatch):
     monkeypatch.setitem(app.config, "ISDI_IDLE_MINUTES", 60)
     _sign_in(anon, account)
