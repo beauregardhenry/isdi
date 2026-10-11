@@ -19,9 +19,19 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 SPYWARE_FLAGS = {"spyware", "stalkerware", "onstore-spyware", "offstore-spyware"}
 
 
+#: Worked out from the answers each time, so never stored.
+DERIVED = {"risk_report", "all_risks", "concerning_apps"}
+
+
 class Dictable:
-    def to_dict(self) -> Any:
-        return json.loads(json.dumps(self, default=lambda o: o.__dict__))
+    def to_dict(self, derived: bool = False) -> Any:
+        """The answers as plain data, for storing. With derived, also the
+        risks worked out from them (for the report)."""
+
+        def plain(o):
+            return {k: v for k, v in o.__dict__.items() if derived or k not in DERIVED}
+
+        return json.loads(json.dumps(self, default=plain))
 
 
 class DictInitClass(Dictable):
@@ -37,7 +47,9 @@ class DictInitClass(Dictable):
     def __init__(self, datadict: Optional[dict] = None):
         datadict = datadict or {}
         for k in self.attrs:
-            setattr(self, k, datadict.get(k, ""))
+            # An empty text field comes from the form as None.
+            value = datadict.get(k)
+            setattr(self, k, "" if value is None else value)
 
 
 class Risk(Dictable):

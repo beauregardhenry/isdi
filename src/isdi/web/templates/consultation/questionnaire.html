@@ -1,0 +1,18 @@
+{% from "consultation/_fields.html" import field, section, flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>Technology assessment questionnaire</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  {{ flashes() }}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for name in ("devices", "accounts", "sharing", "smarthome", "kids", "legal") %}
+      {{ section(form[name]) }}
+    {% endfor %}
+    {{ field(form.marked_done) }}
+    <button class="btn btn-primary">Save the questionnaire</button>
+  </form>
+</div>

@@ -1,0 +1,29 @@
+{% from "consultation/_fields.html" import field, risks, flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>Consultation record</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.index') }}"><u>Scan a phone</u></a>
+    </span>
+  </div>
+  <p>Client ID: <code>{{ clientid }}</code>. Answers are saved for this client only, encrypted.</p>
+  {{ flashes() }}
+
+  <section aria-labelledby="h-questionnaire">
+    <h2 class="h5" id="h-questionnaire">Questionnaire
+      {% if consultation.taq.marked_done %}<span class="badge badge-success">complete</span>{% endif %}</h2>
+    <p><a class="btn btn-primary btn-sm" href="{{ url_for('main.consultation_questionnaire') }}">
+      {{ "Review" if consultation.taq.marked_done else "Fill in" }} the questionnaire</a></p>
+    <p>Risks the answers point to:</p>
+    {{ risks(consultation.taq.all_risks) }}
+  </section>
+
+  <section aria-labelledby="h-notes">
+    <h2 class="h5" id="h-notes">Notes for the whole consultation</h2>
+    <form method="post" action="{{ url_for('main.consultation_notes') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% for f in notes_form %}{{ field(f) }}{% endfor %}
+      <button class="btn btn-primary btn-sm">Save notes</button>
+    </form>
+  </section>
+</div>
