@@ -20,6 +20,19 @@ have no section here.
   phone's dump is deleted afterwards. Use a spare phone, never a
   client's. FIELD_TEST.md says how to set a phone up for the test and
   what to send back.
+- **A Spanish review packet, for a native speaker to check the
+  translation.** `docs/review/spanish-review.csv` lists every Spanish text
+  a client sees (the client summary and the take-home copy), next to its
+  English and where it appears, with a column for corrections.
+  `docs/review/README.md` explains it to the reviewer, including the
+  conventions used so far. `scripts/translation_review.py apply` writes
+  the corrections back into ISDi, refusing any that drop a placeholder
+  such as `{phone}`. The Spanish has still not been reviewed: until it
+  is, read it before giving it to a client.
+- **A one-page brief for counsel**, `docs/COUNSEL_BRIEF.md`: what ISDi
+  records, what supports a record's authenticity and its limits, what to
+  do from now on, and the main legal questions. The full note is still
+  COURT_RECORDS.md.
 
 ## 1.9.1
 
