@@ -70,8 +70,8 @@ def test_legacy_screenshot_file_is_removed(adb, tmp_path, monkeypatch):
     assert not old.exists()
 
 
-def test_screenshot_route_returns_inline_image(adb, client):
-    r = client.get("/privacy/android/screenshot", query_string={"serial": "SER1"})
+def test_screenshot_route_returns_inline_image(adb, client, no_csrf):
+    r = client.post("/privacy/android/screenshot", query_string={"serial": "SER1"})
     assert r.status_code == 200
     assert b"data:image/png;base64," in r.data
 
@@ -229,21 +229,32 @@ def test_screenshot_timeout_is_reported(adb):
     assert "screenshotfail" in ps.take_screenshot("SER1")
 
 
-def test_privacy_route_errors(client, monkeypatch):
+def test_privacy_route_errors(client, monkeypatch, no_csrf):
     from isdi.web.view import index
 
-    assert client.get("/privacy/nokia/account").status_code == 400
+    assert client.post("/privacy/nokia/account").status_code == 400
     monkeypatch.setattr(index.android, "devices", lambda: [])
-    r = client.get("/privacy/android/account")
+    r = client.post("/privacy/android/account")
     assert r.status_code == 400 and b"No device serial" in r.data
-    r = client.get("/privacy/android/account", query_string={"serial": "a;rm -rf"})
+    r = client.post("/privacy/android/account", query_string={"serial": "a;rm -rf"})
     assert r.status_code == 400 and b"Invalid device serial" in r.data
 
 
-def test_privacy_route_uses_the_connected_phone(client, monkeypatch, phone_shell):
+def test_privacy_route_uses_the_connected_phone(
+    client, monkeypatch, phone_shell, no_csrf
+):
     from isdi.web.view import index
 
     monkeypatch.setattr(index.android, "devices", lambda: ["SER9"])
-    r = client.get("/privacy/android/backup")
+    r = client.post("/privacy/android/backup")
     assert r.status_code == 200 and "-s SER9" in phone_shell.sent[0]
     assert client.get("/privacy").status_code == 200
+
+
+def test_a_check_cannot_be_started_by_a_link(client):
+    # A GET (a link, an <img> on another page) must not touch the phone.
+    assert client.get("/privacy/android/screenshot").status_code == 405
+
+
+def test_a_check_needs_the_csrf_token(client):
+    assert client.post("/privacy/android/screenshot").status_code == 400

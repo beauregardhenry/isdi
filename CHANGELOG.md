@@ -7,6 +7,15 @@ have no section here.
 
 ## Unreleased
 
+- **Client IDs are four random words**, such as
+  `amber-otter-canyon-teapot`, instead of the date and a counter
+  (`20261011_003`), which told anyone who saw one the day of the
+  consultation and how many clients came before. Each installation draws
+  its own 2,048 words from a list of everyday, neutral words, kept in
+  `client-words.key` in ISDi's config folder. Existing IDs do not change.
+- **Privacy checks are started with POST**, with the CSRF token. They open
+  screens on the phone or take a screenshot of it; a link or an image on
+  another page could start one before.
 - **The consultation record from Sherloc, part 1: where it is kept.**
   The technology assessment questionnaire, the accounts and devices
   checked with the client, the questions asked about each app, and the

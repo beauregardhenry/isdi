@@ -23,7 +23,9 @@ def privacy():
     )
 
 
-@bp.route("/privacy/<device>/<cmd>", methods=["GET"])
+# POST: each check opens screens on the phone or takes a screenshot of it,
+# so a link or an image on another page must not be able to start one.
+@bp.route("/privacy/<device>/<cmd>", methods=["POST"])
 def privacy_scan(device, cmd):
     sc = get_device(device)
     if sc is None:

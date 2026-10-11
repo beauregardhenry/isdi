@@ -19,7 +19,7 @@ compliant with either.
 | Scan results: device model and version, nickname, root/jailbreak findings, iPhone supervision and profile names, notes | database | encrypted |
 | Per scan: app ids, flags, remarks, actions taken, and what the phone reported about each app (install dates, permissions, data usage) | database | encrypted |
 | Device serials | database | pseudonymised (HMAC-SHA256 with a secret key) |
-| Client ids (`YYYYMMDD_NNN`), device type (android/ios), row ids, timestamps | database | **not encrypted**: queries need them. They reveal when consultations and scans took place, and how many. |
+| Client ids (four random words, such as `amber-otter-canyon-teapot`), device type (android/ios), row ids, timestamps | database | **not encrypted**: queries need them. The timestamps reveal when consultations and scans took place; the ids themselves say nothing about the date or how many clients came before. Ids from before 1.9 have the form `YYYYMMDD_NNN` and keep it. |
 | Raw phone dumps | dump directory | exist only while the phone is scanned (see below) |
 | Evidence copies (only when "Keep an encrypted evidence copy" is ticked) | database | encrypted, with the SHA-256 recorded at the scan. Android copies have account email addresses blanked out, unless "keep it unredacted" is also ticked |
 | Encryption keys | `datakey.json` in the config directory | encrypted with the passphrase and the recovery key |

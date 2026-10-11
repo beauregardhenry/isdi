@@ -138,3 +138,15 @@ def client_of(app):
 def no_csrf(app, monkeypatch):
     """For tests of a route's own logic; CSRF itself is covered separately."""
     monkeypatch.setitem(app.config, "WTF_CSRF_ENABLED", False)
+
+
+def pytest_configure(config):
+    # CI sets this so the PDF report tests (which skip without WeasyPrint
+    # and Pango) can never be skipped there unnoticed.
+    if os.environ.get("ISDI_REQUIRE_PDF"):
+        from isdi.consultation.report import can_make_pdf
+
+        if not can_make_pdf():
+            raise pytest.UsageError(
+                "ISDI_REQUIRE_PDF is set but WeasyPrint cannot load. Is Pango installed?"
+            )

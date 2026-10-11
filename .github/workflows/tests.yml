@@ -40,6 +40,9 @@ jobs:
 
       - name: Run tests
         # Fails if coverage drops below fail_under in pyproject.toml.
+        # ISDI_REQUIRE_PDF: the PDF report tests may not be skipped here.
+        env:
+          ISDI_REQUIRE_PDF: "1"
         run: python -m pytest -v --cov --cov-report=term-missing:skip-covered
 
   # Known vulnerabilities in the installed dependencies (PyPI advisory data).
