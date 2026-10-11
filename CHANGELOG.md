@@ -24,6 +24,13 @@ have no section here.
   anchors did not vouch for the image. The `screenshot_saved` entry now
   holds the SHA-256. Screenshots kept with 1.9.0 have no hash in the log
   (COURT_RECORDS.md lists this).
+- **On Termux, the iPhone jailbreak and supervision checks can reach
+  the phone.** ISDi's wrapper points pymobiledevice3 at Termux's usbmuxd
+  socket, but these two checks call the library inside ISDi itself,
+  where the wrapper was never applied: they looked for the socket at
+  `/var/run/usbmuxd` and always reported "could not check". They now
+  apply the same setting first, on Termux only. Not yet confirmed on a
+  phone running Termux.
 - **DATA_PROTECTION.md and COURT_RECORDS.md describe the 1.9.0
   consultation record.** They still said screenshots were never saved and
   listed none of the new records. They now cover the questionnaire and
