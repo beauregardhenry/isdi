@@ -1,0 +1,30 @@
+{% from "consultation/_fields.html" import flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>Choose apps to ask about: {{ device.device_nickname or "device" }}</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  <p>Apps the blocklist flags are checked. Add any the client does not recognise.</p>
+  {{ flashes() }}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset>
+      <legend class="sr-only">Apps on the device</legend>
+      <table class="table table-sm">
+        <thead><tr><th scope="col">Ask</th><th scope="col">App</th><th scope="col">Flags</th></tr></thead>
+        <tbody>
+        {% for appid, app in apps %}
+          <tr class="{{ app.class_ }}">
+            <td><input type="checkbox" name="app" value="{{ appid }}" id="app-{{ loop.index }}" {% if appid in checked %}checked{% endif %}></td>
+            <td><label for="app-{{ loop.index }}" class="mb-0">{{ app.title or appid }}</label><br><small class="text-muted">{{ appid }}</small></td>
+            <td>{{ app.html_flags|safe }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </fieldset>
+    <button class="btn btn-primary">Continue to the questions</button>
+  </form>
+</div>

@@ -1,0 +1,31 @@
+{% from "consultation/_fields.html" import flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>Add a device to the consultation record</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  {{ flashes() }}
+  <h2 class="h5">From a scan of this client's phones</h2>
+  {% if scans %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset class="form-group">
+      <legend class="col-form-label">Which scan?</legend>
+      {% for s in scans %}
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="scanid" id="scan-{{ s.id }}" value="{{ s.id }}" required {% if loop.first %}checked{% endif %}>
+        <label class="form-check-label" for="scan-{{ s.id }}">{{ s.device_primary_user or "Unnamed device" }} ({{ s.device }}{% if s.device_model %}, {{ s.device_model }}{% endif %})</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+    <button class="btn btn-primary btn-sm">Add and choose apps</button>
+  </form>
+  {% else %}
+  <p class="text-muted">No scans of this client's phones that are not already in the record. <a href="{{ url_for('main.index') }}">Scan a phone</a> first.</p>
+  {% endif %}
+  <h2 class="h5 mt-4">Without a scan</h2>
+  <p>For a device that cannot be scanned: write down what you see on it.</p>
+  <p><a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_device_manual_new') }}">Add a device by hand</a></p>
+</div>

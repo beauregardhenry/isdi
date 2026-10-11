@@ -18,6 +18,39 @@
     {{ risks(consultation.taq.all_risks) }}
   </section>
 
+  <section aria-labelledby="h-devices">
+    <h2 class="h5" id="h-devices">Devices ({{ consultation.devices|length }})</h2>
+    {% if consultation.devices %}
+    <table class="table table-sm">
+      <thead><tr><th scope="col">Device</th><th scope="col">Apps asked about</th><th scope="col">Risks</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for d in consultation.devices %}
+        <tr>
+          <td>{{ d.device_nickname or "Unnamed device" }}<br><small class="text-muted">{{ d.device_type }}{% if d.device_model %}, {{ d.device_model }}{% endif %}{% if d.manual %}, added by hand{% endif %}</small></td>
+          <td>{{ d.selected_apps|length }}</td>
+          <td>{% if d.risk_report.risk_present %}<ul class="mb-0">{% for r in d.risk_report.risk_details %}<li>{{ r.risk }}</li>{% endfor %}</ul>{% else %}<span class="text-muted">None found</span>{% endif %}</td>
+          <td class="text-nowrap">
+            {% if d.manual %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_device_manual', key=d.key) }}">Edit<span class="sr-only"> {{ d.device_nickname }}</span></a>
+            {% else %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_device_apps', key=d.key) }}">Apps<span class="sr-only"> on {{ d.device_nickname }}</span></a>
+            {% endif %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_device_questions', key=d.key) }}">Questions<span class="sr-only"> for {{ d.device_nickname }}</span></a>
+            <form method="post" class="d-inline" action="{{ url_for('main.consultation_device_delete', key=d.key) }}" data-confirm="Remove this device from the consultation record? The scan itself is kept.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-outline-danger btn-sm">Remove<span class="sr-only"> {{ d.device_nickname }}</span></button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No devices in the record yet.</p>
+    {% endif %}
+    <p><a class="btn btn-primary btn-sm" href="{{ url_for('main.consultation_device_add') }}">Add a device</a></p>
+  </section>
+
   <section aria-labelledby="h-accounts">
     <h2 class="h5" id="h-accounts">Accounts checked ({{ consultation.accounts|length }})</h2>
     {% if consultation.accounts %}
