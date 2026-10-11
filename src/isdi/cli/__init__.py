@@ -4,7 +4,8 @@ The commands live in this package's modules, by area:
 - server: `run`, `info`, `paths`;
 - accounts: `user ...`;
 - keys: `change-passphrase`, `signing-key`, `backup`, `restore`, `reset`;
-- records: `export`, `erase`, `evidence ...`, `verify`, `audit ...`.
+- records: `export`, `erase`, `evidence ...`, `verify`, `audit ...`;
+- fieldtest: `field-test`.
 common holds the command group and unlocking; this module the entry point.
 """
 
@@ -40,6 +41,6 @@ def main():
 
 
 # Register the commands (each module adds its own to `cli`).
-from isdi.cli import accounts, keys, records, server  # noqa: E402,F401
+from isdi.cli import accounts, fieldtest, keys, records, server  # noqa: E402,F401
 from isdi.cli.server import _anchor_reminder, _backup_reminder  # noqa: E402,F401
 from isdi.cli.keys import RESET_PHRASE  # noqa: E402,F401

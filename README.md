@@ -24,6 +24,8 @@ What each release changes for staff is in [CHANGELOG.md](CHANGELOG.md).
 Client data is encrypted at rest and raw phone dumps are not kept unless an
 evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
 For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md).
+To help confirm ISDi's checks on real phones, see [FIELD_TEST.md](FIELD_TEST.md)
+(`isdi field-test`, on a test phone).
 
 **Upgrading to 1.5:** every page now needs a sign-in. The first time ISDi
 starts after the upgrade, it asks for a first account (username, full
@@ -288,11 +290,13 @@ This check has not yet been confirmed on a range of real iPhones.
   - `accounts.py` - `user ...`
   - `keys.py` - passphrase, signing key, `backup`, `restore`, `reset`
   - `records.py` - `export`, `erase`, `evidence ...`, `verify`, `audit ...`
+  - `fieldtest.py` - `field-test`
 
 - **Core modules in `src/isdi/`** - `crypto.py` (encryption and signing),
   `users.py` (accounts and roles), `audit.py` (the audit log), `evidence.py`
   (evidence copies and signed packages), `backup.py` (encrypted backups),
-  `data_protection.py` (removing plaintext leftovers)
+  `data_protection.py` (removing plaintext leftovers), `fieldtest.py` (the
+  field test's report)
 
 - **`src/isdi/scanner/`** - Core scanning logic
   - `base.py` - The scanner base class and the raw dump files a scan handles
