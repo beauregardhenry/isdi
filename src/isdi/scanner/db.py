@@ -144,6 +144,18 @@ CREATE TABLE IF NOT EXISTS evidence (
 );
 CREATE INDEX IF NOT EXISTS idx_evidence_scanid on evidence (scanid);
 
+-- A client's consultation answers (isdi/consultation/store.py): the
+-- questionnaire, accounts, devices and app questions, notes. One encrypted
+-- document per client and kind.
+CREATE TABLE IF NOT EXISTS consultation_docs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clientid TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  doc TEXT,
+  updated TEXT NOT NULL,
+  UNIQUE (clientid, kind)
+);
+
 -- Staff accounts for the web interface (isdi/users.py). Only a scrypt
 -- hash of each password is stored. Sessions begun before signed_out_at
 -- (seconds since the epoch) are no longer valid.
@@ -201,10 +213,11 @@ ENCRYPTED_COLUMNS = {
     ).split(),
     "audit_log": "operator details".split(),
     "evidence": "dump_name data".split(),
+    "consultation_docs": ["doc"],
     "users": ["name"],
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 
 def _enc(column, value):
@@ -336,6 +349,10 @@ def _migrate(db) -> None:
         db.execute(
             "ALTER TABLE evidence ADD COLUMN unredacted INTEGER NOT NULL DEFAULT 0"
         )
+    consultation = SCHEMA_SQL[
+        SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS consultation_docs") :
+    ]
+    db.executescript(consultation[: consultation.index(");") + 2])
     if "role" not in _columns(db, "users"):
         db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'staff'")
         # Accounts made before roles could open every client: keep that.
@@ -609,6 +626,13 @@ def export_client(clientid) -> dict:
             "select * from clients_notes where clientid=? order by id", (clientid,)
         ),
         "scans": scans,
+        "consultation": {
+            r["kind"]: r["doc"]
+            for r in query_db(
+                "select kind, doc from consultation_docs where clientid=? order by id",
+                (clientid,),
+            )
+        },
         "audit_log": audit.entries(clientid),
         # The newest entry of the whole log when this export was made: a
         # log rebuilt or cut short afterwards no longer matches it.
@@ -640,6 +664,9 @@ def erase_client(clientid) -> dict:
     ).rowcount
     counts["evidence"] = db.execute(
         "DELETE FROM evidence WHERE clientid=?", (clientid,)
+    ).rowcount
+    counts["consultation_docs"] = db.execute(
+        "DELETE FROM consultation_docs WHERE clientid=?", (clientid,)
     ).rowcount
     db.commit()
     from isdi import audit
