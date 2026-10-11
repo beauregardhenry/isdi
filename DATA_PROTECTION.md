@@ -51,7 +51,10 @@ your compliance officer to decide.
   count, so a long form is not lost; set `ISDI_IDLE_MINUTES` to change the
   limit), when the user signs out, when the account is disabled, or when
   its password changes. Signing out also stops copies of the session
-  cookie from working.
+  cookie from working. After an idle sign-out, the same person signing in
+  again (with their password) within 2 hours continues with the same
+  client, so a consultation is not split; nothing is shown before they
+  sign in.
 - **Roles.** A staff account opens only the clients it started; a
   supervisor account opens every client. The first account is a
   supervisor; others are staff unless created with `isdi user add

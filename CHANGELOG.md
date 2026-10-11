@@ -7,6 +7,20 @@ have no section here.
 
 ## 1.10.0
 
+- **Being signed out for inactivity no longer splits a consultation.**
+  After 15 minutes without using ISDi, staff are signed out, and signing in
+  again used to start a new client: what was recorded before stayed under
+  the old client ID and disappeared from view. Now the same person signing
+  in again within 2 hours continues with the same client (recorded in the
+  audit log). Someone else signing in, or signing out on purpose, still
+  starts a new client.
+- **A one-page quick start for advocates**, `docs/STAFF_QUICKSTART.md`: one
+  session from start to finish, including deciding about an evidence copy
+  before scanning, not uninstalling without a safety plan, and what the
+  results do and do not mean.
+- **Forms for sending feedback on GitHub**: field test reports, the
+  reviewed Spanish packet, monitoring apps ISDi missed, and problems. Each
+  reminds the sender that issues are public and must not mention clients.
 - **`isdi field-test` checks ISDi against a real test phone.** Some
   checks have only been tested against made-up phone output: Android
   accessibility, notification access and device administrator powers,

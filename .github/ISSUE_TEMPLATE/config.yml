@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (privately)
+    url: https://github.com/beauregardhenry/isdi/security/advisories/new
+    about: Never in a public issue. See SECURITY.md.

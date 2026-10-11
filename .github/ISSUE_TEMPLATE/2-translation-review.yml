@@ -1,0 +1,35 @@
+name: Spanish translation review
+description: Send back the reviewed Spanish review packet (docs/review/).
+title: "Spanish review: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reviewing. The instructions are in
+        [docs/review/README.md](https://github.com/beauregardhenry/isdi/blob/main/docs/review/README.md).
+        Issues are **public**: do not describe clients or cases.
+  - type: textarea
+    id: file
+    attributes:
+      label: The reviewed spreadsheet
+      description: |
+        Drag the saved `spanish-review.csv` into this box to attach it. If GitHub refuses
+        the file, put it in a .zip and attach that.
+    validations:
+      required: true
+  - type: input
+    id: who
+    attributes:
+      label: Who the Spanish is for
+      description: The communities or regions you serve, if you are willing to say. It helps choose between regional words.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: General comments, and the two texts not in the spreadsheet ("Riesgo de la aplicación", "Riesgos encontrados").
+  - type: checkboxes
+    id: credit
+    attributes:
+      label: Credit
+      options:
+        - label: You may name me (by my GitHub username) as the reviewer in the CHANGELOG.
