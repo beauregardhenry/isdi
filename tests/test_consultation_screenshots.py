@@ -188,3 +188,22 @@ def test_the_manager_lists_them(client, no_csrf):
     _upload(client)
     page = client.get("/consultation/screenshots").get_data(as_text=True)
     assert TARGET in page and "uploaded" in page
+
+
+def test_the_audit_log_vouches_for_the_image(app, client, no_csrf):
+    """The screenshot's SHA-256 is in its audit entry, so the HMAC chain and
+    the signed anchors cover the image, not only its own row (whose hash
+    column someone with the database could change along with the image)."""
+    import hashlib
+
+    from isdi import audit
+
+    _upload(client)
+    with app.app_context():
+        (row,) = screenshots.listing(CLIENT)
+        entry = [e for e in audit.entries(CLIENT) if e["action"] == "screenshot_saved"][
+            -1
+        ]
+    assert entry["details"]["sha256"] == hashlib.sha256(PNG).hexdigest()
+    assert entry["details"]["sha256"] == row["sha256"]
+    assert entry["details"]["id"] == row["id"]

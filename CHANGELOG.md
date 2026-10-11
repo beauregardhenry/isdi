@@ -19,6 +19,20 @@ have no section here.
   clients is sent; `isdi run --offline` skips the check, and then no
   warning is shown. See "What ISDi sends over the network" in
   DATA_PROTECTION.md.
+- **A screenshot's hash is recorded in the audit log.** Until now it was
+  kept only with the screenshot itself, so the audit chain and its signed
+  anchors did not vouch for the image. The `screenshot_saved` entry now
+  holds the SHA-256. Screenshots kept with 1.9.0 have no hash in the log
+  (COURT_RECORDS.md lists this).
+- **DATA_PROTECTION.md and COURT_RECORDS.md describe the 1.9.0
+  consultation record.** They still said screenshots were never saved and
+  listed none of the new records. They now cover the questionnaire and
+  account and device checks, the screenshots (what is and is not
+  encrypted, and the difference between one taken from the phone and one
+  uploaded), and the reports, which ISDi never stores. COURT_RECORDS.md
+  has two new questions for counsel: whether the consultation record and
+  its notes could be requested in discovery, and what to tell a client
+  who takes a copy home.
 
 ## 1.9.0
 

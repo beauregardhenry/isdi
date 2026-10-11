@@ -6,6 +6,8 @@ pointed at another client's record. Each save is recorded in the audit log
 with what was saved, not the answers themselves.
 """
 
+import hashlib
+
 from flask import (
     abort,
     flash,
@@ -492,10 +494,16 @@ def consultation_screenshots():
     except screenshots.ScreenshotError as e:
         flash(str(e))
         return _back()
+    # The hash goes into the audit log too: the chain and its anchors then
+    # vouch for the image, not only the screenshot's own row.
     audit.record(
         "screenshot_saved",
         clientid=clientid,
-        details={"id": shot_id, "source": source},
+        details={
+            "id": shot_id,
+            "source": source,
+            "sha256": hashlib.sha256(data).hexdigest(),
+        },
     )
     flash("Screenshot saved.", "success")
     return _back()

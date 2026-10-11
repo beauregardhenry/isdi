@@ -31,6 +31,9 @@ S&P 2018). This version is a maintained fork:
   - On iOS: pymobiledevice3, the app list and device information, and
     (from 1.8.0) whether the phone is supervised and which configuration
     profiles are installed, as the phone reports them.
+  - From 1.9.0, in the consultation record: screenshots taken from a
+    connected Android phone (`adb exec-out screencap`) or uploaded by
+    staff, and the answers staff record with the client.
 - **What it concludes.** Each installed app is compared with a blocklist,
   which includes the public stalkerware-indicators list maintained by
   Échap, and with name patterns. Matching apps are flagged. From 1.8.0,
@@ -63,6 +66,7 @@ when reading their results:
 
 | Versions | Fault | What it means for those records |
 |---|---|---|
+| 1.9.0 | A screenshot's SHA-256 was kept only in the screenshot's own row, not in its `screenshot_saved` audit entry | The audit chain and anchors do not vouch for those images. From 1.9.1 the entry holds the hash |
 | Before 1.7.0 | The iPhone check for root filesystem access over USB ("afc2") never ran: it called the iPhone library in a way the library does not support, and the error was only logged | An iPhone "no jailbreak found" result rested only on the check for known jailbreak apps. Android root checks were not affected |
 | Before 1.6.0 | If a command to the phone failed, its error text could be recorded as the phone's answer, for example as the device model | Check the device details of such scans against the phone itself |
 | Before 1.6.0 | An app's details page showed what the phone's latest scan recorded, which could be a later scan, possibly for another client | Notes or screenshots taken from a details page may describe a later scan. The scan records and evidence packages were not affected |
@@ -80,14 +84,18 @@ All are stored encrypted on the clinic's computer (see
 |---|---|
 | Scan | Time; the signed-in user (full name and username); device type, model and OS version; a pseudonym of the serial number (HMAC); root or jailbreak findings; on iPhones, supervision and configuration profiles (1.8.0 on); each app with its flags; per app, what the phone reported (install and update times, permissions, data use) |
 | Consultation notes | The clinic's intake form |
+| Consultation record (from 1.9.0) | The technology assessment questionnaire (including answers about legal proceedings), the accounts and devices checked with the client, the questions asked about each app (did the client know of it, install it, or were they made to), notes for the whole consultation, and the consultant's notes on each part. Saves and deletions are in the audit log, without the answers themselves |
+| Screenshots (from 1.9.0) | Images of the phone's screen or of an account's settings, each with the time, its source (taken from a connected Android phone, or uploaded by staff), what it shows, and its SHA-256 when it was kept. From 1.9.1 the hash is also in the `screenshot_saved` audit entry |
+| Consultation reports (from 1.9.0) | Made on request from the record, never stored by ISDi: a full report (the client's name, every answer, the risks, notes, screenshots with their hashes) and a take-home copy for the client without their name, the consultant's notes or the names of the clinic and of ISDi. Each viewing or PDF made is in the audit log |
 | Audit log | Every scan, note, edit (old and new values), uninstall attempt, export and erasure, with time (UTC) and the signed-in user (or, on the command line, the name given); sign-ins and sign-outs |
 | Evidence copy (optional) | When "Keep an encrypted evidence copy" is ticked: the raw dump of the phone, and its SHA-256 recorded at the time of the scan. For Android, either with email addresses blanked out (the default) or, if "keep it unredacted" is ticked, the output as received |
 | Audit anchors | Signed records of the audit log's newest entry, made with `isdi audit anchor` and kept outside the clinic |
 
 Exports:
 
-- `isdi export CLIENTID -o file.json`: everything about a client, with a
-  signature file.
+- `isdi export CLIENTID -o file.json`: everything about a client,
+  including the consultation record and the screenshots (with their
+  hashes), with a signature file.
 - `isdi evidence export SCANID -o DIR`: a package for one scan. It contains:
   - the raw dump (if kept);
   - the results;
@@ -105,6 +113,7 @@ Exports:
 | Audit log chained with HMAC-SHA256 | Entries were not altered, inserted or removed (`isdi audit verify`) | Anyone with the passphrase could rebuild the whole log, or remove the newest entries. Both are detectable against an anchor or export made earlier, but only for entries up to the one it recorded |
 | Audit anchors (`isdi audit anchor`) | The log held a given entry, unchanged, when the anchor was made (`isdi audit verify --anchor FILE`) | Only as strong as where the anchor is kept: it must be somewhere the clinic cannot change, for example an email to counsel, which records when it arrived. Entries after the anchor are covered only by a later one |
 | Ed25519 signature on exports | Files were not changed since export, and were signed by the key with the fingerprint shown (`isdi verify`) | Anyone can sign with a key of their own: the fingerprint must match the one the clinic published beforehand (`isdi signing-key`). The key is only as trustworthy as its custody |
+| SHA-256 of each screenshot, recorded when it was kept and (from 1.9.1) in the audit log | The image has not changed since it was kept | A screenshot taken from a connected phone shows what the phone displayed at that moment. An **uploaded** image is only what staff chose to upload: ISDi cannot say where it came from or whether it was edited before |
 | Encryption at rest | Records were not readable or changeable without the passphrase | People who know the passphrase can change records (the audit log shows changes made through ISDi) |
 
 Practices that make these stronger:
@@ -126,9 +135,11 @@ Practices that make these stronger:
 - Keep the computer's clock synchronised.
 - Write down who had the phone and the computer, and when (chain of
   custody). ISDi records only what happens inside ISDi.
-- Take photographs or screenshots of what the phone shows. ISDi does not
-  record the screen, except screenshots shown during privacy checks, which
-  are not saved.
+- Keep screenshots of what matters in the consultation record (from
+  1.9.0). Prefer taking them from the connected phone over uploading: an
+  upload is only as trustworthy as whoever took it. For an iPhone, which
+  ISDi cannot take screenshots of, photograph the screen and write down
+  who took the photograph and when.
 
 ## Questions for counsel
 
@@ -178,3 +189,10 @@ Privacy and procedure:
 11. How do discovery, subpoenas or protective orders over clinic records
     interact with the clinic's privacy duties (DATA_PROTECTION.md)?
 12. What retention period applies to evidence copies?
+13. The consultation record (from 1.9.0) holds staff's notes, the client's
+    answers about legal proceedings, and the full report can be made from
+    it at any time. Could these be requested in discovery, and does any
+    privilege or confidentiality protection apply to them? Should staff
+    limit what they write in the consultant's notes?
+14. When a client takes home a copy (paper or PDF), what should staff tell
+    them about keeping it safe?
