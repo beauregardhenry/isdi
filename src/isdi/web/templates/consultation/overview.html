@@ -99,14 +99,20 @@
       {% endif %}
     </div>
     <h3 class="h6">Copy for the client to take home</h3>
-    <p class="small">Leaves out the client's name, the consultant's notes, screenshot hashes and the names of the clinic and of ISDi. Give it only if the client has somewhere safe to keep it.</p>
+    <p class="small">Leaves out the client's name, the consultant's notes, screenshot hashes and the names of the clinic and of ISDi. Includes what the check cannot tell and what to consider before changing anything. Give it only if the client has somewhere safe to keep it.</p>
     <p>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_report', copy='takehome') }}" target="_blank" rel="noopener">Open the take-home copy</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_report', copy='takehome', lang='es') }}" target="_blank" rel="noopener" lang="es" hreflang="es">en español</a>
     </p>
     {% if can_pdf %}
     <form method="post" action="{{ url_for('main.consultation_report_pdf') }}" class="form-inline mb-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="copy" value="takehome">
+      <label for="takehome_lang" class="mr-2 small">Language</label>
+      <select id="takehome_lang" name="lang" class="custom-select custom-select-sm mr-2">
+        <option value="en">English</option>
+        <option value="es" lang="es">Español</option>
+      </select>
       <label for="takehome_password" class="mr-2 small">Password for the PDF (optional; tell the client in person)</label>
       <input type="password" id="takehome_password" name="password" class="form-control form-control-sm mr-2" autocomplete="new-password">
       <button class="btn btn-outline-secondary btn-sm">Download the take-home PDF</button>

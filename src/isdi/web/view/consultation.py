@@ -538,6 +538,14 @@ def _copy():
     return copy == "takehome"
 
 
+def _lang(takehome):
+    """The take-home copy's language (English unless "es"); the full
+    report is for the clinic and stays in English."""
+    from isdi import client_summary
+
+    return client_summary.language(request.values.get("lang")) if takehome else "en"
+
+
 @bp.route("/consultation/report/name", methods=["POST"])
 def consultation_report_name():
     name = request.form.get("report_name", "").strip()[:200]
@@ -550,12 +558,13 @@ def consultation_report_name():
 @bp.route("/consultation/report", methods=["GET"])
 def consultation_report():
     takehome = _copy()
+    lang = _lang(takehome)
     audit.record(
         "report_viewed",
         clientid=_clientid(),
-        details={"copy": "takehome" if takehome else "full"},
+        details={"copy": "takehome" if takehome else "full", "lang": lang},
     )
-    return report.html(_clientid(), takehome)
+    return report.html(_clientid(), takehome, lang)
 
 
 @bp.route("/consultation/report.pdf", methods=["POST"])
@@ -564,7 +573,8 @@ def consultation_report_pdf():
     # From the form body only; never logged or stored.
     password = (request.form.get("password") or None) if takehome else None
     try:
-        data = report.pdf(report.html(_clientid(), takehome), takehome, password)
+        lang = _lang(takehome)
+        data = report.pdf(report.html(_clientid(), takehome, lang), takehome, password)
     except report.PdfUnavailable as e:
         flash(str(e))
         return redirect(url_for("main.consultation"))
@@ -573,6 +583,7 @@ def consultation_report_pdf():
         clientid=_clientid(),
         details={
             "copy": "takehome" if takehome else "full",
+            "lang": lang,
             "password": bool(password),
         },
     )

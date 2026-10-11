@@ -19,6 +19,18 @@ have no section here.
   clients is sent; `isdi run --offline` skips the check, and then no
   warning is shown. See "What ISDi sends over the network" in
   DATA_PROTECTION.md.
+- **The take-home copy now has the client summary's safety guidance, and
+  a Spanish version.** The copy of the consultation report that a client
+  takes home now includes "What this check cannot tell you" and "Before
+  changing anything" (talk through a safety plan first; removing an app
+  or profile can alert whoever set it up and removes evidence), in the
+  same words as the client summary. "en español" next to "Open the
+  take-home copy", or the language choice by the PDF button, gives the
+  whole copy in Spanish: headings, questions, answers and risks. What the
+  client or staff typed stays as typed. The full report stays in English.
+  The language is recorded in the audit log. The Spanish has not yet been
+  reviewed by a native speaker who works with clients: have it reviewed
+  before relying on it.
 - **A screenshot's hash is recorded in the audit log.** Until now it was
   kept only with the screenshot itself, so the audit chain and its signed
   anchors did not vouch for the image. The `screenshot_saved` entry now
