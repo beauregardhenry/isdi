@@ -23,7 +23,9 @@ What each release changes for staff is in [CHANGELOG.md](CHANGELOG.md).
 
 Client data is encrypted at rest and raw phone dumps are not kept unless an
 evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
-For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md).
+For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md)
+(one-page version for counsel: [docs/COUNSEL_BRIEF.md](docs/COUNSEL_BRIEF.md)).
+To have the Spanish translation reviewed, see [docs/review/](docs/review/README.md).
 To help confirm ISDi's checks on real phones, see [FIELD_TEST.md](FIELD_TEST.md)
 (`isdi field-test`, on a test phone).
 
