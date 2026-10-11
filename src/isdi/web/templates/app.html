@@ -58,8 +58,8 @@
     {% if app.summary or app.descriptionHTML %}
     <div class="jumbotron" style="padding: 1em">
         <h2 class="h3">{% if device=="android" %} Google Play Store {% endif %} {% if device=="ios" %} Apple App Store {% endif %} Description of the app</h2>
-        {% if app.summary %}<span style="margin-bottom: 2em; display:block"><mark><b>{{ app.summary|safe }}</b></mark></span>{% endif %}
-        {{ app.descriptionHTML|safe }}
+        {% if app.summary %}<span style="margin-bottom: 2em; display:block"><mark><b>{{ app.summary|clean_html|safe }}</b></mark></span>{% endif %}
+        {{ app.descriptionHTML|clean_html|safe }}
     </div>
     {% else %}
     <p class="text-muted">This app is not in the app information database, so there is no store description.</p>
