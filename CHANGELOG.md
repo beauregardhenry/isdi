@@ -7,6 +7,13 @@ have no section here.
 
 ## Unreleased
 
+- **Nothing is downloaded when ISDi is imported.** The app information
+  database (store titles and descriptions) was fetched while the
+  configuration was created, so any program importing ISDi reached
+  GitHub until the file was there. It is now fetched only by `isdi run`
+  (skip with `--offline`) or `isdi fetch-app-info`. If the download
+  failed, an empty database file was left behind and app pages failed;
+  the database is now opened read-only and only when it exists.
 - **Commands no longer go through a shell.** ISDi used to build each adb
   and pymobiledevice3 command as text, quote the serial and app id into
   it, and run it with a shell. One missed quote would have let text from a

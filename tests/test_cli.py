@@ -361,13 +361,10 @@ RESET_PASSPHRASE = "the reset test passphrase"
 def isolated(tmp_path):
     """A separate ISDi home with a client in its database, and a way to run
     `isdi` there in a process of its own (reset deletes the database)."""
-    # Link the suite's downloaded app-info.db into the new cache, so it is
-    # not downloaded again.
+    # A stand-in app-info.db: reset must leave the cache alone.
     cache = tmp_path / "cache" / "isdi"
     cache.mkdir(parents=True)
-    (cache / "app-info.db").symlink_to(
-        Path(get_config().APP_INFO_SQLITE_FILE.replace("sqlite:///", "")).resolve()
-    )
+    (cache / "app-info.db").write_bytes(b"stand-in")
     env = dict(
         os.environ,
         XDG_DATA_HOME=str(tmp_path / "data"),

@@ -64,7 +64,13 @@ def _backup_reminder(last, now=None):
 @click.option("--debug/--no-debug", default=False, help="Enable debug mode")
 @click.option("--test", "test_mode", is_flag=True, help="Run in test mode")
 @click.option("--no-browser", is_flag=True, help="Do not open browser automatically")
-def run(host, port, debug, test_mode, no_browser):
+@click.option(
+    "--offline",
+    is_flag=True,
+    help="Do not download app-info.db (store titles and descriptions) if it "
+    "is missing. Scans work without it.",
+)
+def run(host, port, debug, test_mode, no_browser, offline):
     """Run the ISDI web server"""
     from isdi.config import get_config
     from isdi.app import create_app
@@ -94,6 +100,9 @@ def run(host, port, debug, test_mode, no_browser):
         )
     browser_host = final_host
     _unlock(config)
+    if not offline:
+        # Before the app is created: scanners open app-info.db once.
+        config.ensure_app_info_db()
 
     # Create app
     app_started = perf_counter()
@@ -171,6 +180,14 @@ def _ensure_an_account():
     click.echo("It is a supervisor account: it can open every client.")
     with audit.acting_as("isdi run (first account)"):
         _add_user_interactively(role=users.SUPERVISOR)
+
+
+@cli.command("fetch-app-info")
+def fetch_app_info():
+    """Download app-info.db (store titles and descriptions) if missing."""
+    from isdi.config import get_config
+
+    get_config().ensure_app_info_db()
 
 
 @cli.command()

@@ -65,7 +65,7 @@ def test_download_matching_pinned_hash_is_installed(
         config_mod, "APP_INFO_DB_SHA256", hashlib.sha256(FAKE_DB).hexdigest()
     )
     cache_config.body = FAKE_DB
-    cache_config._ensure_app_info_db()
+    cache_config.ensure_app_info_db()
     assert (tmp_path / "app-info.db").read_bytes() == FAKE_DB
     assert not (tmp_path / "app-info.db.part").exists()
 
@@ -82,7 +82,7 @@ def test_download_not_matching_pinned_hash_is_discarded(cache_config, tmp_path, 
     """Must not be kept, or every later start would skip the download
     because the file is non-empty."""
     cache_config.body = body
-    cache_config._ensure_app_info_db()
+    cache_config.ensure_app_info_db()
     assert not (tmp_path / "app-info.db").exists()
     assert not (tmp_path / "app-info.db.part").exists()
 
@@ -99,7 +99,7 @@ def test_existing_db_is_not_redownloaded(cache_config, tmp_path, monkeypatch):
         raise AssertionError("should not download")
 
     monkeypatch.setattr(urllib.request, "urlopen", fail)
-    cache_config._ensure_app_info_db()
+    cache_config.ensure_app_info_db()
     assert (tmp_path / "app-info.db").read_bytes() == b"existing"
 
 
@@ -119,7 +119,7 @@ def run_cli(app, monkeypatch, passphrase):
 
     def invoke(*args, input=None):
         res = CliRunner().invoke(
-            cli.cli, ["run", "--test", "--no-browser", *args], input=input
+            cli.cli, ["run", "--test", "--no-browser", "--offline", *args], input=input
         )
         assert res.exit_code == 0, res.output
         return res.output, bound["host"]
@@ -138,7 +138,7 @@ def test_cli_refuses_to_listen_on_the_network(monkeypatch, passphrase, host):
     from isdi import cli
 
     monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", "--host", host])
+    res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", "--offline", "--host", host])
     assert res.exit_code == 1
     assert f"Refusing to listen on {host}" in res.output
 
@@ -196,7 +196,7 @@ def test_download_falls_back_to_the_next_source(
         return _Response(first if url == mirror else FAKE_DB)
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
-    cache_config._ensure_app_info_db()
+    cache_config.ensure_app_info_db()
     assert asked == [mirror, upstream]
     assert (tmp_path / "app-info.db").read_bytes() == FAKE_DB
 
