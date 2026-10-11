@@ -3,14 +3,13 @@
 import json
 import logging
 import os
-import shlex
 import time
 from typing import Dict, List, Optional, Tuple
 
 from isdi.config import get_config
 
 from . import parse_dump
-from .runcmd import catch_err, run_command
+from .runcmd import catch_err
 
 cfg = get_config()
 from .base import AppScanner
@@ -46,9 +45,7 @@ class IosScanner(AppScanner):
 
     def devices(self) -> List[str]:
         """Get list of connected iOS devices."""
-        cmd = "{cli} usbmux list"
-        p = run_command(cmd, cli=self.cli)
-        output = catch_err(p, cmd=cmd).strip()
+        output = catch_err(self.run_tool("usbmux", "list"), cmd="usbmux list").strip()
 
         try:
             if not output:
@@ -107,9 +104,5 @@ class IosScanner(AppScanner):
 
     def uninstall(self, serial: str, appid: str) -> bool:
         """Uninstall an app."""
-        cmd = "{cli} apps uninstall --udid {serial} {appid}"
-        p = run_command(
-            cmd, cli=self.cli, serial=shlex.quote(serial), appid=shlex.quote(appid)
-        )
-        output = catch_err(p, cmd=cmd)
+        output = catch_err(self.run_tool("apps", "uninstall", "--udid", serial, appid), cmd="apps uninstall")
         return "Success" in output or "uninstalled" in output.lower()

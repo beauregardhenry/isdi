@@ -1,6 +1,7 @@
 """Privacy-check screenshots: shown inline, never written to disk."""
 
 import base64
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -88,9 +89,7 @@ def test_activity_name_survives_both_shells(monkeypatch, activity):
     `shell` the way adb does, and run that through a real sh (standing in
     for the phone's), which expands $variables."""
     seen = []
-    monkeypatch.setattr(
-        ps, "run_command", lambda cmd, **kw: seen.append(cmd.format(**kw)) or ("", "")
-    )
+    monkeypatch.setattr(ps, "run_command", lambda args: seen.append(args) or ("", ""))
     ps.open_activity("SER1", activity)
 
     def argv_after_shell_word(command):
@@ -102,7 +101,7 @@ def test_activity_name_survives_both_shells(monkeypatch, activity):
         ).stdout.splitlines()
         return out
 
-    host_argv = argv_after_shell_word(seen[0])
+    host_argv = seen[0]
     device_cmd = " ".join(host_argv[host_argv.index("shell") + 1 :])
     assert argv_after_shell_word(device_cmd) == ["am", "start", activity]
 
@@ -136,8 +135,8 @@ def phone_shell(monkeypatch):
 
     Shell.sent = []
 
-    def fake(cmd, **kw):
-        Shell.sent.append(cmd.format(**kw))
+    def fake(args):
+        Shell.sent.append(shlex.join(args))
         return Shell.out, Shell.err
 
     monkeypatch.setattr(ps, "run_command", fake)
@@ -191,12 +190,12 @@ def test_unknown_checks_and_keys_do_nothing(phone_shell):
 
 
 def test_without_a_serial_adb_picks_the_only_phone():
-    assert ps.thiscli("") == ps.adb
-    assert ps.thiscli("A B") == f"{ps.adb} -s 'A B'"
+    assert ps.thiscli("") == [ps.adb]
+    assert ps.thiscli("A B") == [ps.adb, "-s", "A B"]
 
 
 def test_run_command_returns_output_and_errors():
-    out, err = ps.run_command("echo {a}; echo {b} >&2", a="out", b="err")
+    out, err = ps.run_command(["sh", "-c", "echo out; echo err >&2"])
     assert (out.strip(), err.strip()) == ("out", "err")
 
 
@@ -221,7 +220,7 @@ def test_run_command_reports_failures(monkeypatch, error, message):
             self.killed = True
 
     monkeypatch.setattr(ps, "Popen", FakePopen)
-    out, err = ps.run_command("adb devices")
+    out, err = ps.run_command(["adb", "devices"])
     assert out == "" and message in err
 
 

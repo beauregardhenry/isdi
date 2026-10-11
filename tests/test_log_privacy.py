@@ -47,9 +47,9 @@ def log_lines(caplog):
 
 def test_commands_and_their_output_are_not_logged(log_lines):
     # printf prints "secXret": output that is not part of the command text.
-    p = run_command("printf 'sec%sret' X; : {s}", s=f"-s {SERIAL}")
+    p = run_command(["sh", "-c", "printf 'sec%sret' X", "-s", SERIAL])
     assert p.stdout.read() == b"secXret"
-    run_command("sh -c 'exit 3' -s {s}", s=SERIAL)
+    run_command(["sh", "-c", "exit 3", "-s", SERIAL])
     assert SERIAL not in log_lines.text
     assert "secXret" not in log_lines.text
 

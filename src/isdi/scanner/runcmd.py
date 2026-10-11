@@ -1,10 +1,14 @@
 import io
-import re
 import logging
+import os
+import re
+import shlex
 import subprocess
+from typing import Dict, List, Optional, Sequence, Tuple
 
-# Device serials and app ids are interpolated into shell commands, so anything
-# coming from a request must match these before it reaches run_command().
+# Commands run without a shell (run_command takes an argument list). adb and
+# pymobiledevice3 can still pass a value on to the phone's own shell, so
+# anything coming from a request must match these before it is used.
 # adb serials look like "R58M12ABCDE", "emulator-5554" or "192.168.1.5:5555";
 # iOS UDIDs are hex, optionally with a dash. Android package names and iOS
 # bundle ids are letters, digits, '_', '-' and '.'.
@@ -92,31 +96,65 @@ def catch_err(p: subprocess.Popen[bytes], cmd="", time=10) -> str:
         return ""
 
 
-def run_command(cmd: str, **kwargs) -> subprocess.Popen[bytes]:
-    """
-    Run a command in a subprocess.
+_ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 
-    The command runs through the shell, so callers must shlex.quote() any
-    value that did not come from this codebase (serials, app ids, ...).
-    Args:
-        cmd (str): The command to run.
-        **kwargs: Additional keyword arguments to format the command.
-    Returns:
-        subprocess.Popen: The process object.
-    """
-    _cmd = cmd.format(**kwargs)
-    p = subprocess.Popen(
-        _cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
-    )
-    if not (kwargs.get("nowait", False) or kwargs.get("NOWAIT", False)):
+
+def tool_argv(cli: str) -> Tuple[List[str], Dict[str, str]]:
+    """Split a configured tool prefix ("adb", or "PYTHONPATH=... python -m
+    pymobiledevice3") into its arguments and leading VAR=value settings.
+
+    The prefix comes from ISDi's configuration, never from a request; it is
+    split here so that no shell is needed to run it."""
+    words = shlex.split(cli)
+    env: Dict[str, str] = {}
+    while words and _ENV_ASSIGNMENT.match(words[0]):
+        name, _, value = words.pop(0).partition("=")
+        env[name] = value
+    return words, env
+
+
+class _Failed:
+    """Stands in for a process that could not be started."""
+
+    def __init__(self, error: str):
+        self.returncode = 127
+        self.stdout = io.BytesIO(b"")
+        self.stderr = io.BytesIO(error.encode())
+
+    def wait(self, timeout=None):
+        return self.returncode
+
+
+def run_command(
+    args: Sequence[str], nowait: bool = False, env: Optional[Dict[str, str]] = None
+) -> subprocess.Popen[bytes]:
+    """Run a program with these arguments, without a shell.
+
+    Each argument reaches the program as it is: nothing is expanded, so a
+    serial or app id cannot run anything on this computer. `env` adds to
+    the environment. Unless nowait is set, the output is read and the
+    process waited for; callers read p.stdout and p.stderr afterwards.
+    A program that cannot be started gives returncode 127."""
+    if isinstance(args, (str, bytes)) or not all(isinstance(a, str) for a in args):
+        raise TypeError("run_command takes a list of string arguments, not a command line")
+    shown = redact(shlex.join(args))
+    try:
+        p = subprocess.Popen(
+            list(args),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, **env} if env else None,
+        )
+    except OSError as ex:
+        logging.error("Could not run %r: %s", shown, ex)
+        return _Failed(str(ex))  # type: ignore[return-value]
+    if not nowait:
         # communicate() reads while waiting; wait() alone deadlocks once the
         # output fills the pipe. Callers read p.stdout/p.stderr afterwards.
         out, err = p.communicate()
         p.stdout, p.stderr = io.BytesIO(out), io.BytesIO(err)
         if p.returncode != 0:
-            logging.error(
-                "Error running command: %r. returncode: %s", redact(_cmd), p.returncode
-            )
+            logging.error("Error running command: %r. returncode: %s", shown, p.returncode)
         else:
-            logging.debug("Command %r executed successfully.", redact(_cmd))
+            logging.debug("Command %r executed successfully.", shown)
     return p
