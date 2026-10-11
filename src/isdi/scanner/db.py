@@ -156,6 +156,21 @@ CREATE TABLE IF NOT EXISTS consultation_docs (
   UNIQUE (clientid, kind)
 );
 
+-- Screenshots kept with a consultation record
+-- (isdi/consultation/screenshots.py): the image and what it shows are
+-- encrypted; sha256 is the image's hash when it was taken.
+CREATE TABLE IF NOT EXISTS screenshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clientid TEXT NOT NULL,
+  created TEXT NOT NULL,
+  target TEXT,
+  source TEXT,
+  mime TEXT,
+  sha256 TEXT NOT NULL,
+  data TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_screenshots_clientid on screenshots (clientid);
+
 -- Staff accounts for the web interface (isdi/users.py). Only a scrypt
 -- hash of each password is stored. Sessions begun before signed_out_at
 -- (seconds since the epoch) are no longer valid.
@@ -214,10 +229,11 @@ ENCRYPTED_COLUMNS = {
     "audit_log": "operator details".split(),
     "evidence": "dump_name data".split(),
     "consultation_docs": ["doc"],
+    "screenshots": ["target", "data"],
     "users": ["name"],
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 
 def _enc(column, value):
@@ -353,6 +369,8 @@ def _migrate(db) -> None:
         SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS consultation_docs") :
     ]
     db.executescript(consultation[: consultation.index(");") + 2])
+    shots = SCHEMA_SQL[SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS screenshots") :]
+    db.executescript(shots[: shots.index("-- Staff accounts")])
     if "role" not in _columns(db, "users"):
         db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'staff'")
         # Accounts made before roles could open every client: keep that.
@@ -626,6 +644,12 @@ def export_client(clientid) -> dict:
             "select * from clients_notes where clientid=? order by id", (clientid,)
         ),
         "scans": scans,
+        # data: the image, base64.
+        "screenshots": query_db(
+            "select id, created, target, source, mime, sha256, data from screenshots "
+            "where clientid=? order by id",
+            (clientid,),
+        ),
         "consultation": {
             r["kind"]: r["doc"]
             for r in query_db(
@@ -664,6 +688,9 @@ def erase_client(clientid) -> dict:
     ).rowcount
     counts["evidence"] = db.execute(
         "DELETE FROM evidence WHERE clientid=?", (clientid,)
+    ).rowcount
+    counts["screenshots"] = db.execute(
+        "DELETE FROM screenshots WHERE clientid=?", (clientid,)
     ).rowcount
     counts["consultation_docs"] = db.execute(
         "DELETE FROM consultation_docs WHERE clientid=?", (clientid,)

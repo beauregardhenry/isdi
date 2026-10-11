@@ -64,3 +64,44 @@
     <div class="alert {{ 'alert-success' if category == 'success' else 'alert-warning' }}" role="status">{{ message }}</div>
   {% endfor %}
 {% endmacro %}
+
+{# Screenshots for one part of the record. The controls belong to forms
+   written by shot_forms() after the page's main form (HTML forms cannot be
+   nested), linked by the form attribute. #}
+{% macro shot_controls(target, shots, serials, fid) %}
+  <div class="consult-shots border rounded p-2 mb-3">
+    <p class="small mb-1"><b>Screenshots</b> <span class="text-muted">· adding one reloads the page: save your answers first</span></p>
+    {% for s in shots.get(target, []) %}
+      <figure class="d-inline-block mr-2 mb-2 align-top">
+        <a href="{{ url_for('main.consultation_screenshot', shot_id=s.id) }}" target="_blank" rel="noopener">
+          <img src="{{ url_for('main.consultation_screenshot', shot_id=s.id) }}" alt="Screenshot {{ loop.index }}" height="120"></a>
+        <figcaption class="small text-muted">{{ s.created[:16]|replace("T", " ") }}
+          <button form="shot-delete" formaction="{{ url_for('main.consultation_screenshot_delete', shot_id=s.id) }}" class="btn btn-link btn-sm text-danger p-0 align-baseline">Delete<span class="sr-only"> screenshot {{ loop.index }}</span></button>
+        </figcaption>
+      </figure>
+    {% endfor %}
+    <div class="form-inline">
+      {% if serials %}
+      <button form="{{ fid }}" name="source" value="phone" class="btn btn-outline-secondary btn-sm mr-3">Take one from the connected Android phone</button>
+      {% endif %}
+      <label class="small mr-2" for="{{ fid }}-file">Or upload a PNG or JPEG</label>
+      <input type="file" id="{{ fid }}-file" name="image" form="{{ fid }}" accept="image/png,image/jpeg" class="form-control-file w-auto mr-2">
+      <button form="{{ fid }}" name="source" value="upload" class="btn btn-outline-secondary btn-sm">Upload</button>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro shot_forms(targets, serials) %}
+  {% for fid, target in targets %}
+    <form id="{{ fid }}" method="post" action="{{ url_for('main.consultation_screenshots') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="target" value="{{ target }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      {% if serials %}<input type="hidden" name="serial" value="{{ serials[0] }}">{% endif %}
+    </form>
+  {% endfor %}
+  <form id="shot-delete" method="post" data-confirm="Delete this screenshot? This cannot be undone.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+  </form>
+{% endmacro %}

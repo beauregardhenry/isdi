@@ -28,6 +28,11 @@ have no section here.
   scanned. For each app chosen, staff ask whether the client knew it was
   installed, installed it, or was made to, and whether it shares their
   information. Removing a device from the record keeps the scan.
+- **Screenshots in the consultation record.** On the account and device
+  pages, staff take a screenshot from the connected Android phone or
+  upload a PNG or JPEG, for a section of an account check, a device or an
+  app. Screenshots are stored in the database, encrypted, with their
+  SHA-256, never as files, and are exported and erased with the client.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached

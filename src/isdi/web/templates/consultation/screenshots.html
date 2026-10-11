@@ -1,0 +1,35 @@
+{% from "consultation/_fields.html" import flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>Screenshots in the consultation record</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  {{ flashes() }}
+  <p>Screenshots are added on the account and device pages. Each is stored encrypted with this client's record; the SHA-256 is the image's hash when it was taken.</p>
+  {% if rows %}
+  <table class="table table-sm">
+    <thead><tr><th scope="col">Screenshot</th><th scope="col">Of</th><th scope="col">Taken</th><th scope="col">SHA-256</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+    {% for s in rows %}
+      <tr>
+        <td><a href="{{ url_for('main.consultation_screenshot', shot_id=s.id) }}" target="_blank" rel="noopener"><img src="{{ url_for('main.consultation_screenshot', shot_id=s.id) }}" alt="Screenshot {{ s.id }}" height="80"></a></td>
+        <td>{{ s.target }}<br><small class="text-muted">{{ "from the phone" if s.source == "phone" else "uploaded" }}</small></td>
+        <td>{{ s.created[:16]|replace("T", " ") }}</td>
+        <td><code class="small">{{ s.sha256[:16] }}…</code></td>
+        <td>
+          <form method="post" action="{{ url_for('main.consultation_screenshot_delete', shot_id=s.id) }}" data-confirm="Delete this screenshot? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button class="btn btn-outline-danger btn-sm">Delete<span class="sr-only"> screenshot {{ s.id }}</span></button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">No screenshots yet.</p>
+  {% endif %}
+</div>

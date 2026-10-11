@@ -6,13 +6,23 @@ pointed at another client's record. Each save is recorded in the audit log
 with what was saved, not the answers themselves.
 """
 
-from flask import abort, flash, redirect, render_template, request, session, url_for
+from flask import (
+    abort,
+    flash,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from isdi import audit
 from isdi.config import get_config
-from isdi.consultation import forms, model, store
+from isdi.consultation import forms, model, screenshots, store
 from isdi.scanner import blocklist, db
 from isdi.web import bp
+from isdi.scanner.runcmd import is_valid_serial
 from isdi.web.access import session_scan
 
 config = get_config()
@@ -133,7 +143,9 @@ def _account_page(account_id):
         form = forms.AccountForm()
     else:
         form = forms.AccountForm(data=accounts[_find(accounts, account_id)])
-    return _page("consultation-account", form=form, account_id=account_id)
+    return _page(
+        "consultation-account", form=form, account_id=account_id, **_shot_context()
+    )
 
 
 @bp.route("/consultation/accounts/<int:account_id>/delete", methods=["POST"])
@@ -329,7 +341,13 @@ def consultation_device_questions(key):
         flash("Answers saved.", "success")
         return redirect(url_for("main.consultation"))
     form = forms.AppQuestionsPageForm(data={"apps": apps})
-    return _page("consultation-device-questions", device=device, form=form, apps=apps)
+    return _page(
+        "consultation-device-questions",
+        device=device,
+        form=form,
+        apps=apps,
+        **_shot_context(),
+    )
 
 
 @bp.route("/consultation/devices/manual", methods=["GET", "POST"])
@@ -417,3 +435,80 @@ def consultation_device_delete(key):
     _save_devices(devices, key, action="deleted")
     flash("Device removed from the consultation record.", "success")
     return redirect(url_for("main.consultation"))
+
+
+# --- screenshots ------------------------------------------------------------------
+
+
+def _back(default="main.consultation"):
+    """Where to go after a screenshot form: a consultation page, never
+    another site."""
+    target = request.form.get("next", "")
+    if target.startswith("/consultation") and "//" not in target and "\\" not in target:
+        return redirect(target)
+    return redirect(url_for(default))
+
+
+def _android_serials():
+    from isdi.web.view.index import android
+
+    return [s for s in android.devices() if is_valid_serial(s)]
+
+
+def _shot_context():
+    """What the screenshot controls on a page need."""
+    return {
+        "shots": screenshots.by_target(_clientid()),
+        "android_serials": _android_serials(),
+    }
+
+
+@bp.route("/consultation/screenshots", methods=["GET", "POST"])
+def consultation_screenshots():
+    clientid = _clientid()
+    if request.method == "GET":
+        return _page("consultation-screenshots", rows=screenshots.listing(clientid))
+    target = request.form.get("target", "")
+    if not screenshots.valid_target(target):
+        abort(400)
+    try:
+        if request.form.get("source") == "phone":
+            serial = request.form.get("serial", "")
+            if serial not in _android_serials():
+                raise screenshots.ScreenshotError("That phone is not connected.")
+            data, source = screenshots.capture_android(serial), "phone"
+        else:
+            upload = request.files.get("image")
+            if not upload:
+                raise screenshots.ScreenshotError("Choose an image to upload.")
+            data, source = upload.read(screenshots.MAX_BYTES + 1), "upload"
+        shot_id = screenshots.save(clientid, target, data, source)
+    except screenshots.ScreenshotError as e:
+        flash(str(e))
+        return _back()
+    audit.record(
+        "screenshot_saved",
+        clientid=clientid,
+        details={"id": shot_id, "source": source},
+    )
+    flash("Screenshot saved.", "success")
+    return _back()
+
+
+@bp.route("/consultation/screenshots/<int:shot_id>", methods=["GET"])
+def consultation_screenshot(shot_id):
+    shot = screenshots.image(_clientid(), shot_id)
+    if not shot:
+        abort(404)
+    resp = make_response(shot["bytes"])
+    resp.headers["Content-Type"] = shot["mime"]
+    return resp
+
+
+@bp.route("/consultation/screenshots/<int:shot_id>/delete", methods=["POST"])
+def consultation_screenshot_delete(shot_id):
+    if not screenshots.delete(_clientid(), shot_id):
+        abort(404)
+    audit.record("screenshot_deleted", clientid=_clientid(), details={"id": shot_id})
+    flash("Screenshot deleted.", "success")
+    return _back()
