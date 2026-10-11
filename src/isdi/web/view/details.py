@@ -3,7 +3,7 @@ from isdi.web import bp
 from isdi.web.access import session_scan
 from isdi.web.view.index import get_device
 from isdi.config import get_config
-from isdi.scanner import db
+from isdi.scanner import app_permissions, db
 import os
 
 config = get_config()
@@ -27,14 +27,16 @@ def app_details(scanid, row):
     # this client or another one.
     d, info = sc.app_details(scan_res["serial"], appid, stored=True, scanid=scanid)
     d["appId"] = appid
+    device = scan_res.get("device")
 
     return render_template(
         "main.html",
         task="app",
         title=config.TITLE,
         app=d,
-        info=info,
-        device=scan_res.get("device"),
+        info_rows=app_permissions.info_rows(info),
+        phone_permissions=app_permissions.from_phone(device, info),
+        device=device,
         is_termux=bool(os.environ.get("PREFIX")),
         is_debug=config.DEBUG,
     )

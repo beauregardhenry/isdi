@@ -30,3 +30,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.```
+
+## android_permissions.json
+
+Labels, groups and protection levels of Android permissions, as an Android
+phone (a Pixel 2) reports them with `adb shell pm list permissions -g -f`.
+The text is Android's own (the Android Open Source Project, Apache License
+2.0, https://source.android.com/docs/setup/about/licenses). Converted from
+`static_data/android_permissions.csv` in
+https://github.com/beauregardhenry/sherloc; only permissions with a label are
+kept.

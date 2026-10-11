@@ -1,6 +1,6 @@
 <div class="container isdi-page">
     <br/>
-    <h1 class="h2">Information about "{{ app.title }}"</h1>
+    <h1 class="h2">Information about {{ app.title or app.appId }}</h1>
     <div class="container form-group">
         <div class="table-wrap">
         <table class="table table-bordered">
@@ -13,36 +13,55 @@
 		{% if app.website %}
 		<tr><td>Website</td> <td>{{ app.website }} </td></tr>
 		{% endif %}
-                {% for k, v in info.items() %}
-		<tr><td>{{ k }}</td> <td>{{ v }} </td></tr>
+                {% for label, value in info_rows %}
+		<tr><td>{{ label }}</td> <td>{{ value }}</td></tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
-	    <div class="text-sm-left">
-		<h2 class="h4"> The app used {{ app.permissions| length }} app permissions recently:</h2>
-		<br>
-	    </div>
-        <ul class="list-group">
+
+        <h2 class="h4">Permissions the phone reports</h2>
+        {% if phone_permissions %}
+        <div class="table-wrap">
+        <table class="table table-sm">
+          <thead><tr><th scope="col">Permission</th>{% if device == "ios" %}<th scope="col">The app's reason</th>{% else %}<th scope="col">Granted</th><th scope="col">Kind</th>{% endif %}</tr></thead>
+          <tbody>
+          {% for p in phone_permissions %}
+            <tr{% if p.sensitive and p.granted %} class="table-warning"{% endif %}>
+              <td>{{ p.label }}{% if p.sensitive %} <span class="badge badge-warning">sensitive</span>{% endif %}<br><small class="text-muted">{{ p.name }}</small></td>
+              {% if device == "ios" %}
+              <td>{{ p.reason }}</td>
+              {% else %}
+              <td>{{ {True: "Yes", False: "No"}.get(p.granted, "Unknown") }}</td>
+              <td>{{ p.kind }}</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-muted">The scan did not record this app's permissions.</p>
+        {% endif %}
+
+        {% if app.permissions %}
+        <h2 class="h5">Permissions the {{ "App Store" if device == "ios" else "Play Store" }} lists for this app</h2>
+        <p class="small text-muted">What the app may ask for, from the store; not what this phone gave it.</p>
+        <ul class="list-group mb-3">
             {% for perm in app.permissions %}
-            <li class="code">{{ perm | capitalize | replace('_', ' ') }}</li>
+            <li class="list-group-item py-1">{{ perm }}</li>
             {% endfor %}
         </ul>
+        {% endif %}
     </div>
 
+    {% if app.summary or app.descriptionHTML %}
     <div class="jumbotron" style="padding: 1em">
         <h2 class="h3">{% if device=="android" %} Google Play Store {% endif %} {% if device=="ios" %} Apple App Store {% endif %} Description of the app</h2>
-        <span style="margin-bottom: 2em; display:block"><mark><b>{{ app.summary|safe }}</b></mark></span>
+        {% if app.summary %}<span style="margin-bottom: 2em; display:block"><mark><b>{{ app.summary|safe }}</b></mark></span>{% endif %}
         {{ app.descriptionHTML|safe }}
     </div>
-    
-    {% if device=="android" %} 
-    <div class="jumbotron" style="padding: 1em">
-        <h2 class="h3">Recently used permissions</h2>
-        <p>(Here, <code>mode=allow</code> only means the permission is requested, not necessarily granted.)</p>
-        {{ app.non_hf_permissions_html | safe }}
-    </div>
+    {% else %}
+    <p class="text-muted">This app is not in the app information database, so there is no store description.</p>
     {% endif %}
-
-
 </div>
