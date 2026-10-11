@@ -81,17 +81,17 @@ See [TERMUX_INSTALL.md](TERMUX_INSTALL.md) for Android device setup.
 ### Option 1: Install a release (Recommended)
 
 Install the latest release of this fork straight from GitHub (replace
-`v1.9.0` with the newest tag on the
+`v1.9.1` with the newest tag on the
 [releases page](https://github.com/beauregardhenry/isdi/releases)):
 
 ```bash
-pip install "git+https://github.com/beauregardhenry/isdi@v1.9.0"
+pip install "git+https://github.com/beauregardhenry/isdi@v1.9.1"
 ```
 
 Or, without git, install the wheel attached to the release:
 
 ```bash
-pip install https://github.com/beauregardhenry/isdi/releases/download/v1.9.0/isdi_scanner-1.9.0-py3-none-any.whl
+pip install https://github.com/beauregardhenry/isdi/releases/download/v1.9.1/isdi_scanner-1.9.1-py3-none-any.whl
 ```
 
 To install exactly the dependency versions the release was tested with
@@ -99,16 +99,16 @@ To install exactly the dependency versions the release was tested with
 `constraints.txt`:
 
 ```bash
-pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.9.0/constraints.txt \
-  https://github.com/beauregardhenry/isdi/releases/download/v1.9.0/isdi_scanner-1.9.0-py3-none-any.whl
+pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.9.1/constraints.txt \
+  https://github.com/beauregardhenry/isdi/releases/download/v1.9.1/isdi_scanner-1.9.1-py3-none-any.whl
 ```
 
 To make PDFs of the consultation report, install the `report` extra
 (WeasyPrint and pypdf; WeasyPrint needs Pango, above):
 
 ```bash
-pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.9.0/constraints.txt \
-  "isdi-scanner[report] @ https://github.com/beauregardhenry/isdi/releases/download/v1.9.0/isdi_scanner-1.9.0-py3-none-any.whl"
+pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.9.1/constraints.txt \
+  "isdi-scanner[report] @ https://github.com/beauregardhenry/isdi/releases/download/v1.9.1/isdi_scanner-1.9.1-py3-none-any.whl"
 ```
 
 Without it, everything else works, and the report can be printed or
