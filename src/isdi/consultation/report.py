@@ -32,7 +32,18 @@ class PdfUnavailable(RuntimeError):
     """WeasyPrint (or the libraries it needs) is not installed."""
 
 
-def context(clientid: str, takehome: bool) -> dict:
+def context(
+    clientid: str, takehome: bool, lang: str = "en", strict: bool = False
+) -> dict:
+    """What the report template needs. The take-home copy can be in Spanish
+    (lang="es"; consultation/i18n.py) and carries the safety guidance shown
+    on the client summary (client_summary.TEXT). strict=True makes any
+    untranslated text an error (tests)."""
+    from isdi import client_summary
+
+    from .i18n import translator
+
+    lang = client_summary.language(lang) if takehome else "en"
     docs = store.load_all(clientid)
     record = model.Consultation(
         taq=docs["taq"],
@@ -61,11 +72,17 @@ def context(clientid: str, takehome: bool) -> dict:
         "questions": model.Consultation.questions(),
         "answer": answer_text(),
         "shots": shots,
+        "lang": lang,
+        "t": translator(lang, strict=strict),
+        # The same words as the client summary, so the two cannot drift.
+        "guidance": client_summary.TEXT[lang] if takehome else None,
     }
 
 
-def html(clientid: str, takehome: bool) -> str:
-    return render_template("consultation/report.html", **context(clientid, takehome))
+def html(clientid: str, takehome: bool, lang: str = "en") -> str:
+    return render_template(
+        "consultation/report.html", **context(clientid, takehome, lang)
+    )
 
 
 def can_make_pdf() -> bool:

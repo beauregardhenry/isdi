@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
-<title>{{ "Notes" if takehome else "Consultation report" }}</title>
+<title>{{ t("Notes") if takehome else "Consultation report" }}</title>
 <style>
   @page { size: A4; margin: 18mm 15mm 20mm; @bottom-center { content: "Page " counter(page) " of " counter(pages); font: 9pt Georgia, serif; color: #555; } }
   body { font: 11pt/1.45 Georgia, "Times New Roman", serif; color: #111; max-width: 50em; margin: 1.5em auto; padding: 0 1em; }
@@ -28,9 +28,9 @@
 <body>
 
 {% macro fmt(v) -%}
-  {%- if v is none or v == "" or v == [] -%}Not answered
-  {%- elif v is string -%}{{ answer.get(v, v) }}
-  {%- elif v is sequence -%}{% for x in v %}{{ answer.get(x, x) }}{{ ", " if not loop.last }}{% endfor %}
+  {%- if v is none or v == "" or v == [] -%}{{ t("Not answered") }}
+  {%- elif v is string -%}{{ t(answer[v]) if v in answer else v }}
+  {%- elif v is sequence -%}{% for x in v %}{{ t(answer[x]) if x in answer else x }}{{ ", " if not loop.last }}{% endfor %}
   {%- else -%}{{ v }}
   {%- endif -%}
 {%- endmacro %}
@@ -39,7 +39,7 @@
   <table>
     <tbody>
     {% for name, q in qs.items() %}
-      <tr><th scope="row">{{ q }}</th><td>{{ fmt(section.get(name, "")) }}</td></tr>
+      <tr><th scope="row">{{ t(q) }}</th><td>{{ fmt(section.get(name, "")) }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -47,29 +47,29 @@
 
 {% macro risk_list(list) %}
   {% if list %}
-    <ul>{% for r in list %}<li class="risk"><b>{{ r.risk }}</b>: {{ r.description }}</li>{% endfor %}</ul>
+    <ul>{% for r in list %}<li class="risk"><b>{{ t(r.risk) }}</b>: {{ t(r.description) }}</li>{% endfor %}</ul>
   {% else %}
-    <p class="muted">None found.</p>
+    <p class="muted">{{ t("None found.") }}</p>
   {% endif %}
 {% endmacro %}
 
 {% macro screenshots(target) %}
   {% for s in shots.get(target, []) %}
     <figure class="shot">
-      <img src="{{ s.uri }}" alt="Screenshot {{ loop.index }}">
-      <figcaption>Screenshot {{ loop.index }}, taken {{ s.created[:16]|replace("T", " ") }} UTC{% if not takehome %}. SHA-256 {{ s.sha256 }}{% endif %}</figcaption>
+      <img src="{{ s.uri }}" alt="{{ t("Screenshot") }} {{ loop.index }}">
+      <figcaption>{{ t("Screenshot") }} {{ loop.index }}, {{ t("taken") }} {{ s.created[:16]|replace("T", " ") }} UTC{% if not takehome %}. SHA-256 {{ s.sha256 }}{% endif %}</figcaption>
     </figure>
   {% endfor %}
 {% endmacro %}
 
 <div class="noprint">
-  Print this page, or save it as PDF from the browser's print dialog.
-  {% if takehome %}This copy leaves out the client's name, the consultant's notes and the names of the clinic and of the tool.{% endif %}
+  {{ t("Print this page, or save it as PDF from the browser's print dialog.") }}
+  {% if takehome %}{{ t("This copy leaves out the client's name, the consultant's notes and the names of the clinic and of the tool.") }}{% endif %}
 </div>
 
 <section class="cover">
 {% if takehome %}
-  <h1>Notes</h1>
+  <h1>{{ t("Notes") }}</h1>
   <p>{{ made[:10] }}</p>
 {% else %}
   <h1>Consultation report</h1>
@@ -81,58 +81,65 @@
 {% endif %}
 </section>
 
-<h2 class="page-break">Summary</h2>
-<h3>Questionnaire</h3>
+<h2 class="page-break">{{ t("Summary") }}</h2>
+<h3>{{ t("Questionnaire") }}</h3>
 {{ risk_list(risks.taq) }}
-<h3>Devices ({{ consultation.devices|length }})</h3>
+<h3>{{ t("Devices") }} ({{ consultation.devices|length }})</h3>
 {% if consultation.devices %}
   {% for d in consultation.devices %}
-    <h4>{{ d.device_nickname or "Unnamed device" }}{% if d.device_model %} ({{ d.device_manufacturer }} {{ d.device_model }}){% endif %}</h4>
+    <h4>{{ d.device_nickname or t("Unnamed device") }}{% if d.device_model %} ({{ d.device_manufacturer }} {{ d.device_model }}){% endif %}</h4>
     {{ risk_list(d.risk_report.risk_details) }}
   {% endfor %}
-{% else %}<p class="muted">No devices recorded.</p>{% endif %}
-<h3>Accounts ({{ consultation.accounts|length }})</h3>
+{% else %}<p class="muted">{{ t("No devices recorded.") }}</p>{% endif %}
+<h3>{{ t("Accounts") }} ({{ consultation.accounts|length }})</h3>
 {% if consultation.accounts %}
   {% for a in consultation.accounts %}
     <h4>{{ a.platform }}: {{ a.username }}</h4>
     {{ risk_list(a.risk_report.risk_details) }}
   {% endfor %}
-{% else %}<p class="muted">No accounts checked.</p>{% endif %}
+{% else %}<p class="muted">{{ t("No accounts checked.") }}</p>{% endif %}
 
-<h3>Notes</h3>
+<h3>{{ t("Notes") }}</h3>
 <table><tbody>
-  <tr><th scope="row">What the client said</th><td>{{ consultation.notes.client_notes or "None" }}</td></tr>
+  <tr><th scope="row">{{ t("What the client said") }}</th><td>{{ consultation.notes.client_notes or t("None") }}</td></tr>
   {% if not takehome %}<tr><th scope="row">Consultant notes</th><td>{{ consultation.notes.consultant_notes or "None" }}</td></tr>{% endif %}
 </tbody></table>
 
-<h2 class="page-break">Questionnaire</h2>
-{% if consultation.taq.marked_done %}<p class="muted">Marked complete.</p>{% endif %}
+{% if guidance %}
+<h2>{{ guidance.h_limits }}</h2>
+<ul>{% for item in guidance.limits %}<li>{{ item }}</li>{% endfor %}</ul>
+<h2>{{ guidance.h_next }}</h2>
+<ul>{% for item in guidance.next %}<li>{{ item }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h2 class="page-break">{{ t("Questionnaire") }}</h2>
+{% if consultation.taq.marked_done %}<p class="muted">{{ t("Marked complete.") }}</p>{% endif %}
 {% set section_titles = {"devices": "Devices", "accounts": "Accounts and passwords", "sharing": "Sharing", "smarthome": "Smart home devices", "kids": "Children's devices", "legal": "Legal proceedings"} %}
 {% for name, qs in questions.taq.items() %}
-  <h3>{{ section_titles[name] }}</h3>
+  <h3>{{ t(section_titles[name]) }}</h3>
   {{ answers(consultation.taq[name], qs) }}
 {% endfor %}
 
 {% for d in consultation.devices %}
-  <h2 class="page-break">Device: {{ d.device_nickname or "Unnamed device" }}</h2>
+  <h2 class="page-break">{{ t("Device") }}: {{ d.device_nickname or t("Unnamed device") }}</h2>
   <table><tbody>
-    <tr><th scope="row">Type</th><td>{{ d.device_type or "Not recorded" }}{% if d.manual %} (added by hand, not scanned){% endif %}</td></tr>
-    <tr><th scope="row">Manufacturer and model</th><td>{{ (d.device_manufacturer ~ " " ~ d.device_model)|trim or "Not recorded" }}</td></tr>
-    <tr><th scope="row">Operating system version</th><td>{{ d.device_version or "Not recorded" }}</td></tr>
-    <tr><th scope="row">Rooted or jailbroken</th><td>{{ fmt(d.is_rooted) if d.is_rooted is string else ("Signs found" if d.is_rooted else "No signs found") }}</td></tr>
+    <tr><th scope="row">{{ t("Type") }}</th><td>{{ d.device_type or t("Not recorded") }}{% if d.manual %} ({{ t("added by hand, not scanned") }}){% endif %}</td></tr>
+    <tr><th scope="row">{{ t("Manufacturer and model") }}</th><td>{{ (d.device_manufacturer ~ " " ~ d.device_model)|trim or t("Not recorded") }}</td></tr>
+    <tr><th scope="row">{{ t("Operating system version") }}</th><td>{{ d.device_version or t("Not recorded") }}</td></tr>
+    <tr><th scope="row">{{ t("Rooted or jailbroken") }}</th><td>{{ fmt(d.is_rooted) if d.is_rooted is string else (t("Signs found") if d.is_rooted else t("No signs found")) }}</td></tr>
   </tbody></table>
   {{ screenshots("device:" ~ d.key) }}
   {% for app in d.selected_apps %}
     <h3>{{ app.title }}</h3>
     <table><tbody>
-      {% if app.appId and app.appId != app.title %}<tr><th scope="row">App id</th><td>{{ app.appId }}</td></tr>{% endif %}
-      <tr><th scope="row">Flags</th><td>{{ app.flags|join(", ") or "None" }}</td></tr>
-      {% if app.install_time %}<tr><th scope="row">Installed</th><td>{{ app.install_time }}</td></tr>{% endif %}
-      {% if app.app_version %}<tr><th scope="row">Version</th><td>{{ app.app_version }}</td></tr>{% endif %}
+      {% if app.appId and app.appId != app.title %}<tr><th scope="row">{{ t("App id") }}</th><td>{{ app.appId }}</td></tr>{% endif %}
+      <tr><th scope="row">{{ t("Flags") }}</th><td>{{ app.flags|join(", ") or t("None") }}</td></tr>
+      {% if app.install_time %}<tr><th scope="row">{{ t("Installed") }}</th><td>{{ app.install_time }}</td></tr>{% endif %}
+      {% if app.app_version %}<tr><th scope="row">{{ t("Version") }}</th><td>{{ app.app_version }}</td></tr>{% endif %}
     </tbody></table>
     {{ answers(app.install_info, questions.apps.install_info) }}
     {{ answers(app.permission_info, questions.apps.permission_info) }}
-    {% if app.notes.client_notes %}<p><b>What the client said:</b> {{ app.notes.client_notes }}</p>{% endif %}
+    {% if app.notes.client_notes %}<p><b>{{ t("What the client said") }}:</b> {{ app.notes.client_notes }}</p>{% endif %}
     {% if not takehome and app.notes.consultant_notes %}<p><b>Consultant notes:</b> {{ app.notes.consultant_notes }}</p>{% endif %}
     {{ screenshots("app:" ~ d.key ~ ":" ~ (app.appId or app.title)) }}
   {% endfor %}
@@ -140,13 +147,13 @@
 
 {% set account_titles = {"suspicious_logins": "Devices and logins", "password_check": "Password", "recovery_settings": "Recovery settings", "two_factor_settings": "Two-factor authentication", "security_questions": "Security questions"} %}
 {% for a in consultation.accounts %}
-  <h2 class="page-break">Account: {{ a.platform }}: {{ a.username }}</h2>
+  <h2 class="page-break">{{ t("Account") }}: {{ a.platform }}: {{ a.username }}</h2>
   {% for name, qs in questions.accounts.items() %}
-    <h3>{{ account_titles[name] }}</h3>
+    <h3>{{ t(account_titles[name]) }}</h3>
     {{ answers(a[name], qs) }}
     {{ screenshots("account:%d:%s"|format(a.account_id, name)) }}
   {% endfor %}
-  {% if a.notes.client_notes %}<p><b>What the client said:</b> {{ a.notes.client_notes }}</p>{% endif %}
+  {% if a.notes.client_notes %}<p><b>{{ t("What the client said") }}:</b> {{ a.notes.client_notes }}</p>{% endif %}
   {% if not takehome and a.notes.consultant_notes %}<p><b>Consultant notes:</b> {{ a.notes.consultant_notes }}</p>{% endif %}
 {% endfor %}
 

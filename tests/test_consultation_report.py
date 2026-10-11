@@ -133,7 +133,7 @@ def test_viewing_is_audited(app, client):
     client.get("/consultation/report?copy=takehome")
     with app.app_context():
         entry = [e for e in audit.entries(CLIENT) if e["action"] == "report_viewed"][-1]
-    assert entry["details"] == {"copy": "takehome"}
+    assert entry["details"] == {"copy": "takehome", "lang": "en"}
 
 
 def test_the_name_is_saved(app, client, no_csrf):
