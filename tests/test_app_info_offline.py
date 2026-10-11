@@ -21,7 +21,9 @@ import isdi.scanner as scanner
 def test_creating_the_config_downloads_nothing(monkeypatch, tmp_path):
     # Recorded, not raised: the download swallows errors.
     calls = []
-    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: calls.append(a) or 1 / 0)
+    monkeypatch.setattr(
+        urllib.request, "urlopen", lambda *a, **k: calls.append(a) or 1 / 0
+    )
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
@@ -77,7 +79,9 @@ def run(app, monkeypatch, passphrase):
 
     calls = []
     monkeypatch.setattr(Flask, "run", lambda self, **kw: None)
-    monkeypatch.setattr(config_mod.Config, "ensure_app_info_db", lambda self: calls.append(1))
+    monkeypatch.setattr(
+        config_mod.Config, "ensure_app_info_db", lambda self: calls.append(1)
+    )
     monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
 
     def invoke(*args):
@@ -100,7 +104,9 @@ def test_fetch_command(monkeypatch):
     from isdi import cli
 
     calls = []
-    monkeypatch.setattr(config_mod.Config, "ensure_app_info_db", lambda self: calls.append(1))
+    monkeypatch.setattr(
+        config_mod.Config, "ensure_app_info_db", lambda self: calls.append(1)
+    )
     res = CliRunner().invoke(cli.cli, ["fetch-app-info"])
     assert res.exit_code == 0, res.output
     assert calls == [1]

@@ -138,7 +138,9 @@ def test_cli_refuses_to_listen_on_the_network(monkeypatch, passphrase, host):
     from isdi import cli
 
     monkeypatch.setenv("ISDI_PASSPHRASE", passphrase)
-    res = CliRunner().invoke(cli.cli, ["run", "--test", "--no-browser", "--offline", "--host", host])
+    res = CliRunner().invoke(
+        cli.cli, ["run", "--test", "--no-browser", "--offline", "--host", host]
+    )
     assert res.exit_code == 1
     assert f"Refusing to listen on {host}" in res.output
 

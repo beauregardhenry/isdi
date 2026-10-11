@@ -97,7 +97,9 @@ class AppScanner:
         and every lookup would then fail on "no such table")."""
         path = Path(cfg.APP_INFO_SQLITE_FILE.replace("sqlite:///", "", 1)).absolute()
         if not path.is_file() or path.stat().st_size == 0:
-            logging.info("No app-info.db: app details will show what the phone reports.")
+            logging.info(
+                "No app-info.db: app details will show what the phone reports."
+            )
             AppScanner.app_info_conn = None
             return
         try:
