@@ -7,6 +7,12 @@ have no section here.
 
 ## Unreleased
 
+- **The consultation record from Sherloc, part 1: where it is kept.**
+  The technology assessment questionnaire, the accounts and devices
+  checked with the client, the questions asked about each app, and the
+  consultation notes are now stored per client, encrypted like the rest
+  of the client's records, and included when a client is exported or
+  erased. The pages that use them follow in the next changes.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
