@@ -1,0 +1,1012 @@
+{
+"android.permission.ACCESS_ALL_DOWNLOADS": {
+"label": "Access all system downloads",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_BLUETOOTH_SHARE": {
+"label": "Access download manager.",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_COARSE_LOCATION": {
+"label": "Access approximate location (network-based)",
+"group": "Location",
+"dangerous": true
+},
+"android.permission.ACCESS_DOWNLOAD_MANAGER": {
+"label": "Access download manager.",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_DOWNLOAD_MANAGER_ADVANCED": {
+"label": "Advanced download manager functions.",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_FINE_LOCATION": {
+"label": "Access precise location (GPS and network-based)",
+"group": "Location",
+"dangerous": true
+},
+"android.permission.ACCESS_IMS_CALL_SERVICE": {
+"label": "Access IMS call service",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_LOCATION_EXTRA_COMMANDS": {
+"label": "Access extra location provider commands",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_NETWORK_STATE": {
+"label": "View network connections",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_NOTIFICATION_POLICY": {
+"label": "Access Do Not Disturb",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_WIFI_STATE": {
+"label": "View Wi-Fi connections",
+"group": "",
+"dangerous": false
+},
+"android.permission.ACCESS_WIMAX_STATE": {
+"label": "Connect and disconnect from WiMAX",
+"group": "",
+"dangerous": false
+},
+"android.permission.ANSWER_PHONE_CALLS": {
+"label": "Answer phone calls",
+"group": "Phone",
+"dangerous": true
+},
+"android.permission.BIND_CARRIER_SERVICES": {
+"label": "Bind to carrier services",
+"group": "",
+"dangerous": false
+},
+"android.permission.BLUETOOTH": {
+"label": "Pair with Bluetooth devices",
+"group": "",
+"dangerous": false
+},
+"android.permission.BLUETOOTH_ADMIN": {
+"label": "Access Bluetooth settings",
+"group": "",
+"dangerous": false
+},
+"android.permission.BODY_SENSORS": {
+"label": "Access body sensors (like heart rate monitors)",
+"group": "Body Sensors",
+"dangerous": true
+},
+"android.permission.BROADCAST_CALLLOG_INFO": {
+"label": "Broadcast the call type/duration information",
+"group": "",
+"dangerous": false
+},
+"android.permission.BROADCAST_PHONE_ACCOUNT_REGISTRATION": {
+"label": "Broadcast phone account registration",
+"group": "",
+"dangerous": false
+},
+"android.permission.BROADCAST_STICKY": {
+"label": "Send sticky broadcast",
+"group": "",
+"dangerous": false
+},
+"android.permission.CALL_PHONE": {
+"label": "Directly call phone numbers",
+"group": "Phone",
+"dangerous": true
+},
+"android.permission.CAMERA": {
+"label": "Take pictures and videos",
+"group": "Camera",
+"dangerous": true
+},
+"android.permission.CHANGE_NETWORK_STATE": {
+"label": "Change network connectivity",
+"group": "",
+"dangerous": false
+},
+"android.permission.CHANGE_WIFI_MULTICAST_STATE": {
+"label": "Allow Wi-Fi Multicast reception",
+"group": "",
+"dangerous": false
+},
+"android.permission.CHANGE_WIFI_STATE": {
+"label": "Connect and disconnect from Wi-Fi",
+"group": "",
+"dangerous": false
+},
+"android.permission.CHANGE_WIMAX_STATE": {
+"label": "Change WiMAX state",
+"group": "",
+"dangerous": false
+},
+"android.permission.DISABLE_KEYGUARD": {
+"label": "Disable your screen lock",
+"group": "",
+"dangerous": false
+},
+"android.permission.DOWNLOAD_CACHE_NON_PURGEABLE": {
+"label": "Reserve space in the download cache",
+"group": "",
+"dangerous": false
+},
+"android.permission.EXPAND_STATUS_BAR": {
+"label": "Expand/collapse status bar",
+"group": "",
+"dangerous": false
+},
+"android.permission.FOREGROUND_SERVICE": {
+"label": "Run foreground service",
+"group": "",
+"dangerous": false
+},
+"android.permission.GET_ACCOUNTS": {
+"label": "Find accounts on the device",
+"group": "Contacts",
+"dangerous": true
+},
+"android.permission.GET_PACKAGE_SIZE": {
+"label": "Measure app storage space",
+"group": "",
+"dangerous": false
+},
+"android.permission.GET_TASKS": {
+"label": "Retrieve running apps",
+"group": "",
+"dangerous": false
+},
+"android.permission.INTERNET": {
+"label": "Have full network access",
+"group": "",
+"dangerous": false
+},
+"android.permission.KILL_BACKGROUND_PROCESSES": {
+"label": "Close other apps",
+"group": "",
+"dangerous": false
+},
+"android.permission.MANAGE_OWN_CALLS": {
+"label": "Route calls through the system",
+"group": "",
+"dangerous": false
+},
+"android.permission.MANAGE_PROFILE_AND_DEVICE_OWNERS": {
+"label": "Manage profile and device owners",
+"group": "",
+"dangerous": false
+},
+"android.permission.MODIFY_AUDIO_SETTINGS": {
+"label": "Change your audio settings",
+"group": "",
+"dangerous": false
+},
+"android.permission.NFC": {
+"label": "Control Near Field Communication",
+"group": "",
+"dangerous": false
+},
+"android.permission.PERSISTENT_ACTIVITY": {
+"label": "Make app always run",
+"group": "",
+"dangerous": false
+},
+"android.permission.PROCESS_CALLLOG_INFO": {
+"label": "Register to handle the broadcasted call type/duration information",
+"group": "",
+"dangerous": false
+},
+"android.permission.PROCESS_OUTGOING_CALLS": {
+"label": "Reroute outgoing calls",
+"group": "Call logs",
+"dangerous": true
+},
+"android.permission.PROCESS_PHONE_ACCOUNT_REGISTRATION": {
+"label": "Process phone account registration",
+"group": "",
+"dangerous": false
+},
+"android.permission.READ_CALENDAR": {
+"label": "Read calendar events and details",
+"group": "Calendar",
+"dangerous": true
+},
+"android.permission.READ_CALL_LOG": {
+"label": "Read call log",
+"group": "Call logs",
+"dangerous": true
+},
+"android.permission.READ_CELL_BROADCASTS": {
+"label": "Read cell broadcast messages",
+"group": "SMS",
+"dangerous": true
+},
+"android.permission.READ_CONTACTS": {
+"label": "Read your contacts",
+"group": "Contacts",
+"dangerous": true
+},
+"android.permission.READ_EXTERNAL_STORAGE": {
+"label": "Read the contents of your USB storage",
+"group": "Storage",
+"dangerous": true
+},
+"android.permission.READ_INSTALL_SESSIONS": {
+"label": "Read install sessions",
+"group": "",
+"dangerous": false
+},
+"android.permission.READ_PHONE_NUMBERS": {
+"label": "Read phone numbers",
+"group": "Phone",
+"dangerous": true
+},
+"android.permission.READ_PHONE_STATE": {
+"label": "Read phone status and identity",
+"group": "Phone",
+"dangerous": true
+},
+"android.permission.READ_SMS": {
+"label": "Read your text messages (SMS or MMS)",
+"group": "SMS",
+"dangerous": true
+},
+"android.permission.READ_SYNC_SETTINGS": {
+"label": "Read sync settings",
+"group": "",
+"dangerous": false
+},
+"android.permission.READ_SYNC_STATS": {
+"label": "Read sync statistics",
+"group": "",
+"dangerous": false
+},
+"android.permission.RECEIVE_BOOT_COMPLETED": {
+"label": "Run at startup",
+"group": "",
+"dangerous": false
+},
+"android.permission.RECEIVE_MMS": {
+"label": "Receive text messages (MMS)",
+"group": "SMS",
+"dangerous": true
+},
+"android.permission.RECEIVE_SMS": {
+"label": "Receive text messages (SMS)",
+"group": "SMS",
+"dangerous": true
+},
+"android.permission.RECEIVE_WAP_PUSH": {
+"label": "Receive text messages (WAP)",
+"group": "SMS",
+"dangerous": true
+},
+"android.permission.RECORD_AUDIO": {
+"label": "Record audio",
+"group": "Microphone",
+"dangerous": true
+},
+"android.permission.REORDER_TASKS": {
+"label": "Reorder running apps",
+"group": "",
+"dangerous": false
+},
+"android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND": {
+"label": "Run in the background",
+"group": "",
+"dangerous": false
+},
+"android.permission.REQUEST_COMPANION_USE_DATA_IN_BACKGROUND": {
+"label": "Use data in the background",
+"group": "",
+"dangerous": false
+},
+"android.permission.REQUEST_DELETE_PACKAGES": {
+"label": "Request delete packages",
+"group": "",
+"dangerous": false
+},
+"android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS": {
+"label": "Ask to ignore battery optimizations",
+"group": "",
+"dangerous": false
+},
+"android.permission.REQUEST_INSTALL_PACKAGES": {
+"label": "Request install packages",
+"group": "",
+"dangerous": false
+},
+"android.permission.RESTART_PACKAGES": {
+"label": "Close other apps",
+"group": "",
+"dangerous": false
+},
+"android.permission.RUN_IN_BACKGROUND": {
+"label": "Run in the background",
+"group": "",
+"dangerous": false
+},
+"android.permission.SEND_CALL_LOG_CHANGE": {
+"label": "Broadcast that a change happened to the call log.",
+"group": "",
+"dangerous": false
+},
+"android.permission.SEND_DOWNLOAD_COMPLETED_INTENTS": {
+"label": "Send download notifications.",
+"group": "",
+"dangerous": false
+},
+"android.permission.SEND_SMS": {
+"label": "Send and view SMS messages",
+"group": "SMS",
+"dangerous": true
+},
+"android.permission.SET_TIME_ZONE": {
+"label": "Set time zone",
+"group": "",
+"dangerous": false
+},
+"android.permission.SET_WALLPAPER": {
+"label": "Set wallpaper",
+"group": "",
+"dangerous": false
+},
+"android.permission.SET_WALLPAPER_HINTS": {
+"label": "Adjust your wallpaper size",
+"group": "",
+"dangerous": false
+},
+"android.permission.SYSTEM_ALERT_WINDOW": {
+"label": "This app can appear on top of other apps",
+"group": "",
+"dangerous": false
+},
+"android.permission.TRANSMIT_IR": {
+"label": "Transmit infrared",
+"group": "",
+"dangerous": false
+},
+"android.permission.USE_BIOMETRIC": {
+"label": "Use biometric hardware",
+"group": "Body Sensors",
+"dangerous": false
+},
+"android.permission.USE_DATA_IN_BACKGROUND": {
+"label": "Use data in the background",
+"group": "",
+"dangerous": false
+},
+"android.permission.USE_FINGERPRINT": {
+"label": "Use fingerprint hardware",
+"group": "Body Sensors",
+"dangerous": false
+},
+"android.permission.USE_SIP": {
+"label": "Make/receive SIP calls",
+"group": "Phone",
+"dangerous": true
+},
+"android.permission.VIBRATE": {
+"label": "Control vibration",
+"group": "",
+"dangerous": false
+},
+"android.permission.WAKE_LOCK": {
+"label": "Prevent phone from sleeping",
+"group": "",
+"dangerous": false
+},
+"android.permission.WRITE_CALENDAR": {
+"label": "Add or modify calendar events and send email to guests without owners' knowledge",
+"group": "Calendar",
+"dangerous": true
+},
+"android.permission.WRITE_CALL_LOG": {
+"label": "Write call log",
+"group": "Call logs",
+"dangerous": true
+},
+"android.permission.WRITE_CONTACTS": {
+"label": "Modify your contacts",
+"group": "Contacts",
+"dangerous": true
+},
+"android.permission.WRITE_EXTERNAL_STORAGE": {
+"label": "Modify or delete the contents of your USB storage",
+"group": "Storage",
+"dangerous": true
+},
+"android.permission.WRITE_SETTINGS": {
+"label": "Modify system settings",
+"group": "",
+"dangerous": false
+},
+"android.permission.WRITE_SYNC_SETTINGS": {
+"label": "Toggle sync on and off",
+"group": "",
+"dangerous": false
+},
+"com.amazon.comms.calling.readAccess": {
+"label": "CallDataReadAccess",
+"group": "",
+"dangerous": false
+},
+"com.amazon.deecomms.permission": {
+"label": "CommsPermission",
+"group": "",
+"dangerous": false
+},
+"com.amazon.whisperjoin.deviceprovisioningservice.WhiteListPolicyUpdate.Permission": {
+"label": "WhiteListPolicyUpdate",
+"group": "",
+"dangerous": false
+},
+"com.android.alarm.permission.SET_ALARM": {
+"label": "Set an alarm",
+"group": "",
+"dangerous": false
+},
+"com.android.euicc.permission.SIDECAR_BROADCAST": {
+"label": "Com.android.euicc.permission.SIDECAR_BROADCAST",
+"group": "",
+"dangerous": false
+},
+"com.android.ims.permission.PRESENCE_ACCESS": {
+"label": "Presence",
+"group": "",
+"dangerous": false
+},
+"com.android.launcher.permission.INSTALL_SHORTCUT": {
+"label": "Install shortcuts",
+"group": "",
+"dangerous": false
+},
+"com.android.launcher.permission.UNINSTALL_SHORTCUT": {
+"label": "Uninstall shortcuts",
+"group": "",
+"dangerous": false
+},
+"com.android.permission.BIND_EUICC_SERVICE": {
+"label": "Com.android.permission.BIND_EUICC_SERVICE",
+"group": "",
+"dangerous": false
+},
+"com.android.permission.DISABLE_INPUT_DEVICE": {
+"label": "Com.android.permission.DISABLE_INPUT_DEVICE",
+"group": "",
+"dangerous": false
+},
+"com.android.permission.USE_COLORIZED_NOTIFICATIONS": {
+"label": "Com.android.permission.USE_COLORIZED_NOTIFICATIONS",
+"group": "",
+"dangerous": false
+},
+"com.android.permission.WHITELIST_BLUETOOTH_DEVICE": {
+"label": "Whitelist bluetooth device access.",
+"group": "",
+"dangerous": false
+},
+"com.android.permission.WRITE_EMBEDDED_SUBSCRIPTIONS": {
+"label": "Com.android.permission.WRITE_EMBEDDED_SUBSCRIPTIONS",
+"group": "",
+"dangerous": false
+},
+"com.android.vending.INTENT_VENDING_ONLY": {
+"label": "Send broadcasts to Android Market.",
+"group": "",
+"dangerous": false
+},
+"com.android.voicemail.permission.ADD_VOICEMAIL": {
+"label": "Add voicemail",
+"group": "Phone",
+"dangerous": true
+},
+"com.cisco.android.nchs.networkstateprovider.permission.READ_PROVIDER": {
+"label": "Access AnyConnect network state provider",
+"group": "",
+"dangerous": true
+},
+"com.cisco.anyconnect.vpn.android.permission.INTERNAL_VPN_STATE": {
+"label": "Access internal AnyConnect state",
+"group": "",
+"dangerous": false
+},
+"com.delta.mobile.android.BROADCAST": {
+"label": "Flight Information Broadcasts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.apps.gcs.RECEIVE_GCS_STATE": {
+"label": "Receive GCS state",
+"group": "",
+"dangerous": false
+},
+"com.google.android.apps.gcs.permission.BROADCAST_NETWORK_SCORES": {
+"label": "Broadcast network scores",
+"group": "",
+"dangerous": false
+},
+"com.google.android.apps.gcs.permission.RECEIVE_NETWORK_SCORES": {
+"label": "Receive network scores",
+"group": "",
+"dangerous": false
+},
+"com.google.android.apps.miphone.aiai.matchmaker.BIND_SERVICE": {
+"label": "Bind to AiAi Matchmaker service permission",
+"group": "",
+"dangerous": false
+},
+"com.google.android.as.allapps.SUGGESTION_CONSUMER": {
+"label": "Reading/writing permission of action suggest content providers.",
+"group": "",
+"dangerous": false
+},
+"com.google.android.c2dm.permission.RECEIVE": {
+"label": "Receive data from Internet",
+"group": "",
+"dangerous": false
+},
+"com.google.android.c2dm.permission.SEND": {
+"label": "Broadcast data messages to apps.",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gm.email.permission.ACCESS_PROVIDER": {
+"label": "Access email provider data",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gm.email.permission.GET_WIDGET_UPDATE": {
+"label": "Update widget",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gm.email.permission.UPDATE_AUTH_NOTIFICATION": {
+"label": "Update authentication notification",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gm.permission.BROADCAST_INTERNAL": {
+"label": "Internal broadcast",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gms.permission.AD_ID_NOTIFICATION": {
+"label": "Advertising ID notification",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gms.permission.CAR": {
+"label": "Car Service",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gms.permission.CAR_FUEL": {
+"label": "Car fuel level",
+"group": "Car information",
+"dangerous": true
+},
+"com.google.android.gms.permission.CAR_MILEAGE": {
+"label": "Car mileage",
+"group": "Car information",
+"dangerous": true
+},
+"com.google.android.gms.permission.CAR_SPEED": {
+"label": "Car speed",
+"group": "Location",
+"dangerous": true
+},
+"com.google.android.gms.permission.CAR_VENDOR_EXTENSION": {
+"label": "Car vendor channel",
+"group": "Car information",
+"dangerous": true
+},
+"com.google.android.gms.permission.TRANSFER_WIFI_CREDENTIAL": {
+"label": "Transfer Wi-Fi credential",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH": {
+"label": "View configured accounts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.ALL_SERVICES": {
+"label": "Access all Google services",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.OTHER_SERVICES": {
+"label": "Access other Google services",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.YouTubeUser": {
+"label": "YouTube usernames",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.adsense": {
+"label": "AdSense",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.adwords": {
+"label": "AdWords",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.ah": {
+"label": "Google App Engine",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.android": {
+"label": "Android services",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.androidsecure": {
+"label": "Android services",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.blogger": {
+"label": "Blogger",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.cl": {
+"label": "Google Calendar",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.cp": {
+"label": "Contacts data in Google accounts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.dodgeball": {
+"label": "Dodgeball",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.doraemon": {
+"label": "Google Catalogs",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.finance": {
+"label": "Google Finance",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.gbase": {
+"label": "Google Base",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.geowiki": {
+"label": "Google Map maker",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.goanna_mobile": {
+"label": "Google Tasks",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.grandcentral": {
+"label": "Google Voice",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.groups2": {
+"label": "Google Groups",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.health": {
+"label": "Google Health",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.ig": {
+"label": "IGoogle accounts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.jotspot": {
+"label": "JotSpot",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.knol": {
+"label": "Knol",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.lh2": {
+"label": "Picasa Web Albums",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.local": {
+"label": "Google Maps",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.mail": {
+"label": "Google mail",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.mobile": {
+"label": "Google mobile apps",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.news": {
+"label": "Google News",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.notebook": {
+"label": "Google Notebook",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.orkut": {
+"label": "Orkut",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.panoramio": {
+"label": "Panoramio",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.print": {
+"label": "Google Book Search",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.reader": {
+"label": "Google Reader",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.sierra": {
+"label": "Google Checkout accounts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.sierraqa": {
+"label": "Google Checkout QA accounts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.sierrasandbox": {
+"label": "Google Checkout Sandbox accounts",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.sitemaps": {
+"label": "Google Webmaster Tools",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.speech": {
+"label": "Google Voice Search",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.speechpersonalization": {
+"label": "Personalized Speech Recognition",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.talk": {
+"label": "Google Talk",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.wifi": {
+"label": "Google Wi-Fi",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.wise": {
+"label": "Google Spreadsheets",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.writely": {
+"label": "Google Docs",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googleapps.permission.GOOGLE_AUTH.youtube": {
+"label": "YouTube",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googlequicksearchbox.LAUNCH_FROM_DSP_HOTWORD": {
+"label": "Launch voice search from DSP hotword",
+"group": "",
+"dangerous": false
+},
+"com.google.android.googlequicksearchbox.LAUNCH_WITH_RECORDED_AUDIO": {
+"label": "Launch voice with recorded audio",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gtalkservice.permission.GTALK_SERVICE": {
+"label": "Exchanges messages and receives sync notifications from Google servers.",
+"group": "",
+"dangerous": false
+},
+"com.google.android.gtalkservice.permission.SEND_HEARTBEAT": {
+"label": "Send heartbeat to Google Talk server",
+"group": "",
+"dangerous": false
+},
+"com.google.android.marvin.feedback.permission.TALKBACK": {
+"label": "Control TalkBack",
+"group": "",
+"dangerous": false
+},
+"com.google.android.marvin.talkback.permission.LABELING": {
+"label": "Manage TalkBack custom labels",
+"group": "",
+"dangerous": false
+},
+"com.google.android.permission.BROADCAST_DATA_MESSAGE": {
+"label": "Broadcast data messages to apps.",
+"group": "",
+"dangerous": false
+},
+"com.google.android.providers.gsf.permission.READ_GSERVICES": {
+"label": "Read Google service configuration",
+"group": "",
+"dangerous": false
+},
+"com.google.android.providers.gsf.permission.WRITE_GSERVICES": {
+"label": "Modify Google service configuration",
+"group": "",
+"dangerous": false
+},
+"com.google.android.providers.settings.permission.READ_GSETTINGS": {
+"label": "Read Google settings",
+"group": "",
+"dangerous": false
+},
+"com.google.android.providers.settings.permission.WRITE_GSETTINGS": {
+"label": "Modify Google settings",
+"group": "",
+"dangerous": false
+},
+"com.google.android.providers.talk.permission.READ_ONLY": {
+"label": "Read instant messages",
+"group": "",
+"dangerous": true
+},
+"com.google.android.providers.talk.permission.WRITE_ONLY": {
+"label": "Write instant messages",
+"group": "",
+"dangerous": true
+},
+"com.google.android.voicesearch.AUDIO_FILE_ACCESS": {
+"label": "Recorded audio access",
+"group": "",
+"dangerous": false
+},
+"com.google.android.xmpp.permission.BROADCAST": {
+"label": "Broadcast XMPP messages to apps.",
+"group": "",
+"dangerous": false
+},
+"com.google.android.xmpp.permission.SEND_RECEIVE": {
+"label": "Send and receive XMPP messages to and from Google servers",
+"group": "",
+"dangerous": false
+},
+"com.google.android.xmpp.permission.USE_XMPP_ENDPOINT": {
+"label": "Send and receive XMPP messages to and from Google servers",
+"group": "",
+"dangerous": false
+},
+"com.google.android.xmpp.permission.XMPP_ENDPOINT_BROADCAST": {
+"label": "Broadcast XMPP messages to apps.",
+"group": "",
+"dangerous": false
+},
+"com.google.sensor.elmyra.permission.USE_SENSOR": {
+"label": "Com.google.sensor.elmyra.permission.USE_SENSOR",
+"group": "",
+"dangerous": false
+},
+"com.lyft.android.prod.permission.auth.REQUEST_AUTHORIZATION_CODE": {
+"label": "Log in using the Lyft passenger app",
+"group": "",
+"dangerous": false
+},
+"com.qualcomm.permission.QCOM_AUDIO": {
+"label": "QCOM_AUDIO",
+"group": "",
+"dangerous": false
+},
+"com.qualcomm.permission.QCOM_DIAG": {
+"label": "QCOM_DIAG",
+"group": "",
+"dangerous": false
+},
+"com.qualcomm.permission.QCOM_RADIO": {
+"label": "QCOM_QMI",
+"group": "",
+"dangerous": false
+},
+"com.qualcomm.permission.USE_EMBMS_SERVICE": {
+"label": "Access broadcasted content from service provider",
+"group": "",
+"dangerous": true
+},
+"com.qualcomm.permission.USE_EMBMS_SERVICE_PLATFORM": {
+"label": "Access broadcasted content from service provider",
+"group": "",
+"dangerous": false
+},
+"com.qualcomm.qti.permission.ACCESS_USER_AUTHENTICATION_APIS": {
+"label": "Permission to access User Authentication apis",
+"group": "",
+"dangerous": false
+},
+"com.qualcomm.qti.permission.USE_QTI_TELEPHONY_SERVICE": {
+"label": "Permission to bind to QtiTelephonyService service",
+"group": "",
+"dangerous": false
+},
+"com.verizon.mips.ACCESS_VERIZON_SERVICE": {
+"label": "Access Verizon Services",
+"group": "",
+"dangerous": false
+},
+"com.verizon.mips.services.sku_launch": {
+"label": "MVS_SKU_LAUNCH",
+"group": "",
+"dangerous": false
+},
+"com.vzw.permission.ALLOW_VOLTE_PERMISSION": {
+"label": "Advanced Calling Permission",
+"group": "",
+"dangerous": false
+},
+"org.thoughtcrime.securesms.ACCESS_SECRETS": {
+"label": "Access to TextSecure Secrets",
+"group": "",
+"dangerous": false
+},
+"service.permission.ACCESS_SERVICE": {
+"label": "MyVerizon Service Permission",
+"group": "",
+"dangerous": false
+},
+"us.zoom.videomeetings.permission.CHANGE_CONFIG": {
+"label": "Change Zoom application configurations",
+"group": "Zoom Application Tools",
+"dangerous": false
+},
+"us.zoom.videomeetings.permission.READ_CONFIG": {
+"label": "Read Zoom application configurations",
+"group": "Zoom Application Tools",
+"dangerous": false
+}
+}

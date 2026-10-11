@@ -67,7 +67,8 @@ def test_details_come_from_the_database(app, client, no_phone, tmp_path):
     r = client.get(f"/scan/{scanid}/app/{_row(app, scanid)}")
     assert r.status_code == 200
     html = r.get_data(as_text=True)
-    assert "10234" in html and "2.1" in html  # userId and versionName from the dump
+    # versionName and the data usage from the dump
+    assert "2.1" in html and "3.00 MB" in html
 
 
 def test_details_of_another_clients_scan_are_refused(app, no_phone, tmp_path):

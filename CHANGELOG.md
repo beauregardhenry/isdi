@@ -49,6 +49,20 @@ have no section here.
   clinic and of ISDi. Both print or save as PDF from the browser. With
   `pip install "isdi-scanner[report]"`, ISDi makes the PDFs itself, and the
   take-home PDF gets a neutral file name and an optional password.
+- **The app page shows the permissions the phone reports.** On Android,
+  each runtime and install-time permission is listed with Android's own
+  description (for example "Take pictures and videos"), whether it is
+  granted, and a mark on the sensitive ones; granted sensitive
+  permissions come first. On an iPhone, each permission is listed with
+  the reason the app's developer gives. The store's permission list used
+  to appear under "The app used N app permissions recently"; it says
+  what an app may ask for, so it is now labelled as the store's list.
+  Internal fields such as the app's user id are no longer shown, and the
+  "Recently used permissions" section, which was always empty, is gone.
+  An app that is not in the app information database is named by its
+  id instead of `""`, and the empty store description box is replaced by
+  a line saying there is none. The permission descriptions come from
+  Sherloc.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
