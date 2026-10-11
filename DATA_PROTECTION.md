@@ -16,6 +16,9 @@ compliant with either.
 | Data | Where | Protection |
 |---|---|---|
 | Consultation notes (every field of the form) | database | encrypted |
+| Consultation record (from 1.9.0): the technology assessment questionnaire (including answers about legal proceedings, children's devices and shared accounts), the accounts and devices checked with the client, the questions asked about each app, the consultation notes, and the client's name as it should appear on the full report | database | encrypted, one document per client and part. Which parts exist for a client, and when each was last saved, are not encrypted |
+| Screenshots kept with the consultation record (from 1.9.0): taken from a connected Android phone or uploaded (PNG or JPEG) | database, never as files | the image and what it shows (which account section, device or app) encrypted. Its SHA-256, type, source (phone or upload) and time are not: the hash cannot be turned back into the image, but someone holding a copy of the same image could confirm it is there. From 1.9.1 the hash is also in the audit log |
+| Consultation reports, full and take-home (from 1.9.0) | made on request and sent to the browser; **ISDi never stores them** | a downloaded or printed report is outside ISDi's protection. The take-home PDF has a neutral file name and can be protected with a password (AES-256); the full report has none and holds the client's name, every answer and the consultant's notes |
 | Scan results: device model and version, nickname, root/jailbreak findings, iPhone supervision and profile names, notes | database | encrypted |
 | Per scan: app ids, flags, remarks, actions taken, and what the phone reported about each app (install dates, permissions, data usage) | database | encrypted |
 | Device serials | database | pseudonymised (HMAC-SHA256 with a secret key) |
@@ -120,8 +123,9 @@ check the releases page by hand.
   directory during the scan, like the dump, and deleted with it. Keep only
   what the case needs: an unredacted copy holds more personal data, about
   the client and possibly others.
-- Screenshots from the privacy checks are only sent to the browser, never
-  saved.
+- Screenshots shown during the privacy checks are only sent to the
+  browser, never saved. Screenshots added to the consultation record (from
+  1.9.0) are kept, encrypted in the database (see the table above).
 - The parser no longer caches dumps as JSON.
 - Plain-text CSV reports are no longer written. Old ones are deleted at
   start: the same data is in the database, and `isdi export` produces it
