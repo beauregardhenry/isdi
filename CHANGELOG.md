@@ -5,6 +5,22 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## 1.10.0
+
+- **`isdi field-test` checks ISDi against a real test phone.** Some
+  checks have only been tested against made-up phone output: Android
+  accessibility, notification access and device administrator powers,
+  iPhone supervision and configuration profiles, the jailbreak check's
+  USB signal, and iPhone app names. `isdi field-test android` or `isdi
+  field-test ios` runs every check on a connected phone and prints what
+  each part of ISDi recognised: versions, which parts of the phone's
+  answer were present and their sizes, and counts. It holds no app ids,
+  names, serial numbers or account details, and refuses to print a report
+  that would. Nothing is saved to the database or audit log, and the
+  phone's dump is deleted afterwards. Use a spare phone, never a
+  client's. FIELD_TEST.md says how to set a phone up for the test and
+  what to send back.
+
 ## 1.9.1
 
 - **The "check for a newer release" warning now appears only when there
