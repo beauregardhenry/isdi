@@ -1,7 +1,7 @@
 from isdi.config import get_config
 from isdi.web import bp
 from flask import g, render_template, request, session
-from isdi import users
+from isdi import __version__, updates, users
 from isdi.scanner import AndroidScanner, IosScanner, TestScanner, blocklist
 from isdi.scanner.db import get_client_devices_from_db, new_client_id
 import os
@@ -51,5 +51,6 @@ def index():
         clientid=session["clientid"],
         currently_scanned=get_client_devices_from_db(session["clientid"]),
         blocklist=blocklist.blocklist_status(),
-        stale_after_days=blocklist.STALE_AFTER_DAYS,
+        newer_release=updates.newer_release(),
+        isdi_version=__version__,
     )

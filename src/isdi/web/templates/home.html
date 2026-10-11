@@ -19,7 +19,7 @@
                 can be used to spy, track, or otherwise monitor a person.
             </p>
             {% if blocklist %}
-            <p class="small mb-0 {% if blocklist.stale %}alert alert-warning p-2{% else %}text-muted{% endif %}" id="blocklist-date">
+            <p class="small mb-0 {% if newer_release %}alert alert-warning p-2{% else %}text-muted{% endif %}" id="blocklist-date">
               {% if blocklist.updated %}
                 Stalkerware list last updated {{ blocklist.updated }}
                 ({{ blocklist.age_days }} days ago).
@@ -27,9 +27,10 @@
                 This copy of ISDi does not record when its stalkerware list
                 was last updated.
               {% endif %}
-              {% if blocklist.stale %}
-                Apps added to the list since then will not be flagged:
-                check for a newer ISDi release before relying on the results.
+              {% if newer_release %}
+                <strong>ISDi {{ newer_release }} is available</strong>
+                (this is {{ isdi_version }}). It may flag apps this copy does
+                not: update before relying on the results.
               {% endif %}
             </p>
             {% endif %}

@@ -64,6 +64,24 @@ your compliance officer to decide.
   `isdi run` refuses any other address: passwords and client data never
   cross the network.
 
+### What ISDi sends over the network
+
+No client data ever leaves the computer through ISDi. `isdi run` contacts
+GitHub twice, and `isdi run --offline` not at all:
+
+- **The app information database** (`app-info.db`: store titles and
+  descriptions, public data) is downloaded once, if it is missing, and
+  checked against a fixed SHA-256. `isdi fetch-app-info` does the same.
+- **A check for a newer ISDi release**, in the background at each start:
+  one HEAD request to `https://github.com/beauregardhenry/isdi/releases/latest`,
+  reading only the version it redirects to. The home page then warns if a
+  newer release exists, since it may flag apps this copy does not.
+
+Neither request carries anything about a client, a scan or the clinic.
+GitHub sees the computer's IP address and the time, which tells it that
+ISDi is in use there; where that matters, start ISDi with `--offline` and
+check the releases page by hand.
+
 ### Encryption
 
 - Each value is encrypted with **AES-256-GCM** under one random 256-bit

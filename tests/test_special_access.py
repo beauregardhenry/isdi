@@ -113,9 +113,7 @@ def test_blocklist_date(monkeypatch):
     assert blocklist.blocklist_status(date(2026, 7, 7)) == {
         "updated": "2026-06-27",
         "age_days": 10,
-        "stale": False,
     }
-    assert blocklist.blocklist_status(date(2027, 1, 1))["stale"] is True
 
 
 def test_the_shipped_blocklist_is_dated():
@@ -125,25 +123,34 @@ def test_the_shipped_blocklist_is_dated():
 @pytest.mark.parametrize(
     "content", [None, "not json", '{"other": 1}', '{"updated": 3}']
 )
-def test_an_undated_blocklist_counts_as_old(tmp_path, monkeypatch, content):
+def test_an_undated_blocklist(tmp_path, monkeypatch, content):
     meta = tmp_path / "app-flags.meta.json"
     if content is not None:
         meta.write_text(content)
     monkeypatch.setattr(blocklist, "BLOCKLIST_UPDATED", blocklist._load_updated(meta))
-    assert blocklist.blocklist_status() == {
-        "updated": None,
-        "age_days": None,
-        "stale": True,
-    }
+    assert blocklist.blocklist_status() == {"updated": None, "age_days": None}
 
 
-@pytest.mark.parametrize("updated, stale", [(date.today(), False), (None, True)])
-def test_home_page_shows_the_date(client, monkeypatch, updated, stale):
+@pytest.mark.parametrize(
+    "updated, latest, warned",
+    [
+        (date(2026, 1, 1), None, False),  # old list, no newer release known
+        (None, None, False),
+        (date.today(), "99.0.0", True),  # a recent list, but a newer release
+        (date(2026, 1, 1), "0.1.0", False),  # GitHub's latest is older
+    ],
+)
+def test_home_page_warns_only_when_a_newer_release_exists(
+    client, monkeypatch, updated, latest, warned
+):
+    from isdi import updates
+
     monkeypatch.setattr(blocklist, "BLOCKLIST_UPDATED", updated)
+    monkeypatch.setitem(updates._status, "latest", latest)
     page = client.get("/").get_data(as_text=True)
     assert 'id="blocklist-date"' in page
-    assert ("alert-warning p-2" in page) is stale
-    assert ("check for a newer ISDi release" in page) is stale
+    assert ("alert-warning p-2" in page) is warned
+    assert ("ISDi 99.0.0 is available" in page) is warned
     if updated:
         assert f"last updated {updated.isoformat()}" in page
 

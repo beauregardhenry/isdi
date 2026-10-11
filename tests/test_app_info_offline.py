@@ -92,12 +92,14 @@ def run(app, monkeypatch, passphrase):
     return invoke
 
 
-def test_starting_isdi_fetches_the_database(run):
+def test_starting_isdi_fetches_the_database(run, no_release_check):
     assert run() == [1]
+    assert no_release_check == [1]  # and checks for a newer release
 
 
-def test_offline_skips_the_download(run):
+def test_offline_skips_the_download(run, no_release_check):
     assert run("--offline") == []
+    assert no_release_check == []  # no contact with GitHub at all
 
 
 def test_fetch_command(monkeypatch):

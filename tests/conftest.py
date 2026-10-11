@@ -150,3 +150,15 @@ def pytest_configure(config):
             raise pytest.UsageError(
                 "ISDI_REQUIRE_PDF is set but WeasyPrint cannot load. Is Pango installed?"
             )
+
+
+@pytest.fixture(autouse=True)
+def no_release_check(monkeypatch):
+    """`isdi run` checks GitHub for a newer release in the background; tests
+    never do. Returns the calls, for tests of when the check starts."""
+    from isdi import updates
+
+    calls = []
+    monkeypatch.setattr(updates, "start_check", lambda: calls.append(1))
+    monkeypatch.setitem(updates._status, "latest", None)
+    return calls

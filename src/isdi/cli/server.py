@@ -67,8 +67,9 @@ def _backup_reminder(last, now=None):
 @click.option(
     "--offline",
     is_flag=True,
-    help="Do not download app-info.db (store titles and descriptions) if it "
-    "is missing. Scans work without it.",
+    help="Do not contact GitHub: no app-info.db download (store titles and "
+    "descriptions; scans work without it) and no check for a newer ISDi "
+    "release.",
 )
 def run(host, port, debug, test_mode, no_browser, offline):
     """Run the ISDI web server"""
@@ -103,6 +104,10 @@ def run(host, port, debug, test_mode, no_browser, offline):
     if not offline:
         # Before the app is created: scanners open app-info.db once.
         config.ensure_app_info_db()
+        # In the background: the home page warns if a newer release exists.
+        from isdi import updates
+
+        updates.start_check()
 
     # Create app
     app_started = perf_counter()

@@ -45,8 +45,9 @@ APP_FLAGS = _load_app_flags(config.APP_FLAGS_FILE)
 with open(config.APP_FLAGS_FILE, "rb") as _f:
     BLOCKLIST_SHA256 = __import__("hashlib").sha256(_f.read()).hexdigest()
 # When the stalkerware list last changed (scripts/get-stalkerware-indicators.py
-# writes it), or None for a copy without the file.
-STALE_AFTER_DAYS = 120
+# writes it), or None for a copy without the file. Shown as information:
+# the home page warns only when a newer ISDi release exists (isdi/updates.py),
+# since the public list itself can go months without changing.
 
 
 def _load_updated(path) -> Optional[date]:
@@ -63,16 +64,12 @@ BLOCKLIST_UPDATED = _load_updated(
 
 
 def blocklist_status(today: Optional[date] = None) -> Dict[str, Any]:
-    """The blocklist's date, its age in days and whether it is old enough
-    that a newer ISDi release may carry a newer list."""
+    """The blocklist's date and its age in days (None for both when this
+    copy does not record it)."""
     if BLOCKLIST_UPDATED is None:
-        return {"updated": None, "age_days": None, "stale": True}
+        return {"updated": None, "age_days": None}
     age = ((today or date.today()) - BLOCKLIST_UPDATED).days
-    return {
-        "updated": BLOCKLIST_UPDATED.isoformat(),
-        "age_days": age,
-        "stale": age > STALE_AFTER_DAYS,
-    }
+    return {"updated": BLOCKLIST_UPDATED.isoformat(), "age_days": age}
 
 
 # appId -> row, built once (lookups happen for every app on every scan).
