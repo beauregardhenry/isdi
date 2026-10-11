@@ -117,6 +117,18 @@
         {% if task == 'consultation-account' %}
           {% include "consultation/account.html" %}
         {% endif %}
+        {% if task == 'consultation-device-add' %}
+          {% include "consultation/device_add.html" %}
+        {% endif %}
+        {% if task == 'consultation-device-apps' %}
+          {% include "consultation/device_apps.html" %}
+        {% endif %}
+        {% if task == 'consultation-device-questions' %}
+          {% include "consultation/device_questions.html" %}
+        {% endif %}
+        {% if task == 'consultation-device-manual' %}
+          {% include "consultation/device_manual.html" %}
+        {% endif %}
       {% endblock %}
       </main>
   </body>

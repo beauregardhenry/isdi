@@ -22,6 +22,12 @@ have no section here.
   account's settings with the client (logins and devices, password,
   recovery settings, two-factor authentication, security questions). Each
   check is listed with the risks it found and can be edited or deleted.
+- **Devices and the questions asked about their apps.** A device is added
+  to the record from one of the client's scans (the apps the blocklist
+  flags are offered first) or by hand, for a device that cannot be
+  scanned. For each app chosen, staff ask whether the client knew it was
+  installed, installed it, or was made to, and whether it shares their
+  information. Removing a device from the record keeps the scan.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached

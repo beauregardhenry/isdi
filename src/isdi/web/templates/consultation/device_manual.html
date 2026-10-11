@@ -1,0 +1,26 @@
+{% from "consultation/_fields.html" import field, flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>{{ "Add a device by hand" if key is none else "Device added by hand" }}</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  {{ flashes() }}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for name in ("device_nickname", "device_type", "device_manufacturer", "device_model", "device_version", "is_rooted", "rooted_reasons") %}
+      {{ field(form[name]) }}
+    {% endfor %}
+    <h2 class="h5">Apps to ask about</h2>
+    {% for row in form.apps %}
+      <div class="form-row align-items-end border-top pt-2">
+        <div class="col-md-6">{{ field(row.title) }}</div>
+        <div class="col-md-3">{{ field(row.spyware) }}</div>
+        <div class="col-md-3">{{ field(row.dualuse) }}</div>
+      </div>
+    {% endfor %}
+    <button class="btn btn-outline-secondary btn-sm" name="add_app" value="1" formnovalidate>Add another app</button>
+    <button class="btn btn-primary">Save the device</button>
+  </form>
+</div>

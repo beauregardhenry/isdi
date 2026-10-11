@@ -1,0 +1,30 @@
+{% from "consultation/_fields.html" import field, flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>Questions about the apps: {{ device.device_nickname or "device" }}</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  {{ flashes() }}
+  {% if not apps %}
+  <p class="text-muted">No apps chosen for this device.</p>
+  {% else %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for entry in form.apps %}
+      {% set app = apps[loop.index0] %}
+      <section class="consult-section border-top pt-2">
+        <h2 class="h5">{{ app.title }}</h2>
+        {% if app.appId and app.appId != app.title %}<p class="small text-muted mb-1">{{ app.appId }}</p>{% endif %}
+        {% if app.flags %}<p class="small">Flags: {{ app.flags|join(", ") }}</p>{% endif %}
+        {{ entry.appId() }}{{ entry.title() }}
+        {% for f in entry.install_info %}{{ field(f) }}{% endfor %}
+        {% for f in entry.permission_info %}{{ field(f) }}{% endfor %}
+        {% for f in entry.notes %}{{ field(f) }}{% endfor %}
+      </section>
+    {% endfor %}
+    <button class="btn btn-primary">Save the answers</button>
+  </form>
+  {% endif %}
+</div>
