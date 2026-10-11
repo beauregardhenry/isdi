@@ -5,6 +5,21 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## 1.9.1
+
+- **The "check for a newer release" warning now appears only when there
+  is one.** The home page used to warn once the stalkerware list was more
+  than 120 days old. The public list can go months without changing (the
+  current one dates from June 27), so from late October every copy would
+  have told staff to look for a newer release that did not exist. `isdi
+  run` now asks GitHub, in the background, for the latest release's
+  version, and the home page warns only if it is newer than the running
+  copy: "ISDi 1.9.2 is available ... update before relying on the
+  results". The list's date is still shown, as information. Nothing about
+  clients is sent; `isdi run --offline` skips the check, and then no
+  warning is shown. See "What ISDi sends over the network" in
+  DATA_PROTECTION.md.
+
 ## 1.9.0
 
 This release brings Sherloc's consultation workflow into ISDi, so a

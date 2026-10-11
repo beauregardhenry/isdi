@@ -148,7 +148,7 @@ passphrase (at least 12 characters). It then shows a **recovery key** once.
 Write it down and keep it safe, away from the computer: without the
 passphrase or the recovery key, nobody can read the data, including you.
 
-**Note:** When ISDi starts and the app information database (store titles and descriptions, about 47 MB) is missing, it downloads it from GitHub and checks it against a pinned SHA-256. Nothing is downloaded at any other time. Scans work without it: app pages then show only what the phone reports. To start without trying, use `isdi run --offline`; to download it ahead of time, run `isdi fetch-app-info`.
+**Note:** When ISDi starts and the app information database (store titles and descriptions, about 47 MB) is missing, it downloads it from GitHub and checks it against a pinned SHA-256. Nothing is downloaded at any other time. Scans work without it: app pages then show only what the phone reports. Each start also asks GitHub, in the background, for the latest release's version, and the home page warns when a newer release exists. To start without contacting GitHub at all, use `isdi run --offline`; to download the database ahead of time, run `isdi fetch-app-info`. See "What ISDi sends over the network" in [DATA_PROTECTION.md](DATA_PROTECTION.md).
 
 ### Consultation record
 
@@ -180,7 +180,7 @@ which is no longer needed alongside ISDi.
 ```bash
 isdi run                          # Normal mode
 isdi run --debug                  # Debug mode (verbose logging)
-isdi run --offline                # Never download app-info.db
+isdi run --offline                # Never contact GitHub (no download, no release check)
 isdi fetch-app-info               # Download app-info.db if missing
 isdi change-passphrase            # New passphrase (--recovery if it is lost)
 isdi user add USERNAME            # Create a staff account (--supervisor to
