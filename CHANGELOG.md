@@ -72,6 +72,11 @@ have no section here.
   lists, line breaks) with no attributes, using Sherloc's cleaner. The
   text of an unexpected scan error, which can include what the phone
   reported, is shown as text.
+- **The log file no longer names apps found on a phone.** Some scanner
+  messages wrote an app id ("AppId ... not found"), the path of a phone's
+  dump, or the text of an error from the phone to `isdi.log`, which
+  DATA_PROTECTION.md says holds no app lists or device output. They now
+  name the device by its pseudonym and the error by its type.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
