@@ -18,6 +18,34 @@
     {{ risks(consultation.taq.all_risks) }}
   </section>
 
+  <section aria-labelledby="h-accounts">
+    <h2 class="h5" id="h-accounts">Accounts checked ({{ consultation.accounts|length }})</h2>
+    {% if consultation.accounts %}
+    <table class="table table-sm">
+      <thead><tr><th scope="col">Service</th><th scope="col">Username</th><th scope="col">Risks</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for a in consultation.accounts %}
+        <tr>
+          <td>{{ a.platform }}</td>
+          <td>{{ a.username }}</td>
+          <td>{% if a.risk_report.risk_present %}<ul class="mb-0">{% for r in a.risk_report.risk_details %}<li>{{ r.risk }}</li>{% endfor %}</ul>{% else %}<span class="text-muted">None found</span>{% endif %}</td>
+          <td class="text-nowrap">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.consultation_account', account_id=a.account_id) }}">Edit<span class="sr-only"> {{ a.platform }} {{ a.username }}</span></a>
+            <form method="post" class="d-inline" action="{{ url_for('main.consultation_account_delete', account_id=a.account_id) }}" data-confirm="Delete this account check? This cannot be undone.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-outline-danger btn-sm">Delete<span class="sr-only"> {{ a.platform }} {{ a.username }}</span></button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No accounts checked yet.</p>
+    {% endif %}
+    <p><a class="btn btn-primary btn-sm" href="{{ url_for('main.consultation_account_new') }}">Check an account</a></p>
+  </section>
+
   <section aria-labelledby="h-notes">
     <h2 class="h5" id="h-notes">Notes for the whole consultation</h2>
     <form method="post" action="{{ url_for('main.consultation_notes') }}">

@@ -1,0 +1,24 @@
+{% from "consultation/_fields.html" import field, section, flashes %}
+<div class="isdi-page consultation">
+  <div class="isdi-header">
+    <h1 class="h4 isdi-title"><b>{{ "Check an account" if account_id is none else "Account check" }}</b></h1>
+    <span class="isdi-actions">
+      <a class="btn btn-normal" href="{{ url_for('main.consultation') }}"><u>Back to the consultation record</u></a>
+    </span>
+  </div>
+  <p>Go through the account's settings with the client, on their phone or computer.</p>
+  {{ flashes() }}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {{ field(form.platform) }}
+    {{ field(form.username) }}
+    {% for name in ("suspicious_logins", "password_check", "recovery_settings", "two_factor_settings", "security_questions") %}
+      {{ section(form[name]) }}
+    {% endfor %}
+    <section class="consult-section">
+      <h2 class="h5">Notes</h2>
+      {% for f in form.notes %}{{ field(f) }}{% endfor %}
+    </section>
+    <button class="btn btn-primary">Save the account check</button>
+  </form>
+</div>

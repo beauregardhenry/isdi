@@ -18,6 +18,10 @@ have no section here.
   technology assessment questionnaire (devices, passwords, sharing, smart
   home, children's devices, legal proceedings), the risks the answers
   point to, and notes for the whole consultation.
+- **Account checks.** From the consultation record, staff go through an
+  account's settings with the client (logins and devices, password,
+  recovery settings, two-factor authentication, security questions). Each
+  check is listed with the risks it found and can be edited or deleted.
 - **Nothing is downloaded when ISDi is imported.** The app information
   database (store titles and descriptions) was fetched while the
   configuration was created, so any program importing ISDi reached
