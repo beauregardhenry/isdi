@@ -106,6 +106,7 @@ def test_live_scan_is_recorded_with_its_provenance(app, phone):  # noqa: F811
     d = entry["details"]
     assert d["model"] == "Pixel 8" and d["nickname"] == "Owner"
     assert d["blocklist_sha256"] == blocklist.BLOCKLIST_SHA256
+    assert d["signers_sha256"] == blocklist.SIGNERS_SHA256
     assert d["isdi_version"]
     assert d["apps"] == len(result["apps"])
     assert "Test Operator".encode() not in _database_bytes()

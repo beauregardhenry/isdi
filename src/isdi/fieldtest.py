@@ -128,6 +128,15 @@ def android(sc, serial: str) -> Dict[str, Any]:
             "off_store": len(dump.offstore_apps()),
             "device_owner": len(sc.get_device_owner_apps(serial)),
         }
+        # Signers of the apps installed outside the Play Store: whether
+        # `pm path`, `stat` and `pull` work on this phone (counts only).
+        off_store = dump.offstore_apps()
+        signers, not_checked = sc.signer_certs(serial, off_store)
+        report["signers"] = {
+            "off_store_apps": len(off_store),
+            "read": len(signers),
+            "not_checked": len(not_checked),
+        }
         rooted, reasons = sc.isrooted(serial)
         report["root_check"] = {
             "rooted": rooted,

@@ -20,6 +20,7 @@ from isdi.scanner import ios_management
 KNOWN_MONITORING = {
     "spyware",
     "stalkerware",
+    "stalkerware-signer",
     "offstore-spyware",
     "onstore-spyware",
 }

@@ -1,5 +1,16 @@
 # Third-party data
 
+## app-flags.csv (stalkerware rows) and stalkerware-signers.csv
+
+The rows flagged `stalkerware` in `app-flags.csv`, and every row of
+`stalkerware-signers.csv` (SHA-1 fingerprints of the certificates that sign
+stalkerware apps), come from `ioc.yaml` in the stalkerware-indicators list
+maintained by Échap, https://github.com/AssoEchap/stalkerware-indicators,
+fetched weekly by `scripts/get-stalkerware-indicators.py`. That list is
+licensed under the Creative Commons Attribution 4.0 International License
+(https://creativecommons.org/licenses/by/4.0/). ISDi changes its format, not
+its content. Échap notes that the list comes with no guarantee of accuracy.
+
 ## ios_device_identifiers.json
 
 The entries after `"Watch4,4"` in the file, added in October 2026, come from `ios-device-identifiers.json` in

@@ -72,6 +72,34 @@ def blocklist_status(today: Optional[date] = None) -> Dict[str, Any]:
     return {"updated": BLOCKLIST_UPDATED.isoformat(), "age_days": age}
 
 
+def _load_signers(path) -> Dict[str, str]:
+    """SHA-1 fingerprint of a certificate that signs stalkerware -> the
+    app's name, from the AssoEchap list
+    (scripts/get-stalkerware-indicators.py). A missing file gives an empty
+    list: package names are still checked."""
+    try:
+        with open(path, encoding="utf-8", newline="") as f:
+            return {r["sha1"].upper(): r["app"] for r in csv.DictReader(f)}
+    except OSError:
+        return {}
+
+
+_SIGNERS_FILE = Path(config.APP_FLAGS_FILE).with_name("stalkerware-signers.csv")
+STALKERWARE_SIGNERS = _load_signers(_SIGNERS_FILE)
+# Recorded with each scan next to BLOCKLIST_SHA256 ("" without the file).
+try:
+    SIGNERS_SHA256 = (
+        __import__("hashlib").sha256(_SIGNERS_FILE.read_bytes()).hexdigest()
+    )
+except OSError:
+    SIGNERS_SHA256 = ""
+
+
+def signer_apps(sha1s) -> list:
+    """Names of the stalkerware apps signed with any of these certificates."""
+    return sorted({STALKERWARE_SIGNERS[s] for s in sha1s if s in STALKERWARE_SIGNERS})
+
+
 # appId -> row, built once (lookups happen for every app on every scan).
 _FLAGS_BY_APPID = {r["appId"]: r for r in APP_FLAGS if r.get("appId")}
 
@@ -142,6 +170,9 @@ def score(flags):
         # Flags as stored in app-flags.csv (app_title_and_flag uses them as-is).
         "spyware": 1.0,
         "stalkerware": 1.0,
+        # Signed with a certificate the stalkerware list records.
+        "stalkerware-signer": 1.0,
+        "signer-unchecked": 0.0,
         "co-occurrence": 0.2,
         "offstore-app": 0.8,
         "regex-spy": 0.3,
@@ -170,7 +201,8 @@ def flag_str(flags):
     def _add_class(flag):
         return (
             "primary"
-            if "spyware" in flag or flag in ("stalkerware", "device-owner")
+            if "spyware" in flag
+            or flag in ("stalkerware", "stalkerware-signer", "device-owner")
             else (
                 "warning"
                 if "dual-use" in flag or flag in SPECIAL_ACCESS_FLAGS
@@ -189,6 +221,15 @@ def flag_str(flags):
             "stalkerware": (
                 "This app is listed as stalkerware in the Echap stalkerware-indicators "
                 "database."
+            ),
+            "stalkerware-signer": (
+                "This app is signed with a certificate that the Echap "
+                "stalkerware-indicators database lists for a stalkerware app, "
+                "whatever its package name."
+            ),
+            "signer-unchecked": (
+                "ISDi could not check which certificate signed this app (it is "
+                "very large, or its file could not be read)."
             ),
             "co-occurrence": "This app appears very frequently with other offstore-spyware apps.",
             "onstore-dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",

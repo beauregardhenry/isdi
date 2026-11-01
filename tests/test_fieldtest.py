@@ -63,6 +63,9 @@ def test_android_report(android_phone):
         "device_owner": 1,
     }
     assert "su_binary" in report["root_check"]["checks_fired"]
+    # The fake phone does not answer `pm path`: its sideloaded app cannot
+    # be copied, and the report says so (counts only).
+    assert report["signers"] == {"off_store_apps": 1, "read": 0, "not_checked": 1}
     _no_phone_data(report, SERIAL, STALKER, "com.whatsapp", "Watcher", "Listener")
 
 
