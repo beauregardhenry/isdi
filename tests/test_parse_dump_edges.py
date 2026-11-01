@@ -168,3 +168,34 @@ def test_match_keys_and_retrieve_tolerate_odd_shapes(caplog):
     assert pd.retrieve({"a": {}}, ["a", "b"]) == ""
     assert pd.retrieve({"a": 1}, ["a", "b"]) == ""
     assert "KeyError" in caplog.text and "TypeError" in caplog.text
+
+
+def test_a_dump_cut_off_mid_line_keeps_what_arrived(tmp_path):
+    """A cable pulled during `dumpsys package` ends the dump mid-line. The
+    last package then parses as a list of its fields plus the cut-off
+    fragment; it used to crash the scan (AttributeError on list.get)."""
+    text = (FIXTURES / "android_dump.txt").read_text()
+    cut = text.split("    lastUpdateTime=2026-08-01 09:00:00")[0] + "    lastUpdat"
+    dumpf = tmp_path / "cut.txt"
+    dumpf.write_text(cut)
+    dump = pd.AndroidDump(str(dumpf))
+    assert "com.whatsapp" in dump.all_apps()
+    assert dump.apps["com.whatsapp"]["installerPackageName"] == "com.android.vending"
+    assert "com.whatsapp" not in dump.offstore_apps()
+    assert dump.info("com.whatsapp")["versionName"] == "2.24.1"
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        ["lastUpdat"],  # nothing but a fragment
+        [{"userId": "1"}, {"installerPackageName": "null"}, "frag"],
+        {"userId": "1", "User 0": "ceDataInode=1 installed=true"},  # not a dict
+        {"userId": "1", "User 0": ["frag"]},
+        None,
+    ],
+)
+def test_odd_package_entries_do_not_crash(entry):
+    dump = _android({"package": {"Packages": {"Package [com.x] (1)": entry}}})
+    assert dump.all_apps() == ["com.x"]
+    assert isinstance(dump.info("com.x"), dict)

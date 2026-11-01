@@ -7,6 +7,12 @@ have no section here.
 
 ## Unreleased
 
+- **A scan no longer fails when the phone is unplugged mid-dump.** A
+  package list cut off part-way through a line used to stop the whole
+  scan with an error. ISDi now keeps the apps that arrived, including the
+  partial last one. Unplugging still leaves later apps out, so scan again
+  for a full list.
+
 - **Raw phone data can stay off the disk.** `isdi run --ram-dumps` keeps
   the dump folder on a disk in memory: phone dumps, unredacted evidence
   output and the apps copied to read their signer never reach the real
