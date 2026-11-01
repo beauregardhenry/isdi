@@ -15,12 +15,23 @@ have no section here.
   reads which certificate signed it, and flags it as
   `stalkerware-signer` when the list records that certificate. Of the
   1,594 stalkerware samples in that project's `samples.csv` that record a
-  package name or certificate, package names alone match 1,285;
-  package names and certificates together match 1,562. Each copy is
+  package name or certificate, ISDi matched 1,286 by package name; with
+  certificates it matches 1,562. Each copy is
   deleted as soon as its certificate has been read. Apps over 150 MB, and
   apps whose file cannot be read, are flagged `signer-unchecked`. Scans of
   phones with many sideloaded apps take longer. `isdi field-test android`
   reports whether the copying works on a test phone.
+- **Each release reports how its matching does** in a detection scorecard
+  at the end of its notes (`scripts/scorecard.py`; also weekly in the
+  Actions tab). It checks that every listed stalkerware package and
+  certificate is matched (a miss stops the release), how many of the
+  stalkerware-indicators project's analysed samples are matched, and how
+  many Play Store and App Store apps in ISDi's app catalog each rule
+  flags. It measures matching against known apps, not detection of new
+  ones: some vendors give every copy its own random package name and
+  signing key, and neither list can match those. ISDi's flags for
+  accessibility, notification access and device administrator powers
+  are what can point to such an app.
 
 ## 1.10.0
 
