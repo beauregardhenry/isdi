@@ -66,7 +66,32 @@ def test_android_report(android_phone):
     # The fake phone does not answer `pm path`: its sideloaded app cannot
     # be copied, and the report says so (counts only).
     assert report["signers"] == {"off_store_apps": 1, "read": 0, "not_checked": 1}
+    # Nor `cmd package query-activities`: unknown, so nothing is hidden.
+    assert report["launcher"] == {
+        "answered": False,
+        "apps_with_icon": 0,
+        "off_store_without_icon": None,
+        "hidden_with_powers": None,
+    }
     _no_phone_data(report, SERIAL, STALKER, "com.whatsapp", "Watcher", "Listener")
+
+
+def test_android_report_counts_hidden_apps(android_phone, monkeypatch):
+    from tests.test_scanner_pipeline import STALKER
+
+    monkeypatch.setattr(
+        scanner.AndroidScanner().__class__,
+        "launcher_apps",
+        lambda self, serial: {"com.android.settings"},
+    )
+    report = fieldtest.run("android")
+    assert report["launcher"] == {
+        "answered": True,
+        "apps_with_icon": 1,
+        "off_store_without_icon": 1,
+        "hidden_with_powers": 1,
+    }
+    _no_phone_data(report, SERIAL, STALKER)
 
 
 def test_the_dump_is_deleted_afterwards(android_phone):

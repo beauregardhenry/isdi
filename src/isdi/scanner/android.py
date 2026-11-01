@@ -22,6 +22,10 @@ from .base import APK_COPY_PREFIX, AppScanner, _pseudonym, raw_path
 _APK_PATH_RE = re.compile(
     r"/(data|system|product|vendor|system_ext)/[A-Za-z0-9._~=+@/\-]+\.apk"
 )
+# A component in `cmd package query-activities` output: "pkg/.Activity".
+_COMPONENT_LINE_RE = re.compile(
+    r"\s*([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)/\S+\s*"
+)
 # Apps larger than this are not copied off the phone: copying takes time
 # over USB, and the monitoring apps on the list are a few MB.
 MAX_APK_BYTES = 150 * 1024 * 1024
@@ -144,6 +148,34 @@ class AndroidScanner(AppScanner):
                 if m:
                     device_owner_apps.add(m.group(1))
         return device_owner_apps
+
+    def launcher_apps(self, serial: str) -> Optional[Set[str]]:
+        """Apps with an icon in the app list: those with an enabled activity
+        for the launcher intent. Disabling that activity is how an app
+        hides its icon. None when the phone gives no usable answer, so that
+        a failed query never makes every app look hidden."""
+        out = catch_err(
+            self.run_tool(
+                "-s",
+                serial,
+                "shell",
+                "cmd",
+                "package",
+                "query-activities",
+                "--brief",
+                "-a",
+                "android.intent.action.MAIN",
+                "-c",
+                "android.intent.category.LAUNCHER",
+            ),
+            cmd="query-activities",
+        )
+        apps = {
+            m.group(1)
+            for m in map(_COMPONENT_LINE_RE.fullmatch, out.splitlines())
+            if m is not None
+        }
+        return apps or None
 
     def _base_apk(self, serial: str, appid: str) -> Optional[str]:
         out = catch_err(

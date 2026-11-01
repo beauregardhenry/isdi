@@ -48,7 +48,15 @@ S&P 2018). This version is a maintained fork:
   for stalkerware, so an app renamed to avoid the package list is still
   matched. The copy is deleted once the certificate has been read. Apps
   over 150 MB, and apps whose file cannot be read, are marked as not
-  checked.
+  checked. Also from 1.11.0, an Android app installed outside the Play
+  Store with no icon in the app list (asked of the phone with `cmd package
+  query-activities` for the launcher intent) is marked `no-launcher-icon`,
+  and `hidden-with-powers` when it also holds accessibility, notification
+  access, device administrator or device owner powers. This describes how
+  the app behaves, not what it is: keyboards and add-ons have no icon
+  either. Apps installed only in a work profile or for another user are
+  not marked, and if the phone does not answer the query, no app is
+  marked.
 - **What it does not do.**
   - It does not make a forensic image of the phone.
   - It does not recover deleted data or read messages, photos or

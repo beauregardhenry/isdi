@@ -458,6 +458,30 @@ class AndroidDump(PhoneDump):
         self.apps = packages
         return self.apps
 
+    def not_installed_for_owner(self) -> set:
+        """Apps the phone lists but are not installed for its main user
+        (user 0): installed only in a work profile or for another user. They
+        have no icon in the main user's app list for that reason."""
+        d = self.df
+        if not d:
+            return set()
+        a = self._get_apps()
+        packages = self._find_packages_section(d.get("package", {}))
+        out = set()
+        for appid, meta in a.items():
+            entry = packages.get(meta["packageKey"], {})
+            if not isinstance(entry, dict):
+                continue
+            # "User 0: ceDataInode=0 installed=false ...", parsed as a key
+            # and a value, or as a nested dict, depending on the dump.
+            for key, value in entry.items():
+                text = f"{key}={value}" if isinstance(value, str) else f"{key} {value}"
+                if str(key).startswith("User 0") and re.search(
+                    r"\binstalled=false\b", text
+                ):
+                    out.add(appid)
+        return out
+
     def all_apps(self) -> list:
         """returns all apps"""
         a = self._get_apps()
