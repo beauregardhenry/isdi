@@ -146,6 +146,10 @@ class AppScanner:
         and the apps that could not be checked. Android only."""
         return {}, set()
 
+    def launcher_apps(self, serialno: str) -> Optional[Set[str]]:
+        """Apps with an icon in the app list, or None if unknown. Android only."""
+        return None
+
     def get_app_titles(self, serialno: str) -> Dict[str, str]:
         """Return dict of app package IDs and titles: {appId: title}."""
         return {}
@@ -435,6 +439,35 @@ class AppScanner:
                 "class_": blocklist.assign_class(flags),
                 "html_flags": blocklist.flag_str(flags),
             }
+
+        # Apps installed outside the Play Store with no icon in the app list.
+        # Some stalkerware gives each copy its own package name and signing
+        # key; hiding its icon and holding these powers is how it works.
+        launcher = self.launcher_apps(serialno) if offstore else None
+        if launcher is not None:
+            # Installed only in a work profile or for another user: no icon
+            # for the main user, for an ordinary reason.
+            elsewhere: Set[str] = getattr(self.ddump, "not_installed_for_owner", set)()
+            for appid in offstore:
+                app = result.get(appid)
+                if (
+                    not app
+                    or "system-app" in app["flags"]
+                    or appid in launcher
+                    or appid in elsewhere
+                ):
+                    continue
+                extra = ["no-launcher-icon"]
+                if blocklist.HIDDEN_APP_POWERS & set(app["flags"]):
+                    extra.append("hidden-with-powers")
+                flags = app["flags"] + [x for x in extra if x not in app["flags"]]
+                result[appid] = {
+                    **app,
+                    "flags": flags,
+                    "score": blocklist.score(flags),
+                    "class_": blocklist.assign_class(flags),
+                    "html_flags": blocklist.flag_str(flags),
+                }
 
         # Apps installed outside the Play Store, by the certificate that
         # signed them: vendors rename packages, not signing keys.

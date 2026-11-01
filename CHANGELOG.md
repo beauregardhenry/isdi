@@ -7,6 +7,22 @@ have no section here.
 
 ## Unreleased
 
+- **Hidden apps with powerful permissions are flagged (Android).** Some
+  stalkerware gives every copy its own package name and signing key, so
+  no list can match it: 32 of the stalkerware-indicators project's
+  analysed samples are like this. It still has to work the same way:
+  installed outside the Play Store, no icon in the app list, and
+  accessibility, notification access or device administrator powers.
+  ISDi now asks the phone which apps have an icon. An app installed
+  outside the Play Store without one is marked `no-launcher-icon`
+  (information only: keyboards and add-ons look the same), and
+  `hidden-with-powers` when it also holds one of those powers, which puts
+  it at the top of the results. The client summary lists such apps
+  under "Hidden apps with powerful permissions", and the consultation
+  report counts them as a risk. Apps installed only in a work profile or
+  for another user are not marked, and if the phone does not answer, no
+  app is marked. `isdi field-test android` reports what the phone
+  answered.
 - **Fewer unrelated apps flagged by name.** The name pattern (`regex-spy`,
   a weak signal shown as a blue row) flagged any app with "track" or
   "cheating" in its name: budget, fitness, baby and mileage logs, parcel

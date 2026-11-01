@@ -137,6 +137,25 @@ def android(sc, serial: str) -> Dict[str, Any]:
             "read": len(signers),
             "not_checked": len(not_checked),
         }
+        # Which apps have an icon (`cmd package query-activities`), and how
+        # many off-store apps have none, with and without powers (counts).
+        launcher = sc.launcher_apps(serial)
+        if launcher is None:
+            report["launcher"] = {
+                "answered": False,
+                "apps_with_icon": 0,
+                "off_store_without_icon": None,
+                "hidden_with_powers": None,
+            }
+        else:
+            no_icon = [a for a in off_store if a not in launcher]
+            powered = set(dump.special_access) | sc.get_device_owner_apps(serial)
+            report["launcher"] = {
+                "answered": True,
+                "apps_with_icon": len(launcher),
+                "off_store_without_icon": len(no_icon),
+                "hidden_with_powers": sum(a in powered for a in no_icon),
+            }
         rooted, reasons = sc.isrooted(serial)
         report["root_check"] = {
             "rooted": rooted,

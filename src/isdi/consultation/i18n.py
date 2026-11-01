@@ -399,6 +399,14 @@ ES = {
     "This app is designed for covert surveillance.": (
         "Esta aplicación está hecha para vigilar a escondidas."
     ),
+    "Hidden app with powerful permissions": ("Aplicación oculta con permisos amplios"),
+    "This app was installed from outside the Play Store, has no icon in the app list, and holds accessibility, notification access or device administrator powers. Monitoring apps can hide this way, including ones no list knows.": (
+        "Esta aplicación se instaló desde fuera de Play Store, no tiene icono "
+        "en la lista de aplicaciones y tiene permisos de accesibilidad, de "
+        "acceso a las notificaciones o de administrador del dispositivo. Las "
+        "aplicaciones de vigilancia pueden ocultarse así, incluso las que no "
+        "aparecen en ninguna lista."
+    ),
     "Potential spyware application": "Posible aplicación espía",
     "This app may be a spyware application based on its title and description.": (
         "Por su nombre y su descripción, esta aplicación podría ser una "

@@ -201,6 +201,8 @@ _regex_blocklist = name_pattern
 
 
 SPECIAL_ACCESS_FLAGS = ("accessibility", "notification-access", "device-admin")
+# With no icon, these make an off-store app "hidden-with-powers".
+HIDDEN_APP_POWERS = {*SPECIAL_ACCESS_FLAGS, "device-owner"}
 
 
 def score(flags):
@@ -216,6 +218,10 @@ def score(flags):
         # Signed with a certificate the stalkerware list records.
         "stalkerware-signer": 1.0,
         "signer-unchecked": 0.0,
+        # Off-store, no icon in the app list (keyboards and add-ons too).
+        "no-launcher-icon": 0.0,
+        # The same, holding a power monitoring relies on.
+        "hidden-with-powers": 1.0,
         "co-occurrence": 0.2,
         "offstore-app": 0.8,
         "regex-spy": 0.3,
@@ -245,7 +251,13 @@ def flag_str(flags):
         return (
             "primary"
             if "spyware" in flag
-            or flag in ("stalkerware", "stalkerware-signer", "device-owner")
+            or flag
+            in (
+                "stalkerware",
+                "stalkerware-signer",
+                "device-owner",
+                "hidden-with-powers",
+            )
             else (
                 "warning"
                 if "dual-use" in flag or flag in SPECIAL_ACCESS_FLAGS
@@ -273,6 +285,18 @@ def flag_str(flags):
             "signer-unchecked": (
                 "ISDi could not check which certificate signed this app (it is "
                 "very large, or its file could not be read)."
+            ),
+            "no-launcher-icon": (
+                "This app was installed from outside the Play Store and has no "
+                "icon in the app list. Monitoring apps can hide this way; so do "
+                "keyboards, wallpapers and add-ons."
+            ),
+            "hidden-with-powers": (
+                "This app was installed from outside the Play Store, has no icon "
+                "in the app list, and holds accessibility, notification access "
+                "or device administrator powers. Monitoring apps work this way, "
+                "including ones no list knows. Ask whether the client installed "
+                "it."
             ),
             "co-occurrence": "This app appears very frequently with other offstore-spyware apps.",
             "onstore-dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",

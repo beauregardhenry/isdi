@@ -556,6 +556,11 @@ class AppInfo(Dictable):
                 risk="Spyware application",
                 description="This app is designed for covert surveillance.",
             )
+        if "hidden-with-powers" in self.flags:
+            return Risk(
+                risk="Hidden app with powerful permissions",
+                description="This app was installed from outside the Play Store, has no icon in the app list, and holds accessibility, notification access or device administrator powers. Monitoring apps can hide this way, including ones no list knows.",
+            )
         if "regex-spy" in self.flags:
             return Risk(
                 risk="Potential spyware application",

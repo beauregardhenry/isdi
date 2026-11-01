@@ -26,6 +26,8 @@ KNOWN_MONITORING = {
 }
 DUAL_USE = {"dual-use", "onstore-dual-use"}
 POWERS = {"accessibility", "notification-access", "device-admin", "device-owner"}
+# Installed outside the Play Store, no icon, one of POWERS (scanner/base.py).
+HIDDEN = {"hidden-with-powers"}
 
 LANGUAGES = {"en": "English", "es": "Español"}
 
@@ -66,6 +68,12 @@ TEXT: Dict[str, Dict[str, Any]] = {
         "managed_meaning": "Whoever manages the phone can change its settings and "
         "may be able to see some of its activity. Work and school phones are "
         "often managed for ordinary reasons.",
+        "hidden_title": "Hidden apps with powerful permissions",
+        "hidden_meaning": "These apps were installed from outside the Play "
+        "Store, have no icon in the app list, and can read the screen or "
+        "notifications, or control the phone. Monitoring apps can hide this way. "
+        "Some keyboards and add-ons look the same: it is worth checking whether "
+        "you installed each one.",
         "powers_title": "Apps with powerful permissions",
         "powers_meaning": "These apps can read the screen, read notifications, or "
         "control the phone. Many everyday apps need this; it is worth checking "
@@ -130,6 +138,12 @@ TEXT: Dict[str, Dict[str, Any]] = {
         "managed_meaning": "Quien administra el teléfono puede cambiar su "
         "configuración y quizá ver parte de su actividad. Los teléfonos del "
         "trabajo o de la escuela muchas veces se administran por razones comunes.",
+        "hidden_title": "Aplicaciones ocultas con permisos amplios",
+        "hidden_meaning": "Estas aplicaciones se instalaron desde fuera de Play "
+        "Store, no tienen icono en la lista de aplicaciones y pueden leer la "
+        "pantalla o las notificaciones, o controlar el teléfono. Las aplicaciones "
+        "de vigilancia pueden ocultarse así. Algunos teclados y complementos se "
+        "ven igual: conviene revisar si usted instaló cada una.",
         "powers_title": "Aplicaciones con permisos amplios",
         "powers_meaning": "Estas aplicaciones pueden leer la pantalla, leer las "
         "notificaciones o controlar el teléfono. Muchas aplicaciones comunes lo "
@@ -234,7 +248,11 @@ def build(
             for p in management.get("profiles") or []
         ]
         findings.append(finding("managed", items))
-    powers = _group(apps, POWERS)
+    hidden = _group(apps, HIDDEN)
+    if hidden:
+        findings.append(finding("hidden", hidden))
+    # A hidden app is listed once, under its own finding.
+    powers = [a for a in _group(apps, POWERS) if a not in hidden]
     if powers:
         findings.append(finding("powers", powers))
     dual = _group(apps, DUAL_USE)

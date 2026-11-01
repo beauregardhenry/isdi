@@ -52,6 +52,12 @@ the commands supervisors use, see the [README](../README.md).
 - **"Apps with powerful permissions"** are often ordinary apps (password
   managers, smartwatch apps). Check together that the client recognises
   each one.
+- **"Hidden apps with powerful permissions"** (Android) were installed
+  from outside the Play Store, have no icon in the app list, and can read
+  the screen or notifications. Monitoring apps work this way, including
+  ones no list knows. A keyboard or an add-on can look the same, so ask
+  whether the client installed it. Do not uninstall it without a safety
+  plan.
 - **Nothing found** does not mean nobody is watching. Someone who knows the
   client's passwords can see a lot from their online accounts, with no app
   on the phone. Check the accounts too.
