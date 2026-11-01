@@ -378,12 +378,19 @@ class AndroidDump(PhoneDump):
         if isinstance(d["net_stats"], list):
             d["net_stats"] = d["net_stats"][0]
         dn = d["net_stats"]
+        # A dump cut off inside this section leaves strings where the
+        # parser expects sections.
+        bpf = dn.get("BPF map content") if isinstance(dn, dict) else None
+        if not isinstance(bpf, dict):
+            bpf = {}
         if process_uid.startswith("u0a"):
             # u0aN is app uid 10000 + N
             process_uid = str(10000 + int(process_uid[3:]))
 
         # Backgroud data allowed?
-        bgdata = dn.get("BPF map content", {}).get("mUidCounterSetMap", [])
+        bgdata = bpf.get("mUidCounterSetMap", [])
+        if not isinstance(bgdata, list):
+            bgdata = [bgdata]
         allowed = False
         for l in bgdata:
             entry = next(iter(l.values()), "") if isinstance(l, dict) else l
@@ -391,7 +398,9 @@ class AndroidDump(PhoneDump):
                 allowed = True
                 break
         # Get the data usage: rows are "uid rxBytes rxPackets txBytes txPackets"
-        rxstats = dn.get("BPF map content", {}).get("mAppUidStatsMap", [])
+        rxstats = bpf.get("mAppUidStatsMap", [])
+        if not isinstance(rxstats, list):
+            rxstats = [rxstats]
 
         for l in rxstats:
             s = str(l).split()
@@ -399,13 +408,15 @@ class AndroidDump(PhoneDump):
                 if len(s) != 5:
                     logging.error("Unexpected net_stats row for an app")
                     return res
-                else:
-                    _uid, rxBytes, _rxPackets, txBytes, _txPackets = s
-                    res["data_used"] = "{:.2f} MB".format(
-                        (int(rxBytes) + int(txBytes)) / (1024 * 1024)
-                    )
-                    res["background_data_allowed"] = "yes" if allowed else "not allowed"
+                _uid, rxBytes, _rxPackets, txBytes, _txPackets = s
+                try:
+                    used = int(rxBytes) + int(txBytes)
+                except ValueError:
+                    logging.error("Unexpected net_stats row for an app")
                     return res
+                res["data_used"] = "{:.2f} MB".format(used / (1024 * 1024))
+                res["background_data_allowed"] = "yes" if allowed else "not allowed"
+                return res
         return res
 
     @staticmethod
@@ -580,6 +591,17 @@ class AndroidDump(PhoneDump):
         return res
 
 
+def _names(value) -> List[str]:
+    """An entitlement's permission names. The app writes its entitlements,
+    so the value can be anything: a list is expected, a single name is
+    allowed, and whatever is not a name is dropped."""
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [v for v in value if isinstance(v, str) and v]
+
+
 def ios_title(app: dict) -> str:
     """The app's name as the home screen shows it, which is what the client
     recognises (stalkerware often names itself after a system app); the
@@ -621,30 +643,49 @@ class IosDump(PhoneDump):
     def __len__(self):
         return len(self.df)
 
+    DEVICE_KEYS = (
+        "DeviceClass",
+        "ProductType",
+        "ModelNumber",
+        "RegionInfo",
+        "ProductVersion",
+    )
+
     def load_file(self):
+        """The apps and device details in the dump. An unreadable dump (cut
+        off, or with stray tool output in it) has no apps and no details:
+        no apps makes the scan report a failure, not a clean phone."""
+        self.appinfo: List[dict] = []
+        self.deviceinfo = {k: "" for k in self.DEVICE_KEYS}
         try:
             with open(self.dumpf, "r") as app_data:
                 d = json.load(app_data)
         except Exception as ex:
             logging.error("Could not load the iOS dump: %s", type(ex).__name__)
-            return [], {}
+            return self.appinfo, self.deviceinfo
+        if not isinstance(d, dict):
+            logging.error("The iOS dump is not a JSON object")
+            return self.appinfo, self.deviceinfo
 
-        apps = list(d.get("apps", {}).values())
+        apps = d.get("apps")
+        if isinstance(apps, dict):
+            apps = list(apps.values())
+        elif not isinstance(apps, list):
+            apps = []
         for app in apps:
+            if not isinstance(app, dict):
+                continue
             if "appId" not in app:
                 app["appId"] = app.get("CFBundleIdentifier", "")
-        self.appinfo = apps
+            if not isinstance(app["appId"], str):
+                app["appId"] = ""  # iOS gives a string; anything else is damage
+            self.appinfo.append(app)
 
-        self.deviceinfo = {
-            k: d["devinfo"].get(k, "")
-            for k in [
-                "DeviceClass",
-                "ProductType",
-                "ModelNumber",
-                "RegionInfo",
-                "ProductVersion",
-            ]
-        }
+        devinfo = d.get("devinfo")
+        if isinstance(devinfo, dict):
+            for k in self.DEVICE_KEYS:
+                value = devinfo.get(k, "")
+                self.deviceinfo[k] = value if isinstance(value, str) else ""
         return self.appinfo, self.deviceinfo
 
     def check_unseen_permissions(self, permissions):
@@ -663,44 +704,43 @@ class IosDump(PhoneDump):
         Could modify this function to include whether or not the permission can be adjusted
         in Settings.
         """
-        system_permissions = retrieve(
-            app, ["Entitlements", "com.apple.private.tcc.allow"]
+        system_permissions = _names(
+            retrieve(app, ["Entitlements", "com.apple.private.tcc.allow"])
         )
-        adjustable_system_permissions = retrieve(
-            app, ["Entitlements", "com.apple.private.tcc.allow.overridable"]
+        adjustable_system_permissions = _names(
+            retrieve(app, ["Entitlements", "com.apple.private.tcc.allow.overridable"])
         )
         third_party_permissions = list(set(app.keys()) & set(self.permissions_map))
         self.check_unseen_permissions(
             list(system_permissions) + list(adjustable_system_permissions)
         )
 
-        # (permission used, developer reason for requesting the permission)
-        all_permissions = list(
-            set(
-                map(
-                    lambda x: (
-                        self.permissions_map[x],
-                        app.get(x, "permission granted by system"),
-                    ),
-                    list(
-                        set(system_permissions)
-                        | set(adjustable_system_permissions)
-                        | set(third_party_permissions)
-                    ),
-                )
-            )
-        )
-        return all_permissions
+        # (permission used, developer reason for requesting the permission).
+        # The reason is the app's own text, so it may not be a string.
+        all_permissions = set()
+        for x in (
+            set(system_permissions)
+            | set(adjustable_system_permissions)
+            | set(third_party_permissions)
+        ):
+            reason = app.get(x)
+            if not isinstance(reason, str):
+                reason = "permission granted by system"
+            all_permissions.add((self.permissions_map[x], reason))
+        return list(all_permissions)
 
     def device_info(self):
+        info = self.deviceinfo
+        if not (info["ProductType"] or info["DeviceClass"]):
+            return "Unknown iOS Device", {}
         m = {}
         try:
-            m["model"] = self.model_make_map[self.deviceinfo["ProductType"]]
+            m["model"] = self.model_make_map[info["ProductType"]]
         except KeyError:
             m["model"] = "{DeviceClass} (Model {ModelNumber} {RegionInfo})".format(
-                **self.deviceinfo
+                **info
             )
-        m["version"] = self.deviceinfo["ProductVersion"]
+        m["version"] = info["ProductVersion"]
         return "{model} (running iOS {version})".format(**m), m
 
     def info(self, appid):
@@ -720,7 +760,7 @@ class IosDump(PhoneDump):
             logging.warning("App not found in the iOS dump")
             return None
 
-        party = app.get("ApplicationType", "").lower()
+        party = str(app.get("ApplicationType") or "").lower()
         permissions = []
         if party in ["system", "user", "hidden"]:
             logging.info(
@@ -757,7 +797,9 @@ class IosDump(PhoneDump):
         return [
             app.get("CFBundleIdentifier", "")
             for app in self.df
-            if app.get("ApplicationType") == "System" and app.get("CFBundleIdentifier")
+            if app.get("ApplicationType") == "System"
+            and isinstance(app.get("CFBundleIdentifier"), str)
+            and app["CFBundleIdentifier"]
         ]
 
     def installed_apps_titles(self) -> Dict[str, str]:

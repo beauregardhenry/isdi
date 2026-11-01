@@ -200,11 +200,10 @@ def _scan_and_save(
 
     if len(apps) <= 0:
         template_d["error"] = (
-            "The scanning failed. This could be due to many reasons. Try"
-            " rerunning the scan from the beginning. If the problem persists,"
-            " please report it in the file. <code>report_failed.md</code> in the<code>"
-            "phone_scanner/</code> directory. Check the phone manually. Sorry for"
-            " the inconvenience."
+            "The scanning failed: ISDi could not read the phone's app list."
+            " Check that the phone is unlocked and trusts this computer, then"
+            " run the scan again from the beginning. If it keeps failing,"
+            " check the phone by hand."
         )
         return template_d, 201
 
