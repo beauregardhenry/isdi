@@ -11,6 +11,7 @@ anything a file system leaves behind. See DATA_PROTECTION.md.
 """
 
 import logging
+import subprocess
 import os
 from pathlib import Path
 
@@ -21,6 +22,14 @@ def purge_plaintext_files(config) -> dict:
     from isdi.scanner import purge_raw_dumps
 
     removed = {"dumps": purge_raw_dumps(), "reports": 0, "legacy_pii_key": 0}
+    # Disks in memory left by an earlier `isdi run --ram-dumps` that did not
+    # exit cleanly; never the one this run uses.
+    from isdi import ramdisk
+
+    try:
+        removed["dumps"] += ramdisk.cleanup_leftovers(keep=config.DUMP_DIR)
+    except (OSError, subprocess.SubprocessError) as e:
+        logging.warning("Could not check for disks in memory: %s", type(e).__name__)
     for legacy in getattr(config, "legacy_dumps_dirs", []):
         for dump in Path(legacy).glob("*"):
             if dump.is_file():

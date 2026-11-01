@@ -5,6 +5,19 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## Unreleased
+
+- **Raw phone data can stay off the disk.** `isdi run --ram-dumps` keeps
+  the dump folder on a disk in memory: phone dumps, unredacted evidence
+  output and the apps copied to read their signer never reach the real
+  disk, where a deleted file can survive on an SSD. The disk in memory is
+  removed when ISDi stops, and one left by a crash is removed at the next
+  start. It works on Linux (a checked folder in `/dev/shm`) and macOS (a
+  RAM disk made with `hdiutil`; set its size with `ISDI_RAM_DUMPS_MB`,
+  default 1024). If it cannot be made, ISDi does not start, rather than
+  keep the data on disk. The macOS RAM disk has been tested with simulated
+  tools, not yet on a Mac.
+
 ## 1.11.0
 
 This release adds two ways of finding stalkerware on Android that a

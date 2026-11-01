@@ -188,6 +188,8 @@ which is no longer needed alongside ISDi.
 isdi run                          # Normal mode
 isdi run --debug                  # Debug mode (verbose logging)
 isdi run --offline                # Never contact GitHub (no download, no release check)
+isdi run --ram-dumps              # Keep raw phone data in memory, never on disk
+                                  #   (Linux, macOS; see DATA_PROTECTION.md)
 isdi fetch-app-info               # Download app-info.db if missing
 isdi change-passphrase            # New passphrase (--recovery if it is lost)
 isdi user add USERNAME            # Create a staff account (--supervisor to
