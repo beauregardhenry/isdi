@@ -221,7 +221,11 @@ changes to ISDi.
   file systems. Raw dumps are on disk, unencrypted, for the length of a
   scan. **Use full-disk encryption** (FileVault, BitLocker, LUKS, or the
   phone's own encryption on Termux): it is what protects anything the file
-  system leaves behind, and a lost or stolen laptop.
+  system leaves behind, and a lost or stolen laptop. From 1.12.0, `isdi
+  run` warns when it can tell that the disk holding its data is not
+  encrypted (macOS: `fdesetup status`; Linux: no LUKS layer under the data
+  folder), and records what it found in the audit log. When it cannot
+  tell (WSL, Windows, Termux, btrfs, ZFS), it says nothing.
 - **On Termux**, the database and the raw dumps of a scan are kept in
   Termux's private storage. Versions before 1.6 wrote dumps to shared
   storage, where other apps with storage permission can read them; any

@@ -17,6 +17,13 @@ have no section here.
   default 1024). If it cannot be made, ISDi does not start, rather than
   keep the data on disk. The macOS RAM disk has been tested with simulated
   tools, not yet on a Mac.
+- **A warning when the disk is not encrypted.** Full-disk encryption is
+  what protects phone data a deleted file leaves on an SSD, and a lost
+  laptop. `isdi run` now warns when it can tell that the disk holding
+  ISDi's data is not encrypted: on macOS when FileVault is off, on Linux
+  when there is no LUKS layer under the data folder. It records what it
+  found in the audit log. When it cannot tell (WSL, Windows, Termux,
+  btrfs or ZFS volumes), it says nothing rather than raise a false alarm.
 
 ## 1.11.0
 

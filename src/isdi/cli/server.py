@@ -124,8 +124,9 @@ def run(host, port, debug, test_mode, no_browser, offline, ram_dumps):
     app_started = perf_counter()
     app = create_app(config)
     click.echo(f"⏱ App factory: {perf_counter() - app_started:.2f}s")
-    from isdi import audit
+    from isdi import audit, diskcrypt
 
+    disk_encryption = diskcrypt.status(config.dirs["data"])
     with app.app_context():
         audit.record(
             "session_started",
@@ -133,10 +134,12 @@ def run(host, port, debug, test_mode, no_browser, offline, ram_dumps):
                 "isdi_version": __version__,
                 "env": env,
                 "dumps_in_memory": ram_dumps,
+                "disk_encryption": disk_encryption,
             },
         )
         _ensure_an_account()
         reminders = [
+            diskcrypt.warning(disk_encryption),
             _anchor_reminder(audit.last_anchor()),
             _backup_reminder(audit.last_action("backup_made")),
         ]
