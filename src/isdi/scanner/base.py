@@ -3,9 +3,10 @@
 import json
 import logging
 import os
+import shutil
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from isdi.config import get_config
 
@@ -37,6 +38,10 @@ def raw_path(dumpf: str) -> str:
     return dumpf + ".raw"
 
 
+# Folders an Android app's APK is copied into while its signer is read.
+APK_COPY_PREFIX = "isdi-apk-"
+
+
 def purge_raw_dumps() -> int:
     """Delete every raw dump left in the dump directory (by a crash, or by
     a version that kept them). Returns how many files were removed."""
@@ -45,6 +50,10 @@ def purge_raw_dumps() -> int:
         path = os.path.join(cfg.DUMP_DIR, name)
         if os.path.isfile(path):
             os.remove(path)
+            removed += 1
+        elif name.startswith(APK_COPY_PREFIX) and os.path.isdir(path):
+            # An app copied off a phone to read its signer (android.py).
+            shutil.rmtree(path, ignore_errors=True)
             removed += 1
     return removed
 
@@ -129,6 +138,13 @@ class AppScanner:
         if not self.ddump:
             return []
         return self.ddump.offstore_apps()
+
+    def signer_certs(
+        self, serialno: str, appids: List[str]
+    ) -> Tuple[Dict[str, Set[str]], Set[str]]:
+        """SHA-1 fingerprints of the certificates that signed these apps,
+        and the apps that could not be checked. Android only."""
+        return {}, set()
 
     def get_app_titles(self, serialno: str) -> Dict[str, str]:
         """Return dict of app package IDs and titles: {appId: title}."""
@@ -419,6 +435,30 @@ class AppScanner:
                 "class_": blocklist.assign_class(flags),
                 "html_flags": blocklist.flag_str(flags),
             }
+
+        # Apps installed outside the Play Store, by the certificate that
+        # signed them: vendors rename packages, not signing keys.
+        if blocklist.STALKERWARE_SIGNERS:
+            candidates = [a for a in offstore if a in result]
+            signers, unchecked = self.signer_certs(serialno, candidates)
+            for appid in candidates:
+                app = result[appid]
+                names = blocklist.signer_apps(signers.get(appid, ()))
+                if names:
+                    extra = ["stalkerware-signer"]
+                elif appid in unchecked:
+                    extra = ["signer-unchecked"]
+                else:
+                    continue
+                flags = app["flags"] + [x for x in extra if x not in app["flags"]]
+                result[appid] = {
+                    **app,
+                    "title": app["title"] or " / ".join(names),
+                    "flags": flags,
+                    "score": blocklist.score(flags),
+                    "class_": blocklist.assign_class(flags),
+                    "html_flags": blocklist.flag_str(flags),
+                }
 
         # Sort by risk score descending, then by appId ascending
         sorted_apps = sorted(result.items(), key=lambda x: (-x[1]["score"], x[0]))

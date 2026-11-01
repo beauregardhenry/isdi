@@ -47,6 +47,7 @@ dev = [
     "pytest-cov>=4.0",
     "black==26.5.1",  # keep in sync with .github/workflows/tests.yml
     "mypy==2.4.0",  # likewise
+    "pyyaml>=6",  # scripts/get-stalkerware-indicators.py, in tests
 ]
 
 [project.urls]

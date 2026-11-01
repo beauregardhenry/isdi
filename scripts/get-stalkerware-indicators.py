@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Fetch stalkerware indicators from AssoEchap/stalkerware-indicators
-and update the app-flags.csv file with the latest package names.
+and update the app-flags.csv file with the latest package names, and
+stalkerware-signers.csv with the certificates their apps are signed with
+(SHA-1 fingerprints; the scanner matches apps renamed to get past
+package-name lists by their signer).
 """
 
 import csv
@@ -27,6 +30,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 APP_FLAGS_CSV = PROJECT_ROOT / "src" / "isdi" / "data" / "app-flags.csv"
 # When the list last changed: ISDi shows it, and warns when it is old.
 APP_FLAGS_META = APP_FLAGS_CSV.with_name("app-flags.meta.json")
+SIGNERS_CSV = APP_FLAGS_CSV.with_name("stalkerware-signers.csv")
 TEMP_IOC_FILE = PROJECT_ROOT / "ioc.yaml.tmp"
 
 
@@ -70,6 +74,34 @@ def parse_ioc_yaml():
     
     print(f"✓ Found {len(stalkerware_packages)} stalkerware packages")
     return stalkerware_packages
+
+
+def parse_signers(path=None):
+    """SHA-1 certificate fingerprint -> app name(s), for stalkerware."""
+    with open(path or TEMP_IOC_FILE, "r") as f:
+        data = yaml.safe_load(f)
+    signers = defaultdict(set)
+    for app in data:
+        if app.get("type") != "stalkerware":
+            continue
+        for cert in app.get("certificates") or []:
+            cert = str(cert).strip().replace(":", "").upper()
+            if len(cert) == 40 and all(c in "0123456789ABCDEF" for c in cert):
+                signers[cert].add(app.get("name", "Unknown"))
+    print(f"✓ Found {len(signers)} stalkerware signing certificates")
+    return {k: " / ".join(sorted(v)) for k, v in signers.items()}
+
+
+def write_signers(signers, path=None):
+    """Write the certificate list, sorted, so unchanged data gives the
+    same file."""
+    path = path or SIGNERS_CSV
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["sha1", "app"])
+        for sha1 in sorted(signers):
+            writer.writerow([sha1, signers[sha1]])
+    print(f"✓ Wrote {len(signers)} certificates to {path}")
 
 
 def update_app_flags(stalkerware_packages):
@@ -129,9 +161,16 @@ def update_app_flags(stalkerware_packages):
     return added, updated
 
 
+def _lists():
+    return b"".join(
+        p.read_bytes() if p.exists() else b"" for p in (APP_FLAGS_CSV, SIGNERS_CSV)
+    )
+
+
 def record_update_date(before):
-    """Date the list in APP_FLAGS_META if this run changed it."""
-    after = APP_FLAGS_CSV.read_bytes()
+    """Date the lists in APP_FLAGS_META if this run changed them. `before`
+    is _lists() from before the run."""
+    after = _lists()
     if after == before:
         print("Blocklist unchanged; its date stays as it was")
         return
@@ -168,8 +207,9 @@ def main():
             return 1
         
         # Step 3: Update app-flags.csv
-        before = APP_FLAGS_CSV.read_bytes() if APP_FLAGS_CSV.exists() else b""
+        before = _lists()
         added, updated = update_app_flags(stalkerware_packages)
+        write_signers(parse_signers())
         record_update_date(before)
         
         print("=" * 60)

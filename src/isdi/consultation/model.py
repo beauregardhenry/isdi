@@ -16,7 +16,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 # Flags that mean the app is known to be built for monitoring. "stalkerware"
 # is what ISDi's blocklist gives the stalkerware-indicators list; Sherloc's
 # list did not have it.
-SPYWARE_FLAGS = {"spyware", "stalkerware", "onstore-spyware", "offstore-spyware"}
+SPYWARE_FLAGS = {
+    "spyware",
+    "stalkerware",
+    "stalkerware-signer",
+    "onstore-spyware",
+    "offstore-spyware",
+}
 
 
 #: Worked out from the answers each time, so never stored.

@@ -198,6 +198,7 @@ def export_package(scanid: int, outdir, public: bytes) -> Path:
             else None
         ),
         "blocklist_sha256": blocklist.BLOCKLIST_SHA256,
+        "signers_sha256": blocklist.SIGNERS_SHA256,
         "blocklist_updated": blocklist.blocklist_status()["updated"],
         "files": files,
     }

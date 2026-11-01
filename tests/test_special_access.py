@@ -167,18 +167,26 @@ def test_the_updater_dates_only_a_changed_list(tmp_path, monkeypatch):
     pytest.importorskip("yaml")
     mod = _updater()
     csv_file, meta = tmp_path / "app-flags.csv", tmp_path / "app-flags.meta.json"
+    signers = tmp_path / "stalkerware-signers.csv"
     monkeypatch.setattr(mod, "APP_FLAGS_CSV", csv_file)
     monkeypatch.setattr(mod, "APP_FLAGS_META", meta)
+    monkeypatch.setattr(mod, "SIGNERS_CSV", signers)
     csv_file.write_text("appId,store,flag,title\r\n")
 
-    before = csv_file.read_bytes()
+    before = mod._lists()
     mod.update_app_flags({"com.example.spy": "Spy"})
     mod.record_update_date(before)
     today = datetime.now(timezone.utc).date().isoformat()
     assert json.loads(meta.read_text())["updated"] == today
 
     meta.write_text('{"updated": "2020-01-01"}')
-    before = csv_file.read_bytes()
+    before = mod._lists()
     mod.update_app_flags({"com.example.spy": "Spy"})  # nothing new
     mod.record_update_date(before)
     assert json.loads(meta.read_text())["updated"] == "2020-01-01"
+
+    # A new signing certificate alone is a change to the list.
+    before = mod._lists()
+    mod.write_signers({"AB" * 20: "Spy"}, signers)
+    mod.record_update_date(before)
+    assert json.loads(meta.read_text())["updated"] == today

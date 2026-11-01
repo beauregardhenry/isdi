@@ -5,6 +5,23 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## Unreleased
+
+- **Renamed stalkerware is found by the certificate that signs it.**
+  Stalkerware vendors rename their apps' packages to get past lists of
+  package names, but keep signing them with the same certificate. The
+  stalkerware-indicators list records 473 of those certificates. ISDi now
+  copies each Android app installed outside the Play Store off the phone,
+  reads which certificate signed it, and flags it as
+  `stalkerware-signer` when the list records that certificate. Of the
+  1,594 stalkerware samples in that project's `samples.csv` that record a
+  package name or certificate, package names alone match 1,285;
+  package names and certificates together match 1,562. Each copy is
+  deleted as soon as its certificate has been read. Apps over 150 MB, and
+  apps whose file cannot be read, are flagged `signer-unchecked`. Scans of
+  phones with many sideloaded apps take longer. `isdi field-test android`
+  reports whether the copying works on a test phone.
+
 ## 1.10.0
 
 - **Being signed out for inactivity no longer splits a consultation.**

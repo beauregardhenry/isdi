@@ -32,6 +32,7 @@ on:
     branches: [ main ]
     paths:
       - "src/isdi/data/app-flags.csv"
+      - "src/isdi/data/stalkerware-signers.csv"
 
 permissions:
   contents: write

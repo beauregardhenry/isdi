@@ -27,7 +27,9 @@ S&P 2018). This version is a maintained fork:
 
 - **What it reads.** The phone, connected by USB, is queried through the
   standard developer interfaces:
-  - On Android: `adb`, the system's own `dumpsys` output.
+  - On Android: `adb`, the system's own `dumpsys` output, and (from
+    1.11.0) the APK files of apps installed outside the Play Store, read
+    for their signing certificate and then deleted.
   - On iOS: pymobiledevice3, the app list and device information, and
     (from 1.8.0) whether the phone is supervised and which configuration
     profiles are installed, as the phone reports them.
@@ -40,7 +42,13 @@ S&P 2018). This version is a maintained fork:
   Android apps the user installed are also flagged when they hold
   accessibility, notification access or device administrator powers;
   many legitimate apps hold these too, so such a flag is not a finding of
-  monitoring by itself.
+  monitoring by itself. From 1.11.0, each Android app installed outside
+  the Play Store is copied off the phone (`adb pull`) and the certificate
+  that signed it is compared with the certificates the same list records
+  for stalkerware, so an app renamed to avoid the package list is still
+  matched. The copy is deleted once the certificate has been read. Apps
+  over 150 MB, and apps whose file cannot be read, are marked as not
+  checked.
 - **What it does not do.**
   - It does not make a forensic image of the phone.
   - It does not recover deleted data or read messages, photos or
@@ -56,7 +64,8 @@ S&P 2018). This version is a maintained fork:
 - **It can change.** Results depend on the ISDi version and the blocklist
   in use. Both are recorded with each scan (the blocklist by its SHA-256),
   so a result can be checked against the same version. From 1.8.0 the
-  blocklist's date is recorded too.
+  blocklist's date is recorded too, and from 1.11.0 the SHA-256 of the
+  list of stalkerware signing certificates (`signers_sha256`).
 
 ### Limits of earlier versions
 

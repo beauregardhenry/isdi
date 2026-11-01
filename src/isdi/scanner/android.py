@@ -5,16 +5,26 @@ import logging
 import os
 import re
 import subprocess
+import tempfile
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from isdi.config import get_config
 
-from . import parse_dump
-from .runcmd import catch_err
+from . import apk_signers, parse_dump
+from .runcmd import catch_err, is_valid_appid
 
 cfg = get_config()
-from .base import AppScanner, _pseudonym, raw_path
+from .base import APK_COPY_PREFIX, AppScanner, _pseudonym, raw_path
+
+# Where Android keeps installed APKs, as `pm path` prints them. Anything
+# else is not used: the path goes back to the phone in `stat` and `pull`.
+_APK_PATH_RE = re.compile(
+    r"/(data|system|product|vendor|system_ext)/[A-Za-z0-9._~=+@/\-]+\.apk"
+)
+# Apps larger than this are not copied off the phone: copying takes time
+# over USB, and the monitoring apps on the list are a few MB.
+MAX_APK_BYTES = 150 * 1024 * 1024
 
 
 class AndroidScanner(AppScanner):
@@ -134,6 +144,65 @@ class AndroidScanner(AppScanner):
                 if m:
                     device_owner_apps.add(m.group(1))
         return device_owner_apps
+
+    def _base_apk(self, serial: str, appid: str) -> Optional[str]:
+        out = catch_err(
+            self.run_tool("-s", serial, "shell", "pm", "path", appid), cmd="pm path"
+        )
+        paths = [
+            line[len("package:") :].strip()
+            for line in out.splitlines()
+            if line.startswith("package:")
+        ]
+        # The base APK carries the signature; splits are signed the same.
+        paths.sort(key=lambda p: not p.endswith("/base.apk"))
+        if not paths or not _APK_PATH_RE.fullmatch(paths[0]) or ".." in paths[0]:
+            return None
+        return paths[0]
+
+    def signer_certs(
+        self, serial: str, appids: List[str]
+    ) -> Tuple[Dict[str, Set[str]], Set[str]]:
+        """Copy each app's APK off the phone into a private temporary
+        folder, read who signed it (apk_signers.py) and delete the copy."""
+        found: Dict[str, Set[str]] = {}
+        unchecked: Set[str] = set()
+        for appid in appids:
+            if not is_valid_appid(appid):
+                unchecked.add(appid)
+                continue
+            path = self._base_apk(serial, appid)
+            if path is None:
+                unchecked.add(appid)
+                continue
+            size = catch_err(
+                self.run_tool("-s", serial, "shell", "stat", "-c", "%s", path),
+                cmd="stat",
+            ).strip()
+            if not size.isdigit() or int(size) > MAX_APK_BYTES:
+                unchecked.add(appid)
+                continue
+            # In the dump folder: owner-only, and emptied at start if a
+            # crash leaves a copy behind (base.purge_raw_dumps).
+            with tempfile.TemporaryDirectory(
+                prefix=APK_COPY_PREFIX, dir=cfg.DUMP_DIR
+            ) as tmp:
+                dest = os.path.join(tmp, "app.apk")
+                catch_err(self.run_tool("-s", serial, "pull", path, dest), cmd="pull")
+                try:
+                    found[appid] = apk_signers.signer_sha1s(dest)
+                except (apk_signers.ApkError, OSError) as e:
+                    logging.warning(
+                        "Could not read an app's signer: %s", type(e).__name__
+                    )
+                    unchecked.add(appid)
+        logging.info(
+            "Signers read for %d of %d sideloaded apps on %s",
+            len(found),
+            len(appids),
+            _pseudonym(serial),
+        )
+        return found, unchecked
 
     def devices(self) -> List[str]:
         """Get list of connected Android devices."""

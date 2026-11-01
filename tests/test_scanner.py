@@ -116,6 +116,8 @@ def android(monkeypatch):
     monkeypatch.setattr(sc, "get_offstore_apps", lambda s: list(sc.offstore))
     monkeypatch.setattr(sc, "get_system_apps", lambda s: list(sc.system))
     monkeypatch.setattr(sc, "get_device_owner_apps", lambda s: set(sc.owners))
+    # Signers are read from the phone: tests/test_signer_detection.py.
+    monkeypatch.setattr(sc, "signer_certs", lambda s, appids: ({}, set()))
     return sc
 
 

@@ -113,6 +113,12 @@ check the releases page by hand.
   failed or crashed.
 - Any dump still there (after a power cut, or from an older version) is
   deleted at the next start.
+- From 1.11.0, each Android app installed outside the Play Store is
+  copied off the phone into the dump directory so ISDi can read which
+  certificate signed it. Each copy is deleted as soon as its certificate
+  has been read; a copy left by a crash is deleted at the next start. Only
+  the certificate's fingerprint is used; it is compared with the list and
+  not stored.
 - What the details pages need is extracted from the dump and stored,
   encrypted, with the scan.
 - **Exception:** when the operator ticks "Keep an encrypted evidence copy",
