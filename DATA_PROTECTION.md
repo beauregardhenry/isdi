@@ -119,6 +119,18 @@ check the releases page by hand.
   has been read; a copy left by a crash is deleted at the next start. Only
   the certificate's fingerprint is used; it is compared with the list and
   not stored.
+- **Keeping raw phone data off the disk.** `isdi run --ram-dumps` puts
+  the dump folder on a disk in memory: dumps, unredacted evidence output
+  and copied apps never reach the real disk, and the disk in memory is
+  removed when ISDi stops. On Linux it is a private folder in `/dev/shm`,
+  used only after checking that `/dev/shm` is a memory file system; on
+  macOS it is a RAM disk made with `hdiutil` (`ISDI_RAM_DUMPS_MB`, default
+  1024, sets its size). It is not available on Termux or Windows; if it
+  cannot be made, ISDi does not start rather than keep the data on disk.
+  A disk in memory left by a crash is removed at the next start. The
+  system can still write memory to its swap file when memory runs low, so
+  this does not replace full-disk encryption. The audit log records, for
+  each run, whether the dumps were kept in memory.
 - What the details pages need is extracted from the dump and stored,
   encrypted, with the scan.
 - **Exception:** when the operator ticks "Keep an encrypted evidence copy",

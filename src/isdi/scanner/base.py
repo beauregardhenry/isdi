@@ -46,8 +46,20 @@ def purge_raw_dumps() -> int:
     """Delete every raw dump left in the dump directory (by a crash, or by
     a version that kept them). Returns how many files were removed."""
     removed = 0
-    for name in os.listdir(cfg.DUMP_DIR):
-        path = os.path.join(cfg.DUMP_DIR, name)
+    # The dump folder now, and the one on disk: with --ram-dumps they differ,
+    # and an earlier run may have left dumps on disk.
+    folders = dict.fromkeys(
+        os.path.realpath(d) for d in (cfg.DUMP_DIR, cfg.dumps_dir) if os.path.isdir(d)
+    )
+    for folder in folders:
+        removed += _purge_folder(folder)
+    return removed
+
+
+def _purge_folder(folder: str) -> int:
+    removed = 0
+    for name in os.listdir(folder):
+        path = os.path.join(folder, name)
         if os.path.isfile(path):
             os.remove(path)
             removed += 1

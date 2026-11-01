@@ -1,5 +1,7 @@
 """Running ISDi: the web server and where its files are."""
 
+import os
+import sys
 import webbrowser
 from threading import Timer
 from time import perf_counter
@@ -71,7 +73,14 @@ def _backup_reminder(last, now=None):
     "descriptions; scans work without it) and no check for a newer ISDi "
     "release.",
 )
-def run(host, port, debug, test_mode, no_browser, offline):
+@click.option(
+    "--ram-dumps",
+    is_flag=True,
+    help="Keep raw phone data (dumps, unredacted output, copied apps) on a "
+    "disk in memory, removed when ISDi stops, instead of on the real disk. "
+    "Linux and macOS. Size on macOS: ISDI_RAM_DUMPS_MB (default 1024).",
+)
+def run(host, port, debug, test_mode, no_browser, offline, ram_dumps):
     """Run the ISDI web server"""
     from isdi.config import get_config
     from isdi.app import create_app
@@ -100,6 +109,8 @@ def run(host, port, debug, test_mode, no_browser, offline):
             "computer (127.0.0.1, ::1 or localhost)."
         )
     browser_host = final_host
+    if ram_dumps:
+        _dumps_in_memory(config, debug)
     _unlock(config)
     if not offline:
         # Before the app is created: scanners open app-info.db once.
@@ -117,7 +128,12 @@ def run(host, port, debug, test_mode, no_browser, offline):
 
     with app.app_context():
         audit.record(
-            "session_started", details={"isdi_version": __version__, "env": env}
+            "session_started",
+            details={
+                "isdi_version": __version__,
+                "env": env,
+                "dumps_in_memory": ram_dumps,
+            },
         )
         _ensure_an_account()
         reminders = [
@@ -160,6 +176,36 @@ def run(host, port, debug, test_mode, no_browser, offline):
         ),  # Use stat-based reloader for better reliability
         extra_files=None,
     )
+
+
+def _dumps_in_memory(config, debug: bool) -> None:
+    """Point the dump folder at a disk in memory, removed on exit. If none
+    can be made, ISDi does not start: it never falls back to the real disk."""
+    import atexit
+    import signal
+
+    from isdi import ramdisk
+
+    if debug:
+        # The reloader runs a second process, which would make its own disk.
+        raise click.ClickException("--ram-dumps cannot be used with --debug.")
+    try:
+        size = int(os.environ.get("ISDI_RAM_DUMPS_MB", "1024"))
+    except ValueError:
+        raise click.ClickException("ISDI_RAM_DUMPS_MB must be a whole number of MB.")
+    try:
+        disk = ramdisk.create(size)
+    except ramdisk.RamDiskError as e:
+        raise click.ClickException(
+            f"Cannot keep phone data in memory: {e}. Start without --ram-dumps "
+            "to keep it on disk, where it is deleted after each scan."
+        )
+    atexit.register(disk.remove)
+    # A plain `kill` would skip atexit and leave the disk in memory until the
+    # next start removes it; exit normally instead.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    config.DUMP_DIR = str(disk.path)
+    click.echo(f"🧠 Phone data is kept in memory ({disk.path}) and removed on exit")
 
 
 def _is_loopback(host: str) -> bool:
