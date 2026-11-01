@@ -7,6 +7,17 @@ have no section here.
 
 ## Unreleased
 
+- **Fewer unrelated apps flagged by name.** The name pattern (`regex-spy`,
+  a weak signal shown as a blue row) flagged any app with "track" or
+  "cheating" in its name: budget, fitness, baby and mileage logs, parcel
+  and flight tracking, Santa trackers, and apps that look for tracking.
+  "track" no longer counts in those apps, unless the title also mentions
+  GPS, location, a phone, family, a child, a parent, staff or a partner.
+  "cheating" now counts only next to a partner word ("cheating spouse").
+  "spy" and "keylog" count as before. In ISDi's app catalog the pattern
+  now flags 2,125 store apps instead of 2,412, and 107 instead of 163 of
+  the apps the original crawl labelled not relevant. Every stalkerware
+  sample package it matched still matches.
 - **Renamed stalkerware is found by the certificate that signs it.**
   Stalkerware vendors rename their apps' packages to get past lists of
   package names, but keep signing them with the same certificate. The

@@ -103,9 +103,32 @@ def signer_apps(sha1s) -> list:
 # appId -> row, built once (lookups happen for every app on every scan).
 _FLAGS_BY_APPID = {r["appId"]: r for r in APP_FLAGS if r.get("appId")}
 
+# The name pattern ("regex-spy"), a weak signal: words in an app's id or
+# title. "spy" and "keylog" always count. "track" counts unless the app is
+# about something other than a person (budget, fitness, parcels, Santa,
+# apps that look for tracking); scripts/scorecard.py measures it.
 SPY_REGEX = {
-    "pos": re.compile(r"(?i)(spy|track|keylog|cheating)"),
+    "strong": re.compile(r"(?i)(spy|keylog)"),
+    "track": re.compile(r"(?i)track"),
+    "cheating": re.compile(
+        r"(?i)cheating\W+(\w+\W+)?(spouse|partner|wife|husband|boyfriend|girlfriend|lover)"
+    ),
     "neg": re.compile(r"(?i)(anti.*(spy|track|keylog)|(spy|track|keylog).*remov[ea])"),
+    # Titles about something other than a person.
+    "not_a_person": re.compile(
+        r"(?i)(budget|financ|expense|allowance|\btax|fitness|running|workout"
+        r"|calorie|\bcarbs?\b|cycling|\bski\b|snowboard|migraine|headache"
+        r"|\bpost\b|parcel|shipment|flight|read receipt|santa|chore|lead track"
+        r"|who is tracking|don'?t track|radiation)"
+    ),
+    # Unrelated unless the title also names a person or a phone.
+    "usually_not_a_person": re.compile(
+        r"(?i)(\bbaby\b|\bfood\b|package|e-?mail|mileage|time track|attendance)"
+    ),
+    "a_person": re.compile(
+        r"(?i)(gps|locat|\bgeo|sms|phone|family|kid|child|parent|staff|employee"
+        r"|friend|spouse|partner|wife|husband)"
+    ),
 }
 
 
@@ -147,14 +170,34 @@ def dedup_app_flags(apps_list):
     return list(result.values())
 
 
-def _regex_blocklist(app):
-    # print("_regex_balcklist: {}".format(app))
-    # return ['regex-spy'] if (SPY_REGEX['pos'].search(app) and not SPY_REGEX['neg'].search(app)) \
-    #     else []
-    return (
-        SPY_REGEX["pos"].search(app) is not None
-        and SPY_REGEX["neg"].search(app) is None
-    )
+def name_pattern(appid, title="") -> bool:
+    """Whether an app's id and title suggest monitoring.
+
+    "anti..." and "...removal" cancel a word in their own field only:
+    stalkerware poses as antivirus, so an "Antivirus" title must not hide
+    "spy" in the id. Whether an app is about something other than a person
+    is read from its title, where the words are real words (an id like
+    com.solarhk.pushflight is not about flights)."""
+    texts = [str(appid or ""), str(title or "")]
+    track = False
+    for text in texts:
+        if SPY_REGEX["neg"].search(text):
+            continue
+        if SPY_REGEX["strong"].search(text) or SPY_REGEX["cheating"].search(text):
+            return True
+        track = track or bool(SPY_REGEX["track"].search(text))
+    if not track:
+        return False
+    title = texts[1]
+    if SPY_REGEX["not_a_person"].search(title):
+        return False
+    if SPY_REGEX["usually_not_a_person"].search(title):
+        return bool(SPY_REGEX["a_person"].search(title))
+    return True
+
+
+# The older name, used by tests and tools.
+_regex_blocklist = name_pattern
 
 
 SPECIAL_ACCESS_FLAGS = ("accessibility", "notification-access", "device-admin")
@@ -329,7 +372,7 @@ def app_title_and_flag(apps_list, offstore_apps=None, system_apps=None):
 
     # Regex-based flagging
     for appid, app_data in result_dict.items():
-        is_spy = _regex_blocklist(appid) or _regex_blocklist(app_data.get("title", ""))
+        is_spy = name_pattern(appid, app_data.get("title", ""))
         if is_spy and "regex-spy" not in app_data["flags"]:
             app_data["flags"].append("regex-spy")
 
