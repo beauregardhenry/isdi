@@ -1,0 +1,64 @@
+name: Detection scorecard
+
+# How ISDi's matching does against public data (scripts/scorecard.py),
+# shown in the run's summary. Weekly, after the indicator update, and on
+# demand. Each release also carries it in its notes (release.yml).
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays at 06:00 UTC, the day after the indicator update.
+    - cron: "0 6 * * 1"
+  push:
+    branches: [ main ]
+    paths:
+      - "src/isdi/data/app-flags.csv"
+      - "src/isdi/data/stalkerware-signers.csv"
+      - "src/isdi/scanner/blocklist.py"
+      - "scripts/scorecard.py"
+
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install ISDi
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Download the data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/data"
+          curl -sSfL -o "$RUNNER_TEMP/data/samples.csv" \
+            https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/master/samples.csv
+          gh release download app-info --repo "$GITHUB_REPOSITORY" \
+            --pattern app-info.db --dir "$RUNNER_TEMP/data"
+
+      - name: Scorecard
+        run: |
+          python scripts/scorecard.py \
+            --samples "$RUNNER_TEMP/data/samples.csv" \
+            --app-info "$RUNNER_TEMP/data/app-info.db" \
+            --markdown scorecard.md --json scorecard.json
+          cat scorecard.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scorecard
+          path: |
+            scorecard.md
+            scorecard.json
+          if-no-files-found: ignore

@@ -114,6 +114,30 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pytest tests/ -q
 
+      # The detection scorecard (scripts/scorecard.py) goes at the end of
+      # the release notes. It fails the release if a listed stalkerware
+      # package or certificate is not matched; if its data cannot be
+      # downloaded, the release goes out without it.
+      - name: Detection scorecard
+        if: steps.version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          data="$RUNNER_TEMP/scorecard"
+          mkdir -p "$data"
+          if curl -sSfL -o "$data/samples.csv" \
+               https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/master/samples.csv \
+             && gh release download app-info --repo "$GITHUB_REPOSITORY" \
+               --pattern app-info.db --dir "$data"; then
+            python scripts/scorecard.py --samples "$data/samples.csv" \
+              --app-info "$data/app-info.db" --markdown release/scorecard.md
+            printf '\n' >> release/notes.md
+            cat release/scorecard.md >> release/notes.md
+            cat release/scorecard.md
+          else
+            echo "::warning::Could not download the scorecard data; the release notes have no scorecard"
+          fi
+
       - name: Build wheel and sdist
         if: steps.version.outputs.skip != 'true'
         run: |
