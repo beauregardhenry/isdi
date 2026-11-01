@@ -104,7 +104,7 @@ def test_catalog(sc, tmp_path, lists):
         [
             ("com.vendor.spy", "VendorSpy", "playstore", "y"),
             ("com.whatsapp", "WhatsApp", "playstore", None),
-            ("com.budget", "Budget Tracker", "playstore", "n"),
+            ("com.routes", "GPS Route Finder Tracker", "playstore", "n"),
             ("com.notes", "Notes", "playstore", "n"),
             ("com.cam", "Spy Camera", "appstore", "y"),
         ],
@@ -114,7 +114,7 @@ def test_catalog(sc, tmp_path, lists):
     assert r["known_monitoring"] == {"playstore": 1}
     assert r["name_pattern"] == {"appstore": 1, "playstore": 2}
     assert r["name_pattern_on_not_relevant"] == {"labelled": 2, "flagged": 1}
-    assert r["name_pattern_examples"] == ["Budget Tracker"]
+    assert r["name_pattern_examples"] == ["GPS Route Finder Tracker"]
 
 
 def test_markdown_and_gate(sc, tmp_path, lists):
