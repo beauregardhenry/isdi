@@ -260,6 +260,23 @@ def special_access_from_dump(text: str) -> Dict[str, Set[str]]:
     return found
 
 
+def _as_fields(entry) -> dict:
+    """A package entry as one dict of fields.
+
+    rsonlite gives a dict for a whole entry. A dump cut off mid-line (the
+    cable pulled during `dumpsys package`) leaves the last entry as a list:
+    its fields as dicts, then the cut-off fragment as a bare string. Merge
+    the dicts and drop the fragments, so a partial dump still scans."""
+    if isinstance(entry, dict):
+        return entry
+    fields: dict = {}
+    if isinstance(entry, list):
+        for item in entry:
+            if isinstance(item, dict):
+                fields.update(item)
+    return fields
+
+
 class AndroidDump(PhoneDump):
     def __init__(self, fname):
         super(AndroidDump, self).__init__("android", fname)
@@ -442,10 +459,9 @@ class AndroidDump(PhoneDump):
                 continue
                 # k is a valid appId
             appId, h = m.groups()
+            v = app_d[k] = _as_fields(v)
             if "firstInstallTime" not in v:
-                t = v.get("User 0", {})
-                if isinstance(t, list):
-                    t = t[0]
+                t = _as_fields(v.get("User 0"))
                 v["firstInstallTime"] = t.get("firstInstallTime", "")
             packages[appId] = {
                 "packageKey": k,
