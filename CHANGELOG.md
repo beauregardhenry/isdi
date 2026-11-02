@@ -5,6 +5,17 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
+## Unreleased
+
+- **Saved scans keep app names.** Reopening a scan, and the client
+  summary made from it, showed app ids where the scan had shown names,
+  for every iPhone app and for Android apps installed from outside the
+  Play Store. Names are now saved with the scan, encrypted. Scans saved
+  before this release still show ids for those apps.
+- **Names in any language.** App names were cut to English letters, so
+  "Cámara" showed as "Cmara" and a Russian or Chinese name showed as
+  nothing. They are now shown as the phone or store gives them.
+
 ## 1.12.0
 
 This release is about trusting what a scan shows. On iPhones, the check

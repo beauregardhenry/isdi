@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS app_info (
   data_usage INTEGER,
   battery_usage INTEGER,
   details TEXT,
+  title TEXT,
   time DATETIME DEFAULT (datetime('now', 'localtime')),
   FOREIGN KEY(scanid) REFERENCES scan_res(id)
 );
@@ -225,7 +226,7 @@ ENCRYPTED_COLUMNS = {
     "app_info": (
         "appid flags remark action_taken apk_path install_date last_updated "
         "app_version permissions permissions_reason permissions_used "
-        "data_usage battery_usage details"
+        "data_usage battery_usage details title"
     ).split(),
     "audit_log": "operator details".split(),
     "evidence": "dump_name data".split(),
@@ -234,7 +235,7 @@ ENCRYPTED_COLUMNS = {
     "users": ["name"],
 }
 # Bumped by migrate(); stored in the database's PRAGMA user_version.
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 
 def _enc(column, value):
@@ -360,6 +361,10 @@ def _migrate(db) -> None:
     # Columns and tables added since the database was created.
     if "details" not in _columns(db, "app_info"):
         db.execute("ALTER TABLE app_info ADD COLUMN details TEXT")
+    if "title" not in _columns(db, "app_info"):
+        # Scans saved before version 10 have no title: shown from the
+        # store list when it has one (web/view/scan.py, _saved_apps).
+        db.execute("ALTER TABLE app_info ADD COLUMN title TEXT")
     if "operator" not in _columns(db, "scan_res"):
         db.execute("ALTER TABLE scan_res ADD COLUMN operator TEXT")
     if "device_management" not in _columns(db, "scan_res"):
@@ -539,14 +544,17 @@ def update_appinfo(scanid, appid, remark, action):
     return True
 
 
-def create_mult_appinfo(args, details=None):
+def create_mult_appinfo(args, details=None, titles=None):
     """args: (scanid, appid, flags, remark, action_taken) tuples. details:
     appid -> what the phone's dump said about the app, kept so the dump
-    itself need not be."""
+    itself need not be. titles: appid -> the app's name as the scan showed
+    it, so a saved scan shows the same names (many come from the phone)."""
     details = details or {}
+    titles = titles or {}
     return insert_many(
-        "insert into app_info (scanid, appid, flags, remark, action_taken, details) "
-        "values (?,?,?,?,?,?)",
+        "insert into app_info "
+        "(scanid, appid, flags, remark, action_taken, details, title) "
+        "values (?,?,?,?,?,?,?)",
         [
             (
                 scanid,
@@ -555,6 +563,7 @@ def create_mult_appinfo(args, details=None):
                 _enc("remark", remark),
                 _enc("action_taken", action),
                 _enc("details", details.get(appid)),
+                _enc("title", titles.get(appid) or None),
             )
             for scanid, appid, flags, remark, action in args
         ],

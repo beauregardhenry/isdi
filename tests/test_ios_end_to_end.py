@@ -18,6 +18,7 @@ from isdi.scanner import blocklist, db, ios_management
 UDID = "00008110-000A1B2C3D4E5F"
 STALKER = "com.example.ios.stalker"
 LOCATOR = "com.example.ios.locator"
+LOCATOR_NAME = "Семейный локатор"
 
 APPS = {
     "com.apple.mobilesafari": {
@@ -36,7 +37,8 @@ APPS = {
     LOCATOR: {
         "CFBundleIdentifier": LOCATOR,
         "CFBundleExecutable": "Locator",
-        "CFBundleDisplayName": "Family Locator",
+        # Not in English: names are shown as the phone gives them.
+        "CFBundleDisplayName": "Семейный локатор",
         "ApplicationType": "User",
     },
 }
@@ -111,6 +113,7 @@ def test_an_iphone_scan_end_to_end(app, client, iphone):
     assert apps[STALKER]["flags"] == ["stalkerware"]
     assert apps[STALKER]["title"] == "System Helper"
     assert apps[LOCATOR]["flags"] == ["dual-use"]
+    assert apps[LOCATOR]["title"] == LOCATOR_NAME
     assert apps["com.apple.mobilesafari"]["flags"] == ["system-app"]
     assert result["device_name"] == "iPhone 13 (running iOS 18.0)"
     assert "Supervised</span> by Example Org" in result["management"]
@@ -125,7 +128,13 @@ def test_an_iphone_scan_end_to_end(app, client, iphone):
         assert management["checked"] and management["supervised"]
         assert [p["name"] for p in management["profiles"]] == ["Remote Management"]
     stored = Path(db.DATABASE).read_bytes()
-    for secret in (b"Example Org", b"Remote Management", STALKER.encode()):
+    for secret in (
+        b"Example Org",
+        b"Remote Management",
+        STALKER.encode(),
+        b"System Helper",
+        LOCATOR_NAME.encode(),
+    ):
         assert secret not in stored, f"{secret!r} stored in the clear"
     from isdi.config import get_config
 
@@ -133,11 +142,14 @@ def test_an_iphone_scan_end_to_end(app, client, iphone):
     assert not [f for f in os.listdir(get_config().DUMP_DIR) if f.startswith(prefix)]
 
     # The saved results page and the client summary read it back.
+    # Under the same names: the phone gave them, so they are kept with the
+    # scan (no store list names iPhone apps or apps from outside a store).
     page = client.get(f"/scan/saved/{scanid}").get_data(as_text=True)
     assert "Supervised</span> by Example Org" in page and STALKER in page
+    assert "System Helper" in page and LOCATOR_NAME in page
     summary = client.get(f"/scan/{scanid}/client-summary").get_data(as_text=True)
     assert "Apps known to be used for monitoring" in summary
-    assert STALKER in summary
+    assert f"System Helper ({STALKER})" in summary
     assert "The phone is supervised by Example Org." in summary
     assert "Apps that can share location or activity" in summary and LOCATOR in summary
 
