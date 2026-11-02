@@ -7,6 +7,11 @@ have no section here.
 
 ## Unreleased
 
+- **Jailbreak apps are found on iPhones.** The jailbreak check looks for
+  apps such as Cydia, Sileo, Zebra and Filza. It read each app's id from
+  a field the phone's app list does not have, so it never found one; only
+  its other check (the afc2 service) could report a jailbreak. It now
+  reads the id the phone gives. Not yet confirmed on a jailbroken phone.
 - **A crafted app can no longer stop an Android scan.** ISDi reads the
   signer of each app installed outside the Play Store from its APK, a file
   the app's author builds. Some damaged APKs made Python's zip reader

@@ -215,7 +215,16 @@ def check_ios_jailbreak(
         )
 
     for app in apps:
-        appid = app.get("Identifier", "")
+        # The dump's apps (pymobiledevice3 `apps list`) carry their id as
+        # CFBundleIdentifier; "Identifier" is kept for other sources.
+        appid = next(
+            (
+                v
+                for v in (app.get("CFBundleIdentifier"), app.get("Identifier"))
+                if isinstance(v, str) and v
+            ),
+            "",
+        )
         if appid in IOS_JAILBREAK_PACKAGES:
             name = IOS_JAILBREAK_PACKAGES[appid]
             msg = (
