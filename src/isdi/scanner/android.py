@@ -228,6 +228,14 @@ class AndroidScanner(AppScanner):
                         "Could not read an app's signer: %s", type(e).__name__
                     )
                     unchecked.add(appid)
+                except Exception as e:
+                    # The app's author builds the file: nothing in it may
+                    # stop the scan. The app is shown as not checked.
+                    logging.error(
+                        "Unexpected error reading an app's signer: %s",
+                        type(e).__name__,
+                    )
+                    unchecked.add(appid)
         logging.info(
             "Signers read for %d of %d sideloaded apps on %s",
             len(found),

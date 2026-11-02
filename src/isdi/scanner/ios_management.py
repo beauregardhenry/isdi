@@ -33,8 +33,14 @@ def profiles_from(response: Any) -> List[Dict[str, Any]]:
     if not isinstance(metadata, dict):
         return []
     order = response.get("OrderedIdentifiers")
-    ids = [i for i in order if i in metadata] if isinstance(order, list) else []
-    ids += sorted(i for i in metadata if i not in ids)
+    # Identifiers are strings; anything else in the list is skipped (and
+    # could not be looked up in the metadata anyway).
+    ids = (
+        [i for i in order if isinstance(i, str) and i in metadata]
+        if isinstance(order, list)
+        else []
+    )
+    ids += sorted(i for i in metadata if isinstance(i, str) and i not in ids)
     profiles = []
     for identifier in ids:
         meta = metadata.get(identifier)

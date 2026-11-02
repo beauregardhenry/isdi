@@ -21,6 +21,7 @@ import hashlib
 import os
 import struct
 import zipfile
+import zlib
 from typing import BinaryIO, Iterator, Set, Tuple, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding, pkcs7
@@ -41,6 +42,23 @@ _V1_SUFFIXES = (".RSA", ".DSA", ".EC")
 
 class ApkError(ValueError):
     """The file is not an APK this can read."""
+
+
+# What Python's zip reader raises on a file it cannot read. The file is
+# built by whoever wrote the app, so all of these mean "cannot check",
+# never a failed scan. NotImplementedError: a newer "version needed to
+# extract" or an unsupported compression; zlib.error and EOFError: a
+# broken compressed stream.
+_ZIP_ERRORS = (
+    zipfile.BadZipFile,
+    zipfile.LargeZipFile,
+    OSError,
+    RuntimeError,
+    NotImplementedError,
+    EOFError,
+    ValueError,
+    zlib.error,
+)
 
 
 def signer_sha1s(path: Union[str, "os.PathLike[str]"]) -> Set[str]:
@@ -171,7 +189,7 @@ def _scheme_certs(value: bytes, v3: bool) -> Iterator[bytes]:
 def _v1_signers(path) -> Set[str]:
     try:
         z = zipfile.ZipFile(path)
-    except (zipfile.BadZipFile, OSError) as e:
+    except _ZIP_ERRORS as e:
         raise ApkError("not a zip file") from e
     found: Set[str] = set()
     with z:
@@ -186,7 +204,7 @@ def _v1_signers(path) -> Set[str]:
             try:
                 with z.open(info) as member:
                     data = member.read(MAX_V1_BYTES + 1)
-            except (zipfile.BadZipFile, OSError, RuntimeError) as e:
+            except _ZIP_ERRORS as e:
                 raise ApkError("cannot read a v1 signature file") from e
             if len(data) > MAX_V1_BYTES:
                 raise ApkError("v1 signature file is too large")
