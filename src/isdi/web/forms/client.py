@@ -3,6 +3,7 @@ from wtforms import (
     StringField,
     IntegerField,
     TextAreaField,
+    SelectChoice,
     SelectField,
     SelectMultipleField,
 )
@@ -18,12 +19,12 @@ class ClientForm(Form):
     fjc = SelectField(
         "FJC*",
         choices=[
-            ("", ""),
-            ("Brooklyn", "Brooklyn"),
-            ("Queens", "Queens"),
-            ("The Bronx", "The Bronx"),
-            ("Manhattan", "Manhattan"),
-            ("Staten Island", "Staten Island"),
+            SelectChoice("", ""),
+            SelectChoice("Brooklyn", "Brooklyn"),
+            SelectChoice("Queens", "Queens"),
+            SelectChoice("The Bronx", "The Bronx"),
+            SelectChoice("Manhattan", "Manhattan"),
+            SelectChoice("Staten Island", "Staten Island"),
         ],
         validators=[DataRequired()],
     )
@@ -62,49 +63,66 @@ class ClientForm(Form):
     caseworker_present = SelectField(
         "Caseworker present*",
         choices=[
-            ("", ""),
-            ("For entire consult", "For entire consult"),
-            ("For part of the consult", "For part of the consult"),
-            ("No", "No"),
+            SelectChoice("", ""),
+            SelectChoice("For entire consult", "For entire consult"),
+            SelectChoice("For part of the consult", "For part of the consult"),
+            SelectChoice("No", "No"),
         ],
         validators=[DataRequired()],
     )
 
     caseworker_present_safety_planning = SelectField(
         "Caseworker present for safety planning*",
-        choices=[("", ""), ("Yes", "Yes"), ("No", "No")],
+        choices=[
+            SelectChoice("", ""),
+            SelectChoice("Yes", "Yes"),
+            SelectChoice("No", "No"),
+        ],
         validators=[DataRequired()],
     )
 
     recorded = SelectField(
         "Permission to audio-record clinic*",
-        choices=[("", ""), ("Yes", "Yes"), ("No", "No")],
+        choices=[
+            SelectChoice("", ""),
+            SelectChoice("Yes", "Yes"),
+            SelectChoice("No", "No"),
+        ],
         validators=[DataRequired()],
     )
 
     caseworker_recorded = SelectField(
         "If caseworker present, permission to audio-record them*",
-        choices=[("", ""), ("Yes", "Yes"), ("No", "No")],
+        choices=[
+            SelectChoice("", ""),
+            SelectChoice("Yes", "Yes"),
+            SelectChoice("No", "No"),
+        ],
         validators=[DataRequired()],
     )
 
     chief_concerns = SelectMultipleField(
         "Chief concerns*",
         choices=[
-            ("spyware", "Worried about spyware/tracking"),
-            ("hacked", "Abuser hacked accounts or knows secrets"),
-            ("location", "Worried abuser was tracking their location"),
-            ("glitchy", "Phone is glitchy"),
-            ("unknown_calls", "Abuser calls/texts from unknown numbers"),
-            ("social_media", "Social media concerns (e.g., fake accounts, harassment)"),
-            ("child_devices", "Concerns about child device(s), e.g., unknown apps"),
-            (
+            SelectChoice("spyware", "Worried about spyware/tracking"),
+            SelectChoice("hacked", "Abuser hacked accounts or knows secrets"),
+            SelectChoice("location", "Worried abuser was tracking their location"),
+            SelectChoice("glitchy", "Phone is glitchy"),
+            SelectChoice("unknown_calls", "Abuser calls/texts from unknown numbers"),
+            SelectChoice(
+                "social_media",
+                "Social media concerns (e.g., fake accounts, harassment)",
+            ),
+            SelectChoice(
+                "child_devices", "Concerns about child device(s), e.g., unknown apps"
+            ),
+            SelectChoice(
                 "financial_concerns",
                 "Financial concerns, e.g., fraud, money missing from bank account",
             ),
-            ("curious", "Curious and want to learn about privacy"),
-            ("sms", "SMS texts"),
-            ("other", "Other chief concern (write in next question)"),
+            SelectChoice("curious", "Curious and want to learn about privacy"),
+            SelectChoice("sms", "SMS texts"),
+            SelectChoice("other", "Other chief concern (write in next question)"),
         ],
         coerce=str,
         option_widget=CheckboxInput(),
@@ -167,13 +185,13 @@ class ClientForm(Form):
     checkups = SelectMultipleField(
         "List apps/accounts manually checked (Optional)",
         choices=[
-            ("facebook", "Facebook"),
-            ("instagram", "Instagram"),
-            ("snapchat", "SnapChat"),
-            ("google", "Google (including GMail)"),
-            ("icloud", "iCloud"),
-            ("whatsapp", "WhatsApp"),
-            ("other", "Other apps/accounts (write in next question)"),
+            SelectChoice("facebook", "Facebook"),
+            SelectChoice("instagram", "Instagram"),
+            SelectChoice("snapchat", "SnapChat"),
+            SelectChoice("google", "Google (including GMail)"),
+            SelectChoice("icloud", "iCloud"),
+            SelectChoice("whatsapp", "WhatsApp"),
+            SelectChoice("other", "Other apps/accounts (write in next question)"),
         ],
         coerce=str,
         option_widget=CheckboxInput(),
@@ -189,29 +207,35 @@ class ClientForm(Form):
     vulnerabilities = SelectMultipleField(
         "Vulnerabilities discovered*",
         choices=[
-            ("none", "None"),
-            ("shared plan", "Shared plan / abuser pays for plan"),
-            (
+            SelectChoice("none", "None"),
+            SelectChoice("shared plan", "Shared plan / abuser pays for plan"),
+            SelectChoice(
                 "password:observed compromise",
                 "Observed compromise (e.g., client reports abuser shoulder-surfed, or told them password)",
             ),
-            ("password:guessable", "Surfaced guessable passwords"),
-            (
+            SelectChoice("password:guessable", "Surfaced guessable passwords"),
+            SelectChoice(
                 "cloud:stored passwords",
                 "Stored passwords in app that is synced to cloud (e.g., passwords written in Notes and backed up)",
             ),
-            (
+            SelectChoice(
                 "cloud:passwords synced/password manager",
                 "Password syncing (e.g., iCloud Keychain)",
             ),
-            (
+            SelectChoice(
                 "unknown trusted device",
                 "Found an account with an active login from a device not under client's control; trusted device",
             ),
-            ("ISDi:found dual-use apps/spyware", "ISDi found dual-use apps/spyware"),
-            ("ISDi:false positive", "ISDi false positive as confirmed by client"),
-            ("browser extension", "Browser extension potential spyware"),
-            ("desktop potential spyware", "Desktop application potential spyware"),
+            SelectChoice(
+                "ISDi:found dual-use apps/spyware", "ISDi found dual-use apps/spyware"
+            ),
+            SelectChoice(
+                "ISDi:false positive", "ISDi false positive as confirmed by client"
+            ),
+            SelectChoice("browser extension", "Browser extension potential spyware"),
+            SelectChoice(
+                "desktop potential spyware", "Desktop application potential spyware"
+            ),
         ],
         coerce=str,
         option_widget=CheckboxInput(),
@@ -234,10 +258,10 @@ class ClientForm(Form):
     safety_planning_onsite = SelectField(
         "Safety planning conducted onsite*",
         choices=[
-            ("", ""),
-            ("Yes", "Yes"),
-            ("No", "No"),
-            ("Not applicable", "Not applicable"),
+            SelectChoice("", ""),
+            SelectChoice("Yes", "Yes"),
+            SelectChoice("No", "No"),
+            SelectChoice("Not applicable", "Not applicable"),
         ],
         validators=[DataRequired()],
     )

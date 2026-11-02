@@ -1,5 +1,7 @@
 """Answer choices shared by the consultation forms, the model and the report."""
 
+from wtforms import SelectChoice
+
 SECOND_FACTORS = ["Phone", "Email", "Authenticator App", "Trusted Device", "Other"]
 ACCOUNTS = [
     "Google",
@@ -15,35 +17,40 @@ ACCOUNTS = [
     "Instagram",
 ]
 
-EMPTY_CHOICE = [("", "Nothing selected")]
+EMPTY_CHOICE = [SelectChoice("", "Nothing selected")]
 YES_NO_UNSURE_CHOICES = EMPTY_CHOICE + [
-    ("yes", "Yes"),
-    ("no", "No"),
-    ("unsure", "Unsure"),
+    SelectChoice("yes", "Yes"),
+    SelectChoice("no", "No"),
+    SelectChoice("unsure", "Unsure"),
 ]
-YES_NO_CHOICES = EMPTY_CHOICE + [("yes", "Yes"), ("no", "No")]
+YES_NO_CHOICES = EMPTY_CHOICE + [SelectChoice("yes", "Yes"), SelectChoice("no", "No")]
 PERSON_CHOICES = [
-    ("me", "Me"),
-    ("poc", "Person of concern"),
-    ("someoneelse", "Someone else"),
-    ("unsure", "Unsure"),
+    SelectChoice("me", "Me"),
+    SelectChoice("poc", "Person of concern"),
+    SelectChoice("someoneelse", "Someone else"),
+    SelectChoice("unsure", "Unsure"),
 ]
 PWD_CHOICES = [
-    ("online", "Online notes"),
-    ("paper", "Paper notes"),
-    ("pwd_manager", "Password manager"),
-    ("photo", "Take a photo of it"),
-    ("other_pwd", "Other"),
-    ("none", "No specific method"),
+    SelectChoice("online", "Online notes"),
+    SelectChoice("paper", "Paper notes"),
+    SelectChoice("pwd_manager", "Password manager"),
+    SelectChoice("photo", "Take a photo of it"),
+    SelectChoice("other_pwd", "Other"),
+    SelectChoice("none", "No specific method"),
 ]
 LEGAL_CHOICES = [
-    ("ro", "Restraining order"),
-    ("div", "Divorce or other family court"),
-    ("cl", "Criminal case"),
-    ("other_legal", "Other"),
+    SelectChoice("ro", "Restraining order"),
+    SelectChoice("div", "Divorce or other family court"),
+    SelectChoice("cl", "Criminal case"),
+    SelectChoice("other_legal", "Other"),
 ]
-DEVICE_TYPE_CHOICES = EMPTY_CHOICE + [("android", "Android"), ("ios", "iOS")]
-TWO_FACTOR_CHOICES = [(x.lower().replace(" ", "_"), x) for x in SECOND_FACTORS]
+DEVICE_TYPE_CHOICES = EMPTY_CHOICE + [
+    SelectChoice("android", "Android"),
+    SelectChoice("ios", "iOS"),
+]
+TWO_FACTOR_CHOICES = [
+    SelectChoice(x.lower().replace(" ", "_"), x) for x in SECOND_FACTORS
+]
 
 
 def answer_text() -> dict:
@@ -58,7 +65,7 @@ def answer_text() -> dict:
         DEVICE_TYPE_CHOICES,
         TWO_FACTOR_CHOICES,
     ):
-        for code, words in choices:
-            if code:
-                text[code] = words
+        for choice in choices:
+            if choice.value:
+                text[choice.value] = choice.label
     return text

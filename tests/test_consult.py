@@ -16,7 +16,7 @@ def _valid_form_data(**overrides):
     data = {}
     for field in ClientForm():
         if field.type in ("SelectField", "SelectMultipleField"):
-            value = next(v for v, _ in field.choices if v)
+            value = next(c.value for c in field.choices if c.value)
             data[field.name] = [value] if field.type == "SelectMultipleField" else value
         elif field.type == "IntegerField":
             data[field.name] = "1"
