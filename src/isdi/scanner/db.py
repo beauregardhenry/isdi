@@ -7,6 +7,7 @@ from datetime import datetime as dt
 import os
 import threading
 from pathlib import Path
+from typing import Optional
 
 config = get_config()
 DATABASE = config.SQL_DB_PATH.replace("sqlite:///", "").strip()
@@ -326,7 +327,7 @@ def close_db(exc=None):
         db.close()
 
 
-def init_db(app, sa, force=False):
+def init_db(app, force=False):
     app.teardown_appcontext(close_db)
     with app.app_context():
         db = get_db()
@@ -441,6 +442,53 @@ def query_db(query, args=(), one=False):
     rv = cur.fetchall()
     cur.close()
     return (rv[0] if rv else None) if one else rv
+
+
+# ------------------------------------------------- consultation notes
+# The intake form (web/forms/client.py, ClientForm), one row per client in
+# clients_notes. Each form field is one encrypted column; test_db_schema.py
+# checks the form, this list and the table agree.
+NOTES_FIELDS = ENCRYPTED_COLUMNS["clients_notes"]
+
+
+def get_notes(note_id) -> Optional[dict]:
+    """A notes row by its id, or None."""
+    try:
+        note_id = int(note_id)
+    except (TypeError, ValueError):
+        return None
+    return query_db("select * from clients_notes where id=?", (note_id,), one=True)
+
+
+def get_notes_for_client(clientid) -> Optional[dict]:
+    return query_db(
+        "select * from clients_notes where clientid=? order by id",
+        (clientid,),
+        one=True,
+    )
+
+
+def list_notes() -> list:
+    """Every notes row's id, client and date (not the notes themselves)."""
+    return query_db("select id, clientid, created_at from clients_notes order by id")
+
+
+def create_notes(clientid, values: dict) -> int:
+    """Save a client's notes; values maps form fields to their values."""
+    return insert(
+        f"insert into clients_notes (clientid, created_at, {', '.join(NOTES_FIELDS)}) "
+        f"values (?, CURRENT_TIMESTAMP, {', '.join('?' * len(NOTES_FIELDS))})",
+        args=[clientid] + [_enc(c, values.get(c)) for c in NOTES_FIELDS],
+    )
+
+
+def update_notes(note_id, values: dict) -> None:
+    """Replace a notes row's values (the client and date stay)."""
+    insert(
+        f"update clients_notes set {', '.join(c + '=?' for c in NOTES_FIELDS)} "
+        "where id=?",
+        args=[_enc(c, values.get(c)) for c in NOTES_FIELDS] + [int(note_id)],
+    )
 
 
 def save_note(scanid, note):

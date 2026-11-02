@@ -38,8 +38,6 @@ def create_app(config=None):
 
     # Configuration
     app.config["SECRET_KEY"] = config.FLASK_SECRET
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{config.database_path}"
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     # One token per session; the page is often left open for a whole consult.
@@ -50,11 +48,7 @@ def create_app(config=None):
     # Store config in app
     app.config["ISDI_CONFIG"] = config
 
-    # Initialize extensions
-    from isdi.web import sa
-
     db_init_started = perf_counter()
-    sa.init_app(app)
     # The server can uninstall apps and drive the connected phone, so any
     # other web page the browser visits must not be able to POST to it.
     CSRFProtect(app)
@@ -102,7 +96,7 @@ def create_app(config=None):
 
     from isdi.scanner.db import init_db
 
-    init_db(app, sa, force=config.TEST)
+    init_db(app, force=config.TEST)
     log.debug("Database init: %.2fs", perf_counter() - db_init_started)
 
     from isdi.data_protection import purge_plaintext_files

@@ -352,7 +352,6 @@ This check has not yet been confirmed on a range of real iPhones.
   - `templates/` - HTML templates for the web UI
   - `static/` - CSS, JavaScript, and images
   - `forms/` - WTForms for consultation forms
-  - `model/` - SQLAlchemy models
   - `view/` - Flask route handlers
 
 - **`src/isdi/scripts/`** - Shell scripts for device interaction
