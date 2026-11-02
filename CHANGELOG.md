@@ -15,6 +15,10 @@ have no section here.
 - **Names in any language.** App names were cut to English letters, so
   "Cámara" showed as "Cmara" and a Russian or Chinese name showed as
   nothing. They are now shown as the phone or store gives them.
+- **Edited notes leave nothing behind.** When a client's consultation
+  notes were edited, the old text stayed in the database file (still
+  encrypted) until the client was erased. Edits now overwrite it, as
+  every other change already did. ISDi no longer needs Flask-SQLAlchemy.
 
 ## 1.12.0
 
