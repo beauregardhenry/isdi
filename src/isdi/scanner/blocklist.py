@@ -341,6 +341,20 @@ def flag_str(flags):
     )
 
 
+def app_row(title, flags) -> Dict[str, Any]:
+    """One app as the results pages show it: its name, flags, and the
+    score, class and flag markup that follow from the flags. Every page
+    that lists apps builds its rows here, so they cannot drift apart."""
+    flags = list(flags)
+    return {
+        "title": title or "",
+        "flags": flags,
+        "score": score(flags),
+        "class_": assign_class(flags),
+        "html_flags": flag_str(flags),
+    }
+
+
 _LEGEND_ORDER = {"primary": 0, "warning": 1, "info": 2, "": 3}
 
 

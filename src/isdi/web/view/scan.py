@@ -1,4 +1,6 @@
 import json
+import logging
+import sqlite3
 import os
 import threading
 import time
@@ -249,6 +251,7 @@ def _scan_and_save(
             for appid, info in apps.items()
         ],
         details=sc.dump_details(apps),
+        titles={appid: info.get("title") for appid, info in apps.items()},
     )
     template_d["app_rows"] = db.app_row_ids(scanid)
     audit.record(
@@ -517,42 +520,37 @@ def scan():
 
 def _saved_apps(sc, device, app_rows) -> dict:
     """appid -> title, flags, score, class and flag HTML, for a saved scan."""
-    apps = {}
-    # Pre-fetch titles from the app-info cache database for this device type
-    _title_cache = {}
-    if sc and device == "android" and sc.app_info_conn:
-        try:
-            appids_in_scan = [r["appid"] for r in app_rows if r.get("appid")]
-            if appids_in_scan:
-                cur = sc.app_info_conn.cursor()
-                placeholders = ",".join("?" * len(appids_in_scan))
-                cur.execute(
-                    f"SELECT appid, title FROM apps WHERE appid IN ({placeholders})",
-                    appids_in_scan,
-                )
-                for r in cur.fetchall():
-                    if isinstance(r, dict):
-                        _title_cache[r["appid"]] = r.get("title") or ""
-                    else:
-                        _title_cache[r[0]] = r[1] or ""
-        except Exception:
-            pass
+    flags_by_app = {}
     for row in app_rows:
-        appid = row["appid"]
         try:
             flags = json.loads(row["flags"]) if row["flags"] else []
         except (json.JSONDecodeError, TypeError):
             flags = []
-        title = _title_cache.get(appid, "")
-        title = title.encode("ascii", errors="ignore").decode("ascii")
-        apps[appid] = {
-            "title": title,
-            "flags": flags,
-            "score": blocklist.score(flags),
-            "class_": blocklist.assign_class(flags),
-            "html_flags": blocklist.flag_str(flags),
-        }
-    return apps
+        flags_by_app[row["appid"]] = flags if isinstance(flags, list) else []
+    titles = {r["appid"]: r.get("title") or "" for r in app_rows}
+    # Scans saved before titles were stored (schema 10) have none: use the
+    # store list's names, as the scan did then. It has no off-store apps.
+    missing = [a for a, t in titles.items() if a and not t]
+    if missing and sc and device == "android" and sc.app_info_conn:
+        titles.update(_store_titles(sc.app_info_conn, missing))
+    return {
+        appid: blocklist.app_row(titles.get(appid, ""), flags)
+        for appid, flags in flags_by_app.items()
+    }
+
+
+def _store_titles(conn, appids) -> dict:
+    """appid -> name, from app-info.db (the store list)."""
+    try:
+        placeholders = ",".join("?" * len(appids))
+        rows = conn.execute(
+            f"SELECT appid, title FROM apps WHERE appid IN ({placeholders})",
+            list(appids),
+        ).fetchall()
+    except sqlite3.Error as e:
+        logging.warning("Could not read app names: %s", type(e).__name__)
+        return {}
+    return {appid: title for appid, title in rows if title}
 
 
 @bp.route("/scan/<int:scanid>/client-summary", methods=["GET"])

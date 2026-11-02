@@ -405,21 +405,7 @@ class AppScanner:
                 # Use cached titles from iOS dump (loaded once, not in loop)
                 title = app_titles_cache.get(appid, "") or title
 
-            # ASCII encode/decode to handle special characters
-            title = title.encode("ascii", errors="ignore").decode("ascii")
-
-            # Classify and score
-            score_val = blocklist.score(flags)
-            class_val = blocklist.assign_class(flags)
-            html_flags = blocklist.flag_str(flags)
-
-            result[appid] = {
-                "title": title,
-                "flags": flags,
-                "score": score_val,
-                "class_": class_val,
-                "html_flags": html_flags,
-            }
+            result[appid] = blocklist.app_row(title, flags)
 
         # Device owner detection (Android only — queries dpm list-owners on the live device)
         if self.device_type == "android" and hasattr(self, "get_device_owner_apps"):
@@ -427,14 +413,9 @@ class AppScanner:
                 if appid in result:
                     flags = result[appid]["flags"]
                     if "device-owner" not in flags:
-                        flags = flags + ["device-owner"]
-                        result[appid] = {
-                            **result[appid],
-                            "flags": flags,
-                            "score": blocklist.score(flags),
-                            "class_": blocklist.assign_class(flags),
-                            "html_flags": blocklist.flag_str(flags),
-                        }
+                        result[appid] = blocklist.app_row(
+                            result[appid]["title"], flags + ["device-owner"]
+                        )
 
         # Powers held by apps the user installed (Android only): monitoring
         # apps need them, though many ordinary apps hold them too.
@@ -444,13 +425,7 @@ class AppScanner:
             if not app or "system-app" in app["flags"]:
                 continue
             flags = app["flags"] + sorted(p for p in powers if p not in app["flags"])
-            result[appid] = {
-                **app,
-                "flags": flags,
-                "score": blocklist.score(flags),
-                "class_": blocklist.assign_class(flags),
-                "html_flags": blocklist.flag_str(flags),
-            }
+            result[appid] = blocklist.app_row(app["title"], flags)
 
         # Apps installed outside the Play Store with no icon in the app list.
         # Some stalkerware gives each copy its own package name and signing
@@ -473,13 +448,7 @@ class AppScanner:
                 if blocklist.HIDDEN_APP_POWERS & set(app["flags"]):
                     extra.append("hidden-with-powers")
                 flags = app["flags"] + [x for x in extra if x not in app["flags"]]
-                result[appid] = {
-                    **app,
-                    "flags": flags,
-                    "score": blocklist.score(flags),
-                    "class_": blocklist.assign_class(flags),
-                    "html_flags": blocklist.flag_str(flags),
-                }
+                result[appid] = blocklist.app_row(app["title"], flags)
 
         # Apps installed outside the Play Store, by the certificate that
         # signed them: vendors rename packages, not signing keys.
@@ -496,14 +465,9 @@ class AppScanner:
                 else:
                     continue
                 flags = app["flags"] + [x for x in extra if x not in app["flags"]]
-                result[appid] = {
-                    **app,
-                    "title": app["title"] or " / ".join(names),
-                    "flags": flags,
-                    "score": blocklist.score(flags),
-                    "class_": blocklist.assign_class(flags),
-                    "html_flags": blocklist.flag_str(flags),
-                }
+                result[appid] = blocklist.app_row(
+                    app["title"] or " / ".join(names), flags
+                )
 
         # Sort by risk score descending, then by appId ascending
         sorted_apps = sorted(result.items(), key=lambda x: (-x[1]["score"], x[0]))
