@@ -5,8 +5,23 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
-## Unreleased
+## 1.13.0
 
+This release needs Python 3.11 or newer. Check with `python3 --version`
+before upgrading: on Python 3.10, pip refuses to install it and the
+installed version keeps working. Reopened scans and the client summary
+now show the same app names as the scan, in any language. Edited
+consultation notes no longer leave their old text in the database file.
+
+Nothing in this release was tried on a real phone. The hardware checks
+named in 1.12.0 still apply: `isdi field-test android` on a test phone,
+and `isdi run --ram-dumps` once on a Mac.
+
+- **Python 3.11 or newer is required.** Python 3.10 reached its end of
+  life in October 2026, and WTForms 3.3, which ISDi now needs, does not
+  support it. Ubuntu 22.04's Python is 3.10: use Ubuntu 24.04 or later,
+  or install a newer Python. The forms' answer choices use WTForms 3.3's
+  new format, so they keep working when WTForms 3.4 drops the old one.
 - **Saved scans keep app names.** Reopening a scan, and the client
   summary made from it, showed app ids where the scan had shown names,
   for every iPhone app and for Android apps installed from outside the
@@ -24,11 +39,9 @@ have no section here.
   the Android privacy check left network connections and command pipes
   open the same way. Each is now closed when it is done. The tests fail
   if anything is left open.
-- **Python 3.11 or newer is required.** Python 3.10 reached its end of
-  life in October 2026, and WTForms 3.3, which ISDi now needs, does not
-  support it. Ubuntu 22.04's Python is 3.10: use Ubuntu 24.04 or later,
-  or install a newer Python. The forms' answer choices use WTForms 3.3's
-  new format, so they keep working when WTForms 3.4 drops the old one.
+- **Checking the PDF libraries.** The install guide has a one-line check
+  that the libraries WeasyPrint needs for PDF reports are installed,
+  including HarfBuzz-Subset, which future WeasyPrint versions require.
 
 ## 1.12.0
 
