@@ -7,6 +7,16 @@ have no section here.
 
 ## Unreleased
 
+- **Damaged iPhone scans fail clearly.** An iPhone dump ISDi could not
+  read (cut off, or with stray tool output in it) stopped the scan with
+  the message `'DeviceClass'`. It now reports that the app list could not
+  be read and says what to check. The same message on Android no longer
+  points to a file that does not exist.
+- **App-written iPhone data no longer garbles a scan.** An app writes its
+  own entitlements and permission reasons. A single permission given as
+  text was shown letter by letter, and values of an unexpected type cost
+  the app its details. A cut-off Android dump that ended inside its
+  network statistics also crashed the app page.
 - **A scan no longer fails when the phone is unplugged mid-dump.** A
   package list cut off part-way through a line used to stop the whole
   scan with an error. ISDi now keeps the apps that arrived, including the
