@@ -7,6 +7,12 @@ have no section here.
 
 ## Unreleased
 
+- **A crafted app can no longer stop an Android scan.** ISDi reads the
+  signer of each app installed outside the Play Store from its APK, a file
+  the app's author builds. Some damaged APKs made Python's zip reader
+  raise errors the scan did not catch, so the whole scan failed. Those
+  apps are now marked "signer not checked" and the scan goes on. An
+  iPhone profile list with unexpected entries is handled the same way.
 - **Flag meanings without a mouse.** What each flag means was shown only
   in a tooltip on hover, which a keyboard or a touch screen cannot open.
   Scan results and the consultation's device page now have a "What the
