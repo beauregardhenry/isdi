@@ -18,7 +18,7 @@ import json
 import re
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from isdi.config import get_config
 
@@ -245,82 +245,86 @@ def assign_class(flags):
     return _classes[norm_w]
 
 
+def flag_class(flag: str) -> str:
+    """The colour a flag is shown in: primary (red rows), warning, info or none."""
+    return (
+        "primary"
+        if "spyware" in flag
+        or flag
+        in (
+            "stalkerware",
+            "stalkerware-signer",
+            "device-owner",
+            "hidden-with-powers",
+        )
+        else (
+            "warning"
+            if "dual-use" in flag or flag in SPECIAL_ACCESS_FLAGS
+            else "info" if "spy" in flag else ""
+        )
+    )
+
+
+def flag_description(flag: str) -> str:
+    """What a flag means, in a sentence or two; an unknown flag is its own text."""
+    return {
+        "regex-spy": "This app's name or its app-id contain words like 'spy', 'track', etc.",
+        "offstore-spyware": (
+            "This app is a spyware app, distributed outside official applicate stores, e.g., "
+            "Play Store or iTunes App Store"
+        ),
+        "spyware": "This app is a known spyware app.",
+        "stalkerware": (
+            "This app is listed as stalkerware in the Echap stalkerware-indicators "
+            "database."
+        ),
+        "stalkerware-signer": (
+            "This app is signed with a certificate that the Echap "
+            "stalkerware-indicators database lists for a stalkerware app, "
+            "whatever its package name."
+        ),
+        "signer-unchecked": (
+            "ISDi could not check which certificate signed this app (it is "
+            "very large, or its file could not be read)."
+        ),
+        "no-launcher-icon": (
+            "This app was installed from outside the Play Store and has no "
+            "icon in the app list. Monitoring apps can hide this way; so do "
+            "keyboards, wallpapers and add-ons."
+        ),
+        "hidden-with-powers": (
+            "This app was installed from outside the Play Store, has no icon "
+            "in the app list, and holds accessibility, notification access "
+            "or device administrator powers. Monitoring apps work this way, "
+            "including ones no list knows. Ask whether the client installed "
+            "it."
+        ),
+        "co-occurrence": "This app appears very frequently with other offstore-spyware apps.",
+        "onstore-dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",
+        "offstore-app": "This app is installed outside Play Store. It might be a preinstalled app too.",
+        "dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",
+        "system-app": "This app came preinstalled with the device.",
+        "device-owner": "This app has device owner privilege, allowing it to have almost full control over the device.",
+        "accessibility": (
+            "This app is allowed to use accessibility services: it can read "
+            "what is on the screen and act on it. Monitoring apps use this, "
+            "as do many legitimate apps (password managers, screen readers)."
+        ),
+        "notification-access": (
+            "This app is allowed to read every notification, including "
+            "message previews. Monitoring apps use this, as do smartwatch "
+            "and car apps."
+        ),
+        "device-admin": (
+            "This app is a device administrator: it can lock or erase the "
+            "phone and is harder to uninstall. Monitoring apps use this, as "
+            "do work and find-my-phone apps."
+        ),
+    }.get(flag.lower(), flag)
+
+
 def flag_str(flags):
     """Returns a comma seperated strings"""
-
-    def _add_class(flag):
-        return (
-            "primary"
-            if "spyware" in flag
-            or flag
-            in (
-                "stalkerware",
-                "stalkerware-signer",
-                "device-owner",
-                "hidden-with-powers",
-            )
-            else (
-                "warning"
-                if "dual-use" in flag or flag in SPECIAL_ACCESS_FLAGS
-                else "info" if "spy" in flag else ""
-            )
-        )
-
-    def _info(flag):
-        return {
-            "regex-spy": "This app's name or its app-id contain words like 'spy', 'track', etc.",
-            "offstore-spyware": (
-                "This app is a spyware app, distributed outside official applicate stores, e.g., "
-                "Play Store or iTunes App Store"
-            ),
-            "spyware": "This app is a known spyware app.",
-            "stalkerware": (
-                "This app is listed as stalkerware in the Echap stalkerware-indicators "
-                "database."
-            ),
-            "stalkerware-signer": (
-                "This app is signed with a certificate that the Echap "
-                "stalkerware-indicators database lists for a stalkerware app, "
-                "whatever its package name."
-            ),
-            "signer-unchecked": (
-                "ISDi could not check which certificate signed this app (it is "
-                "very large, or its file could not be read)."
-            ),
-            "no-launcher-icon": (
-                "This app was installed from outside the Play Store and has no "
-                "icon in the app list. Monitoring apps can hide this way; so do "
-                "keyboards, wallpapers and add-ons."
-            ),
-            "hidden-with-powers": (
-                "This app was installed from outside the Play Store, has no icon "
-                "in the app list, and holds accessibility, notification access "
-                "or device administrator powers. Monitoring apps work this way, "
-                "including ones no list knows. Ask whether the client installed "
-                "it."
-            ),
-            "co-occurrence": "This app appears very frequently with other offstore-spyware apps.",
-            "onstore-dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",
-            "offstore-app": "This app is installed outside Play Store. It might be a preinstalled app too.",
-            "dual-use": "This app has a legitimate usecase, but can be harmful in certain situations.",
-            "system-app": "This app came preinstalled with the device.",
-            "device-owner": "This app has device owner privilege, allowing it to have almost full control over the device.",
-            "accessibility": (
-                "This app is allowed to use accessibility services: it can read "
-                "what is on the screen and act on it. Monitoring apps use this, "
-                "as do many legitimate apps (password managers, screen readers)."
-            ),
-            "notification-access": (
-                "This app is allowed to read every notification, including "
-                "message previews. Monitoring apps use this, as do smartwatch "
-                "and car apps."
-            ),
-            "device-admin": (
-                "This app is a device administrator: it can lock or erase the "
-                "phone and is harder to uninstall. Monitoring apps use this, as "
-                "do work and find-my-phone apps."
-            ),
-        }.get(flag.lower(), flag)
 
     # If spyware <span class='text-danger'>{}</span>
     flags = [y.strip() for y in flags]
@@ -328,12 +332,34 @@ def flag_str(flags):
         '<span class="text-{0}"><abbr title="{1}">{2}</abbr></span>'.format(
             # Flags come from ISDi's lists, one synced from a third party;
             # an unknown flag is shown as its own text. Never as markup.
-            _add_class(flag),
-            html.escape(_info(flag), quote=True),
+            flag_class(flag),
+            html.escape(flag_description(flag), quote=True),
             html.escape(flag, quote=True),
         )
         for flag in flags
         if len(flag) > 0
+    )
+
+
+_LEGEND_ORDER = {"primary": 0, "warning": 1, "info": 2, "": 3}
+
+
+def flag_legend(apps) -> List[Tuple[str, str, str]]:
+    """(flag, colour, meaning) for each flag the apps carry, red first.
+
+    The results show each flag's meaning in a hover tooltip; this is the
+    same text for a page section that keyboard and touch-screen users can
+    read. `apps` holds app dicts with "flags", or (app id, dict) pairs."""
+    seen = set()
+    for app in apps:
+        info = app[1] if isinstance(app, tuple) else app
+        for flag in info.get("flags") or []:
+            flag = str(flag).strip()
+            if flag:
+                seen.add(flag)
+    return sorted(
+        ((f, flag_class(f), flag_description(f)) for f in seen),
+        key=lambda t: (_LEGEND_ORDER.get(t[1], 3), t[0]),
     )
 
 

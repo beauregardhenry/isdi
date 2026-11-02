@@ -70,6 +70,10 @@ def create_app(config=None):
     from isdi.htmlclean import clean_description
 
     app.jinja_env.filters["clean_html"] = clean_description
+    # What the flags in a list of apps mean, as page text (not tooltips).
+    from isdi.scanner.blocklist import flag_legend
+
+    app.jinja_env.globals["flag_legend"] = flag_legend
 
     @app.after_request
     def _security_headers(resp):

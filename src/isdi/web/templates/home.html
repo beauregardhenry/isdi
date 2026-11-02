@@ -192,7 +192,8 @@
             <label>Scanned: <b>{{ device_name }}</b></label><br/>
   	    <label>Jailbroken or rooted? {{ isrooted | safe }}</label>
             {% if management %}<br/>
-            <label data-toggle="tooltip" title="A supervised iPhone, or one with configuration profiles, can be controlled and monitored by whoever manages it. Work and school phones are often managed legitimately: ask the client whether they know who set this up.">Managed (supervision, profiles)? {{ management | safe }}</label>
+            <label>Managed (supervision, profiles)? {{ management | safe }}</label>
+            <br/><small class="text-muted">A supervised iPhone, or one with configuration profiles, can be controlled and monitored by whoever manages it. Work and school phones are often managed legitimately: ask the client whether they know who set this up.</small>
             {% endif %}
             {% if scanid %}<br/>
             <a class="small" href="{{ url_for('main.client_summary', scanid=scanid) }}" target="_blank" rel="noopener"
@@ -224,10 +225,11 @@
                         <tr id="{{ appId.replace('.', '-') }}">
                             {% if appId in sysapps %}
                             <td align="center" data-label="Uninstall"><a class="h4" href="#" data-toggle="tooltip"
-                                                   title="System App! Cannot delete">&otimes;</a></td>
+                                                   title="System App! Cannot delete" aria-disabled="true"
+                                                   aria-label="{{ info['title'] or appId }}: a system app, cannot be uninstalled">&otimes;</a></td>
                             {%  else %}
                             <td align="center" data-label="Uninstall"><a class="h4" href="#" data-action="delete-app" data-appid="{{ appId }}" data-toggle="tooltip"
-                                                  title="Delete app">&otimes;</a></td>
+                                                  title="Delete app" aria-label="Uninstall {{ info['title'] or appId }}">&otimes;</a></td>
                             {% endif %}
                             {% if info['title'] %}
                             <td data-label="App Name"><a href="{{ url_for('main.app_details', scanid=scanid, row=app_rows[appId]) }}" target="_blank" rel="noopener"
@@ -247,6 +249,7 @@
                 </form>
             </table>
             </div>
+            {% if apps %}{% with apps = apps.values() %}{% include "_flag_legend.html" %}{% endwith %}{% endif %}
         </div>
         <div id="scan-progress-wrap" class="progress" style="display:none;">
             <div id='scan-prog' class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
