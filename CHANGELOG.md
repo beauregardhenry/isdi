@@ -7,6 +7,12 @@ have no section here.
 
 ## Unreleased
 
+- **Checked: a phone cannot inject markup into ISDi's pages.** Every
+  string a phone or app reports (app names, permission reasons, the model
+  name, root-check output, configuration profiles and who manages them)
+  was scanned with markup in it and shown on every page that displays a
+  scan, the consultation record and the report. All of it appeared as
+  text. Flag names, which come from ISDi's own lists, are now escaped too.
 - **Easier to read and to use with a screen reader.** Outline buttons
   (grey, blue and red) and warning text on the blue rows of scan results
   are darker, so they meet the WCAG 2.1 AA contrast minimum. The printable

@@ -13,6 +13,7 @@ Flags added to them are from the following four classes
 """
 
 import csv
+import html
 import json
 import re
 from datetime import date
@@ -325,7 +326,11 @@ def flag_str(flags):
     flags = [y.strip() for y in flags]
     return ",  ".join(
         '<span class="text-{0}"><abbr title="{1}">{2}</abbr></span>'.format(
-            _add_class(flag), _info(flag), flag
+            # Flags come from ISDi's lists, one synced from a third party;
+            # an unknown flag is shown as its own text. Never as markup.
+            _add_class(flag),
+            html.escape(_info(flag), quote=True),
+            html.escape(flag, quote=True),
         )
         for flag in flags
         if len(flag) > 0
