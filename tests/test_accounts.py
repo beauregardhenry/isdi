@@ -3,7 +3,6 @@ sign-ins lock an account, sessions end when idle, and the audit log names
 the user who acted."""
 
 import json
-import sqlite3
 import time
 import uuid
 from datetime import timedelta
@@ -70,7 +69,8 @@ def test_sign_in_page_and_static_files_are_open(anon):
     page = anon.get("/login")
     assert page.status_code == 200 and b"Sign in to ISDi" in page.data
     assert b'name="csrf_token"' in page.data
-    assert anon.get("/static/style.css").status_code == 200
+    with anon.get("/static/style.css") as r:
+        assert r.status_code == 200
 
 
 def test_sign_in_needs_the_csrf_token(app, anon, account):
@@ -364,10 +364,10 @@ def test_changes_to_unknown_accounts_fail(app):
         users.set_disabled("nobody-here", True)
 
 
-def test_migration_adds_the_users_table(tmp_path):
+def test_migration_adds_the_users_table(tmp_path, connect):
     v4 = db.SCHEMA_SQL[: db.SCHEMA_SQL.index("-- Staff accounts")]
     path = tmp_path / "v4.db"
-    conn = sqlite3.connect(path)
+    conn = connect(path)
     conn.executescript(v4)
     conn.execute("PRAGMA user_version = 4")
     conn.commit()

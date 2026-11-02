@@ -3,7 +3,6 @@ plaintext leftovers removed, and the tools for access and erasure."""
 
 import json
 import os
-import sqlite3
 import stat
 import uuid
 from pathlib import Path
@@ -93,7 +92,7 @@ def test_consultation_notes_are_encrypted(app, no_csrf):
 LEGACY_PLAINTEXT = "Legacy plaintext note 7f3a"
 
 
-def test_migration_encrypts_an_old_plaintext_database(tmp_path):
+def test_migration_encrypts_an_old_plaintext_database(tmp_path, connect):
     """A database from before encryption: CHECK constraints, no details
     column, plaintext values."""
     legacy_schema = (
@@ -107,7 +106,7 @@ def test_migration_encrypts_an_old_plaintext_database(tmp_path):
         .replace("  operator TEXT,\n", "")
     )
     path = tmp_path / "old.db"
-    conn = sqlite3.connect(path)
+    conn = connect(path)
     conn.executescript(legacy_schema)
     conn.execute(
         "INSERT INTO clients_notes (id, clientid, recorded, general_notes) "
@@ -137,7 +136,7 @@ def test_migration_encrypts_an_old_plaintext_database(tmp_path):
     ):
         assert secret.encode() not in raw, f"{secret!r} left in the clear"
 
-    conn = sqlite3.connect(path)
+    conn = connect(path)
     conn.row_factory = db.make_dicts
     notes = conn.execute("SELECT * FROM clients_notes").fetchone()
     assert notes["general_notes"] == LEGACY_PLAINTEXT and notes["recorded"] == "Yes"
@@ -150,13 +149,13 @@ def test_migration_encrypts_an_old_plaintext_database(tmp_path):
     assert "details" in [r["name"] for r in conn.execute("PRAGMA table_info(app_info)")]
 
 
-def test_migration_adds_the_unredacted_flag_to_kept_evidence(tmp_path):
+def test_migration_adds_the_unredacted_flag_to_kept_evidence(tmp_path, connect):
     """A version 3 database: evidence table without the unredacted column.
     Copies kept then were all redacted."""
     v3 = db.SCHEMA_SQL.replace("  unredacted INTEGER NOT NULL DEFAULT 0,\n", "")
     assert v3 != db.SCHEMA_SQL
     path = tmp_path / "v3.db"
-    conn = sqlite3.connect(path)
+    conn = connect(path)
     conn.executescript(v3)
     conn.execute(
         "INSERT INTO evidence (scanid, created, dump_sha256) VALUES (1, 't', 'h')"

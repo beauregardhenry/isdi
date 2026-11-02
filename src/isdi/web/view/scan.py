@@ -324,8 +324,13 @@ def _scan_worker(
     operator=None,
 ):
     # A thread of its own: record what it does under the user who started it.
-    with audit.acting_as(operator):
-        _scan_job(job_id, clientid, device, device_owner, ser, preserve, unredacted)
+    try:
+        with audit.acting_as(operator):
+            _scan_job(job_id, clientid, device, device_owner, ser, preserve, unredacted)
+    finally:
+        # No app context here, so get_db() opened a connection for this
+        # thread; nothing else will close it.
+        db.close_thread_db()
 
 
 def _scan_job(job_id, clientid, device, device_owner, ser, preserve, unredacted):

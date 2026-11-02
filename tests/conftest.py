@@ -162,3 +162,22 @@ def no_release_check(monkeypatch):
     monkeypatch.setattr(updates, "start_check", lambda: calls.append(1))
     monkeypatch.setitem(updates._status, "latest", None)
     return calls
+
+
+@pytest.fixture
+def connect():
+    """sqlite3.connect for a test. Every connection it opens is closed when
+    the test ends: the suite fails on connections left for garbage
+    collection (see filterwarnings in pyproject.toml)."""
+    import sqlite3
+
+    opened = []
+
+    def _connect(*args, **kwargs):
+        conn = sqlite3.connect(*args, **kwargs)
+        opened.append(conn)
+        return conn
+
+    yield _connect
+    for conn in opened:
+        conn.close()

@@ -177,10 +177,12 @@ def test_restore_refuses_damaged_backups(
     assert list(new_home.iterdir()) == []
 
 
-def test_restore_refuses_a_backup_of_something_else(tmp_path, cli, new_home, keys):
+def test_restore_refuses_a_backup_of_something_else(
+    tmp_path, cli, new_home, keys, connect
+):
     other_key, other_db = tmp_path / "k.json", tmp_path / "o.db"
     crypto.setup(other_key, "the other passphrase")
-    sqlite3.connect(other_db).execute("CREATE TABLE t (x)").connection.commit()
+    connect(other_db).execute("CREATE TABLE t (x)").connection.commit()
     out = tmp_path / "other.backup"
     backup.write(out, other_db, other_key)
     crypto._restore(keys)

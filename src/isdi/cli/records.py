@@ -169,7 +169,8 @@ def _read_anchor(path, public):
 
     try:
         signed = evidence.verify(path)
-        anchor = json.loads(open(path, encoding="utf-8").read())
+        with open(path, encoding="utf-8") as f:
+            anchor = json.load(f)
     except (OSError, ValueError, KeyError) as e:
         raise click.ClickException(f"Cannot read anchor {path}: {e}")
     if not signed["ok"]:

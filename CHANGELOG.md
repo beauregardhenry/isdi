@@ -19,6 +19,11 @@ have no section here.
   notes were edited, the old text stayed in the database file (still
   encrypted) until the client was erased. Edits now overwrite it, as
   every other change already did. ISDi no longer needs Flask-SQLAlchemy.
+- **Resources closed after use.** Each background scan left a database
+  connection open until Python cleaned it up, and the update check and
+  the Android privacy check left network connections and command pipes
+  open the same way. Each is now closed when it is done. The tests fail
+  if anything is left open.
 
 ## 1.12.0
 

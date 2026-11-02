@@ -3,16 +3,15 @@ showed it (schema 10), so reopening the scan and the client summary show
 the same names. Many come from the phone, which no store list knows: every
 iPhone app, and Android apps installed from outside a store."""
 
-import sqlite3
 from types import SimpleNamespace
 
 from isdi.scanner import blocklist, db
 from isdi.web.view import scan as scan_view
 
 
-def _store(tmp_path, rows):
+def _store(connect, tmp_path, rows):
     """A stand-in for app-info.db (the store list)."""
-    conn = sqlite3.connect(tmp_path / "app-info.db")
+    conn = connect(tmp_path / "app-info.db")
     conn.execute("CREATE TABLE apps (appid TEXT, title TEXT)")
     conn.executemany("INSERT INTO apps VALUES (?, ?)", rows)
     return conn
@@ -54,7 +53,7 @@ def test_names_are_kept_with_the_scan(app):
     )
 
 
-def test_older_scans_take_names_from_the_store_list(tmp_path):
+def test_older_scans_take_names_from_the_store_list(tmp_path, connect):
     """Rows saved before schema 10 have no name: the store list's is used,
     as the scan did then. A stored name is never replaced."""
     rows = [
@@ -63,6 +62,7 @@ def test_older_scans_take_names_from_the_store_list(tmp_path):
         {"appid": "com.example.offstore", "flags": "[]", "title": None},
     ]
     store = _store(
+        connect,
         tmp_path,
         [("com.example.old", "Old Name"), ("com.example.kept", "Store Name")],
     )
@@ -74,9 +74,9 @@ def test_older_scans_take_names_from_the_store_list(tmp_path):
     assert apps["com.example.offstore"]["title"] == ""
 
 
-def test_an_unreadable_store_list_leaves_names_empty(tmp_path):
+def test_an_unreadable_store_list_leaves_names_empty(tmp_path, connect):
     rows = [{"appid": "com.example.old", "flags": "[]", "title": None}]
-    broken = sqlite3.connect(tmp_path / "empty.db")  # no apps table
+    broken = connect(tmp_path / "empty.db")  # no apps table
     apps = scan_view._saved_apps(SimpleNamespace(app_info_conn=broken), "android", rows)
     assert apps["com.example.old"]["title"] == ""
 
@@ -90,10 +90,10 @@ def test_damaged_flags_read_as_none(tmp_path):
     assert apps["a"]["flags"] == [] and apps["b"]["flags"] == []
 
 
-def test_databases_from_before_names_were_kept_gain_the_column(tmp_path):
+def test_databases_from_before_names_were_kept_gain_the_column(tmp_path, connect):
     v9 = db.SCHEMA_SQL.replace(",\n  title TEXT", "")
     assert v9 != db.SCHEMA_SQL
-    conn = sqlite3.connect(tmp_path / "v9.db")
+    conn = connect(tmp_path / "v9.db")
     conn.executescript(v9)
     conn.execute("PRAGMA user_version = 9")
     conn.commit()

@@ -42,14 +42,15 @@ def latest_release(timeout: float = TIMEOUT) -> Optional[str]:
     opener = urllib.request.build_opener(_NoRedirect)
     request = urllib.request.Request(LATEST_URL, method="HEAD")
     try:
-        opener.open(request, timeout=timeout)
-        return None  # no redirect: no release, or the page changed
+        with opener.open(request, timeout=timeout):
+            return None  # no redirect: no release, or the page changed
     except urllib.error.HTTPError as e:
-        if e.code not in (301, 302, 303, 307, 308):
-            logging.info("Release check: HTTP %s", e.code)
-            return None
-        match = _TAG_RE.search(e.headers.get("Location", ""))
-        return match.group(1) if match else None
+        with e:  # it holds the response; close the connection
+            if e.code not in (301, 302, 303, 307, 308):
+                logging.info("Release check: HTTP %s", e.code)
+                return None
+            match = _TAG_RE.search(e.headers.get("Location", ""))
+            return match.group(1) if match else None
     except Exception as e:
         logging.info("Release check failed (%s)", type(e).__name__)
         return None

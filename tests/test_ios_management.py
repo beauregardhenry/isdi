@@ -2,7 +2,6 @@
 summary of a scan for the client."""
 
 import json
-import sqlite3
 
 import pytest
 
@@ -125,10 +124,10 @@ def test_ios_scanner_runs_the_check(monkeypatch):
     assert IosScanner().device_management("abc") == {"checked": True, "s": "abc"}
 
 
-def test_databases_from_before_the_check_gain_the_column(tmp_path):
+def test_databases_from_before_the_check_gain_the_column(tmp_path, connect):
     v6 = db.SCHEMA_SQL.replace(",\n  device_management TEXT", "")
     assert v6 != db.SCHEMA_SQL
-    conn = sqlite3.connect(tmp_path / "v6.db")
+    conn = connect(tmp_path / "v6.db")
     conn.executescript(v6)
     conn.execute("PRAGMA user_version = 6")
     conn.commit()

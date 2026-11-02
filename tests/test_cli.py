@@ -4,7 +4,6 @@ erasure, and the informational commands."""
 import json
 import os
 import shutil
-import sqlite3
 import stat
 import subprocess
 import sys
@@ -399,7 +398,7 @@ def isolated(tmp_path):
     return run, Path(paths["data"]["database"]), Path(paths["data"]["dumps"])
 
 
-def test_reset_writes_a_backup_first_then_deletes(isolated, tmp_path):
+def test_reset_writes_a_backup_first_then_deletes(isolated, tmp_path, connect):
     run, database, dumps = isolated
     backup_file = tmp_path / "before-reset.backup"
     res = run("reset", "-o", str(backup_file), input="DELETE EVERYTHING\n")
@@ -412,7 +411,7 @@ def test_reset_writes_a_backup_first_then_deletes(isolated, tmp_path):
     # The keys were kept, so restoring needs --replace.
     res = run("restore", "--replace", str(backup_file), input=f"{RESET_PASSPHRASE}\n")
     assert res.returncode == 0, res.stderr + res.stdout
-    conn = sqlite3.connect(database)
+    conn = connect(database)
     assert conn.execute("SELECT clientid FROM clients_notes").fetchall() == [
         ("20260101_009",)
     ]
@@ -440,12 +439,12 @@ def test_reset_writes_a_backup_first_then_deletes(isolated, tmp_path):
     ],
 )
 def test_reset_refuses_without_every_safeguard(
-    isolated, args, input, passphrase, message
+    isolated, connect, args, input, passphrase, message
 ):
     run, database, dumps = isolated
     res = run(*args, input=input, passphrase=passphrase)
     assert res.returncode == 1 and message in res.stdout + res.stderr
-    clients = sqlite3.connect(database).execute("SELECT clientid FROM clients_notes")
+    clients = connect(database).execute("SELECT clientid FROM clients_notes")
     assert clients.fetchall() == [("20260101_009",)]
 
 

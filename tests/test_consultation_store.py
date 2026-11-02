@@ -74,8 +74,8 @@ def test_export_and_erase_include_the_consultation(ctx):
     assert store.load("c-gdpr", "accounts") == []
 
 
-def test_an_older_database_gets_the_table(ctx, tmp_path):
-    con = sqlite3.connect(tmp_path / "old.db")
+def test_an_older_database_gets_the_table(ctx, tmp_path, connect):
+    con = connect(tmp_path / "old.db")
     con.executescript(
         db.SCHEMA_SQL.split("CREATE TABLE IF NOT EXISTS consultation_docs")[0]
     )

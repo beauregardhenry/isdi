@@ -73,6 +73,13 @@ isdi = [
 testpaths = ["tests"]
 xfail_strict = true
 addopts = "--strict-markers"
+# A database connection (or file) left for garbage collection fails the
+# test that was running when it was collected. Close what you open; the
+# `connect` fixture in tests/conftest.py does it for you.
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.mypy]
 files = ["src/isdi"]

@@ -40,6 +40,7 @@ def github(monkeypatch):
     Handler.base = base
     yield Handler
     server.shutdown()
+    server.server_close()
 
 
 @pytest.mark.parametrize(
