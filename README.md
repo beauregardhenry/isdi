@@ -150,8 +150,18 @@ pip install -c https://github.com/beauregardhenry/isdi/releases/download/v1.12.0
   "isdi-scanner[report] @ https://github.com/beauregardhenry/isdi/releases/download/v1.12.0/isdi_scanner-1.12.0-py3-none-any.whl"
 ```
 
-Without it, everything else works, and the report can be printed or
-saved as PDF from the browser.
+To check that the system libraries WeasyPrint needs are installed (Pango,
+and HarfBuzz-Subset, which future WeasyPrint versions will require):
+
+```bash
+python -W always -c "import weasyprint"
+```
+
+No output means they are there. An error or a warning names what is
+missing: install the packages listed above for your system.
+
+Without the `report` extra, everything else works, and the report can be
+printed or saved as PDF from the browser.
 
 > **Note:** this fork uses the same package name, `isdi-scanner`, as
 > upstream's PyPI release. Installing it replaces upstream's version, but
