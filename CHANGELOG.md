@@ -7,6 +7,11 @@ have no section here.
 
 ## Unreleased
 
+- **Easier to read and to use with a screen reader.** Outline buttons
+  (grey, blue and red) and warning text on the blue rows of scan results
+  are darker, so they meet the WCAG 2.1 AA contrast minimum. The printable
+  consultation report now has a main landmark. An automated check (axe)
+  of every page, signed in and after a scan, finds no problems.
 - **Damaged iPhone scans fail clearly.** An iPhone dump ISDi could not
   read (cut off, or with stray tool output in it) stopped the scan with
   the message `'DeviceClass'`. It now reports that the app list could not

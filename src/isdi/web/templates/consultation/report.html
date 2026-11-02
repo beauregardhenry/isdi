@@ -26,6 +26,7 @@
 </style>
 </head>
 <body>
+<main>
 
 {% macro fmt(v) -%}
   {%- if v is none or v == "" or v == [] -%}{{ t("Not answered") }}
@@ -157,5 +158,6 @@
   {% if not takehome and a.notes.consultant_notes %}<p><b>Consultant notes:</b> {{ a.notes.consultant_notes }}</p>{% endif %}
 {% endfor %}
 
+</main>
 </body>
 </html>

@@ -239,11 +239,23 @@ a:not(.btn), .btn-link { text-decoration: underline; }
 .btn-primary:hover, .btn-primary:focus { background-color: #004085; border-color: #004085; }
 .text-primary { color: #0056b3 !important; }
 .text-muted { color: #5a6268 !important; }
-.text-warning { color: #856404 !important; }
+/* #856404 fell to 4.24:1 on the blue rows of scan results (#cce5ff). */
+.text-warning { color: #725600 !important; }
 .text-danger { color: #b02a37 !important; }
 .text-info { color: #0c6b7a !important; }
 .text-success { color: #1e7b34 !important; }
 code { color: #a8255e; }
+/* Outline buttons: Bootstrap's grey, blue and red text fall below 4.5:1 on
+   the page background. Filled on hover and focus, with white text. */
+.btn-outline-secondary { color: #5a6268; border-color: #5a6268; }
+.btn-outline-primary { color: #0056b3; border-color: #0056b3; }
+.btn-outline-danger { color: #b02a37; border-color: #b02a37; }
+.btn-outline-secondary:hover, .btn-outline-secondary:focus,
+.btn-outline-secondary:not(:disabled):not(.disabled):active { color: #ffffff; background-color: #5a6268; border-color: #5a6268; }
+.btn-outline-primary:hover, .btn-outline-primary:focus,
+.btn-outline-primary:not(:disabled):not(.disabled):active { color: #ffffff; background-color: #0056b3; border-color: #0056b3; }
+.btn-outline-danger:hover, .btn-outline-danger:focus,
+.btn-outline-danger:not(:disabled):not(.disabled):active { color: #ffffff; background-color: #b02a37; border-color: #b02a37; }
 
 /* A visible focus ring for keyboard users. */
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
