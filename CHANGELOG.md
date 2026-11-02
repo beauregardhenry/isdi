@@ -5,11 +5,27 @@ starts with its section from this file, followed by the list of merged
 pull requests. Patch releases that only update the stalkerware blocklist
 have no section here.
 
-## Unreleased
+## 1.12.0
+
+This release is about trusting what a scan shows. On iPhones, the check
+for jailbreak apps most likely never fired before this release; it now
+reads the field real phones report.
+Damaged or crafted input from a phone or an app no longer fails a scan or
+garbles its results. Raw phone data can be kept off the disk, and ISDi
+warns when the disk is not encrypted. The pages are easier to use with a
+keyboard or a screen reader.
+
+Three things have not been tried on real hardware: the jailbreak-app fix
+(no jailbroken iPhone was available), `--ram-dumps` on a Mac (tested with
+simulated tools), and the Android checks added in 1.11.0. Before relying
+on them, run `isdi field-test android` on a test phone with an app
+installed from outside the Play Store, and start ISDi once on a Mac with
+`isdi run --ram-dumps`.
 
 - **Jailbreak apps are found on iPhones.** The jailbreak check looks for
   apps such as Cydia, Sileo, Zebra and Filza. It read each app's id from
-  a field the phone's app list does not have, so it never found one; only
+  a field the phone's app list does not have, so it most likely never
+found one; only
   its other check (the afc2 service) could report a jailbreak. It now
   reads the id the phone gives. Not yet confirmed on a jailbroken phone.
 - **A crafted app can no longer stop an Android scan.** ISDi reads the
@@ -18,40 +34,6 @@ have no section here.
   raise errors the scan did not catch, so the whole scan failed. Those
   apps are now marked "signer not checked" and the scan goes on. An
   iPhone profile list with unexpected entries is handled the same way.
-- **Flag meanings without a mouse.** What each flag means was shown only
-  in a tooltip on hover, which a keyboard or a touch screen cannot open.
-  Scan results and the consultation's device page now have a "What the
-  flags mean" section listing each flag in that scan. The explanation of
-  "Managed (supervision, profiles)" is now visible text, and the
-  uninstall buttons are named for screen readers. A keyboard-only walk of
-  every page found every control reachable with a visible focus ring.
-- **Checked: a phone cannot inject markup into ISDi's pages.** Every
-  string a phone or app reports (app names, permission reasons, the model
-  name, root-check output, configuration profiles and who manages them)
-  was scanned with markup in it and shown on every page that displays a
-  scan, the consultation record and the report. All of it appeared as
-  text. Flag names, which come from ISDi's own lists, are now escaped too.
-- **Easier to read and to use with a screen reader.** Outline buttons
-  (grey, blue and red) and warning text on the blue rows of scan results
-  are darker, so they meet the WCAG 2.1 AA contrast minimum. The printable
-  consultation report now has a main landmark. An automated check (axe)
-  of every page, signed in and after a scan, finds no problems.
-- **Damaged iPhone scans fail clearly.** An iPhone dump ISDi could not
-  read (cut off, or with stray tool output in it) stopped the scan with
-  the message `'DeviceClass'`. It now reports that the app list could not
-  be read and says what to check. The same message on Android no longer
-  points to a file that does not exist.
-- **App-written iPhone data no longer garbles a scan.** An app writes its
-  own entitlements and permission reasons. A single permission given as
-  text was shown letter by letter, and values of an unexpected type cost
-  the app its details. A cut-off Android dump that ended inside its
-  network statistics also crashed the app page.
-- **A scan no longer fails when the phone is unplugged mid-dump.** A
-  package list cut off part-way through a line used to stop the whole
-  scan with an error. ISDi now keeps the apps that arrived, including the
-  partial last one. Unplugging still leaves later apps out, so scan again
-  for a full list.
-
 - **Raw phone data can stay off the disk.** `isdi run --ram-dumps` keeps
   the dump folder on a disk in memory: phone dumps, unredacted evidence
   output and the apps copied to read their signer never reach the real
@@ -69,6 +51,39 @@ have no section here.
   when there is no LUKS layer under the data folder. It records what it
   found in the audit log. When it cannot tell (WSL, Windows, Termux,
   btrfs or ZFS volumes), it says nothing rather than raise a false alarm.
+- **A scan no longer fails when the phone is unplugged mid-dump.** A
+  package list cut off part-way through a line used to stop the whole
+  scan with an error. ISDi now keeps the apps that arrived, including the
+  partial last one. Unplugging still leaves later apps out, so scan again
+  for a full list.
+- **Damaged iPhone scans fail clearly.** An iPhone dump ISDi could not
+  read (cut off, or with stray tool output in it) stopped the scan with
+  the message `'DeviceClass'`. It now reports that the app list could not
+  be read and says what to check. The same message on Android no longer
+  points to a file that does not exist.
+- **App-written iPhone data no longer garbles a scan.** An app writes its
+  own entitlements and permission reasons. A single permission given as
+  text was shown letter by letter, and values of an unexpected type cost
+  the app its details. A cut-off Android dump that ended inside its
+  network statistics also crashed the app page.
+- **Flag meanings without a mouse.** What each flag means was shown only
+  in a tooltip on hover, which a keyboard or a touch screen cannot open.
+  Scan results and the consultation's device page now have a "What the
+  flags mean" section listing each flag in that scan. The explanation of
+  "Managed (supervision, profiles)" is now visible text, and the
+  uninstall buttons are named for screen readers. A keyboard-only walk of
+  every page found every control reachable with a visible focus ring.
+- **Easier to read and to use with a screen reader.** Outline buttons
+  (grey, blue and red) and warning text on the blue rows of scan results
+  are darker, so they meet the WCAG 2.1 AA contrast minimum. The printable
+  consultation report now has a main landmark. An automated check (axe)
+  of every page, signed in and after a scan, finds no problems.
+- **Checked: a phone cannot inject markup into ISDi's pages.** Every
+  string a phone or app reports (app names, permission reasons, the model
+  name, root-check output, configuration profiles and who manages them)
+  was scanned with markup in it and shown on every page that displays a
+  scan, the consultation record and the report. All of it appeared as
+  text. Flag names, which come from ISDi's own lists, are now escaped too.
 
 ## 1.11.0
 
