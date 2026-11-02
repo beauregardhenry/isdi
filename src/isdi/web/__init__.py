@@ -1,10 +1,6 @@
 """Web interface modules"""
 
 from flask import Blueprint
-from flask_sqlalchemy import SQLAlchemy
-
-# SQLAlchemy instance
-sa = SQLAlchemy()
 
 # All pages. The view modules attach their routes to this blueprint when
 # they are imported, so every app created by create_app() gets all routes.
@@ -30,4 +26,4 @@ def init_routes(flask_app):
     flask_app.register_blueprint(bp)
 
 
-__all__ = ["init_routes", "bp", "sa"]
+__all__ = ["init_routes", "bp"]

@@ -113,15 +113,13 @@ def test_live_scan_is_recorded_with_its_provenance(app, phone):  # noqa: F811
 
 
 def test_note_edits_keep_old_and_new_values(app, no_csrf):
-    from isdi.web.model import Client
-
     c = app.test_client()
     clientid = f"au_{uuid.uuid4().hex[:8]}"
     with c.session_transaction() as s:
         s["clientid"] = clientid
     c.post("/form/", data=_valid_form_data(general_notes="first version"))
     with app.app_context():
-        pk = Client.query.filter_by(clientid=clientid).first().id
+        pk = db.get_notes_for_client(clientid)["id"]
     c.post("/form/edit/", data={"clientnote": pk})
     c.post("/form/edit/", data=_valid_form_data(general_notes="second version"))
 
