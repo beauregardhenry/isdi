@@ -24,6 +24,11 @@ have no section here.
   the Android privacy check left network connections and command pipes
   open the same way. Each is now closed when it is done. The tests fail
   if anything is left open.
+- **Python 3.11 or newer is required.** Python 3.10 reached its end of
+  life in October 2026, and WTForms 3.3, which ISDi now needs, does not
+  support it. Ubuntu 22.04's Python is 3.10: use Ubuntu 24.04 or later,
+  or install a newer Python. The forms' answer choices use WTForms 3.3's
+  new format, so they keep working when WTForms 3.4 drops the old one.
 
 ## 1.12.0
 

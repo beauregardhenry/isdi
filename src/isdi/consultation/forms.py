@@ -12,6 +12,7 @@ from wtforms import (
     FormField,
     HiddenField,
     RadioField,
+    SelectChoice,
     SelectMultipleField,
     StringField,
     TextAreaField,
@@ -38,7 +39,7 @@ class CheckboxesField(SelectMultipleField):
 
     def pre_validate(self, form):
         # An answer the form no longer offers is dropped, not an error.
-        values = {c[0] for c in self.choices}
+        values = {c.value for c in self.choices}
         self.data = [d for d in (self.data or []) if d in values]
 
 
@@ -229,7 +230,11 @@ class ManualDeviceForm(Form):
     device_nickname = StringField("Device nickname", validators=[InputRequired()])
     device_type = RadioField(
         "Device type",
-        choices=[("android", "Android"), ("ios", "iOS"), ("other", "Other")],
+        choices=[
+            SelectChoice("android", "Android"),
+            SelectChoice("ios", "iOS"),
+            SelectChoice("other", "Other"),
+        ],
         default="other",
     )
     device_manufacturer = StringField("Manufacturer")

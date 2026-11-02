@@ -7,7 +7,7 @@ name = "isdi-scanner"
 version = "1.12.0"
 description = "ISDi - Stalkerware Scanner"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     {name = "ISDI Contributors"}
@@ -18,7 +18,6 @@ classifiers = [
     "Intended Audience :: End Users/Desktop",
     "Topic :: Security",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -31,7 +30,8 @@ dependencies = [
     "click>=8.0",
     "cryptography>=41",
     "rsonlite>=0.1.0",
-    "wtforms>=3.0",
+    # 3.3: SelectChoice (tuple choices are deprecated, removed in 3.4).
+    "wtforms>=3.3",
 ]
 
 [project.optional-dependencies]
@@ -79,6 +79,8 @@ addopts = "--strict-markers"
 filterwarnings = [
     "error::ResourceWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
+    # wtforms 3.4 drops these; form choices are SelectChoice objects.
+    "error:Passing SelectField choices:DeprecationWarning",
 ]
 
 [tool.mypy]
