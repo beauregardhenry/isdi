@@ -218,3 +218,44 @@ def test_ios_timeout_is_inconclusive(lockdown):
     lockdown.afc2 = "timeout"
     rooted, reasons = root_check.check_ios_jailbreak("UDID", "pmd3", [])
     assert rooted is None and any("timed out" in r for r in reasons)
+
+
+# --- jailbreak apps, as a real scan sees them ----------------------------------------
+# pymobiledevice3's `apps list` (which ios_scan.sh writes into the dump) maps
+# each bundle id to the app's details, which carry it as CFBundleIdentifier.
+# The check read app["Identifier"], a key real apps do not have, so it never
+# found a jailbreak app; the test above passes "Identifier" itself.
+
+
+@pytest.mark.parametrize("appid", sorted(root_check.IOS_JAILBREAK_PACKAGES))
+def test_jailbreak_app_found_in_a_real_dump(lockdown, tmp_path, appid):
+    import json
+
+    from isdi.scanner.parse_dump import IosDump
+
+    dump = tmp_path / "phone.json"
+    dump.write_text(
+        json.dumps(
+            {
+                "apps": {
+                    "com.apple.mobilesafari": {
+                        "CFBundleIdentifier": "com.apple.mobilesafari",
+                        "ApplicationType": "System",
+                    },
+                    appid: {"CFBundleIdentifier": appid, "ApplicationType": "User"},
+                },
+                "devinfo": {"DeviceClass": "iPhone", "ProductType": "iPhone14,2"},
+            }
+        )
+    )
+    apps = IosDump(str(dump)).appinfo  # what IosScanner.isrooted passes
+    rooted, reasons = root_check.check_ios_jailbreak("UDID", "pmd3", apps)
+    assert rooted is True and any(appid in r for r in reasons)
+
+
+@pytest.mark.parametrize("value", [None, 1, ["x"], {"x": 1}])
+def test_odd_bundle_ids_do_not_break_the_check(lockdown, value):
+    rooted, reasons = root_check.check_ios_jailbreak(
+        "UDID", "pmd3", [{"CFBundleIdentifier": value}, {"Identifier": value}]
+    )
+    assert rooted is False
