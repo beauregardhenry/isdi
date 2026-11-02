@@ -38,7 +38,11 @@ def info_path(monkeypatch, tmp_path):
     monkeypatch.setattr(AppScanner, "app_info_conn", None)
     path = tmp_path / "app-info.db"
     monkeypatch.setattr(scanner.cfg, "APP_INFO_SQLITE_FILE", f"sqlite:///{path}")
-    return path
+    yield path
+    # A scanner made in the test may have opened it; monkeypatch then puts
+    # the previous connection back, so close this one first.
+    if AppScanner.app_info_conn is not None:
+        AppScanner.app_info_conn.close()
 
 
 def test_a_missing_database_is_not_created_empty(info_path):

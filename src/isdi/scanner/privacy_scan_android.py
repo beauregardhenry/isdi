@@ -51,18 +51,22 @@ LEGACY_SCREENSHOT = (
 )
 
 
-def run_command(args):
+def run_command(args, timeout=4):
     """Run adb with these arguments (no shell); return (stdout, stderr)."""
     logging.debug("Running %s", redact(shlex.join(args)))
     try:
-        p = Popen(list(args), stdout=PIPE, stderr=PIPE)
-        p.wait(4)
-        return p.stdout.read().decode("utf-8"), p.stderr.read().decode("utf-8")
+        # The with block closes both pipes; communicate() reads them while
+        # waiting, so a full pipe cannot stall the command.
+        with Popen(list(args), stdout=PIPE, stderr=PIPE) as p:
+            try:
+                out, err = p.communicate(timeout=timeout)
+            except TimeoutExpired:
+                p.kill()
+                p.communicate()
+                return "", "Command timed out"
+        return out.decode("utf-8"), err.decode("utf-8")
     except FileNotFoundError as e:
         return "", f"Command not found: {e}"
-    except TimeoutExpired:
-        p.kill()
-        return "", "Command timed out"
     except Exception as e:
         return "", f"Error: {e}"
 

@@ -25,7 +25,8 @@ def test_images_have_alt_text_and_real_paths(template):
     "image", ["apple.resized.png", "android.resiz.png", "usb_android.resized.png"]
 )
 def test_instruction_images_are_served(client, image):
-    assert client.get(f"/static/images/{image}").status_code == 200
+    with client.get(f"/static/images/{image}") as r:
+        assert r.status_code == 200
 
 
 @pytest.mark.parametrize(

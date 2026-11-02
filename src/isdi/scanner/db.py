@@ -328,6 +328,16 @@ def close_db(exc=None):
         db.close()
 
 
+def close_thread_db():
+    """Close this thread's own connection, if get_db() opened one (outside
+    an app context, as in a background scan). Call when the thread is done:
+    otherwise the connection stays open until garbage collection."""
+    db = getattr(_thread_local, "db", None)
+    _thread_local.db = None
+    if db is not None:
+        db.close()
+
+
 def init_db(app, force=False):
     app.teardown_appcontext(close_db)
     with app.app_context():

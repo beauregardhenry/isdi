@@ -53,7 +53,8 @@ def test_signers_are_parsed_and_normalised(script, tmp_path):
 def test_signers_file_is_sorted_and_loads(script, tmp_path, monkeypatch):
     out = tmp_path / "stalkerware-signers.csv"
     script.write_signers({"BB" * 20: "B", "AA" * 20: "A"}, out)
-    rows = list(csv.reader(out.open()))
+    with out.open() as f:
+        rows = list(csv.reader(f))
     assert rows == [["sha1", "app"], ["AA" * 20, "A"], ["BB" * 20, "B"]]
     from isdi.scanner import blocklist
 

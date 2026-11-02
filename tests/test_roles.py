@@ -2,7 +2,6 @@
 started, supervisors open every client, and scans are changed only in
 their own client's session."""
 
-import sqlite3
 import uuid
 
 import pytest
@@ -166,12 +165,12 @@ def test_cli_roles(app, cli):
         users.create("x" + name, "N", PASSWORD, role="admin")
 
 
-def test_accounts_from_before_roles_become_supervisors(tmp_path):
+def test_accounts_from_before_roles_become_supervisors(tmp_path, connect):
     """They could open every client before: the upgrade keeps that."""
     v5 = db.SCHEMA_SQL.replace(",\n  role TEXT NOT NULL DEFAULT 'staff'", "")
     v5 = v5[: v5.index("-- Which clients a staff account")]
     path = tmp_path / "v5.db"
-    conn = sqlite3.connect(path)
+    conn = connect(path)
     conn.executescript(v5)
     conn.execute(
         "INSERT INTO users (username, password_hash, created) VALUES ('old', 'h', 't')"

@@ -213,7 +213,15 @@ def test_run_command_reports_failures(monkeypatch, error, message):
             if isinstance(error, FileNotFoundError):
                 raise error
 
-        def wait(self, t):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def communicate(self, timeout=None):
+            if getattr(self, "killed", False):
+                return b"", b""  # reaped after the kill
             raise error
 
         def kill(self):
@@ -258,3 +266,13 @@ def test_a_check_cannot_be_started_by_a_link(client):
 
 def test_a_check_needs_the_csrf_token(client):
     assert client.post("/privacy/android/screenshot").status_code == 400
+
+
+def test_run_command_gives_up_on_a_stuck_command():
+    out, err = ps.run_command(["sh", "-c", "sleep 30"], timeout=0.5)
+    assert (out, err) == ("", "Command timed out")
+
+
+def test_run_command_reports_a_missing_program():
+    out, err = ps.run_command(["isdi-no-such-program-xyz"])
+    assert out == "" and err.startswith("Command not found")

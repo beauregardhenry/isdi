@@ -29,7 +29,8 @@ def metadata(monkeypatch):
         ],
     )
     monkeypatch.setattr(AppScanner, "app_info_conn", conn)
-    return conn
+    yield conn
+    conn.close()
 
 
 @pytest.fixture

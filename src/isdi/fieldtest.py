@@ -89,7 +89,8 @@ def android(sc, serial: str) -> Dict[str, Any]:
         if dump is None:
             return report
         secrets += apps
-        text = open(sc.dump_path(serial), errors="replace").read()
+        with open(sc.dump_path(serial), errors="replace") as f:
+            text = f.read()
         sections = parse_dump._sections(text)
         report["dump"].update(
             {

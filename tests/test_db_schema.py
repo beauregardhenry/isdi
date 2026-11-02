@@ -4,6 +4,7 @@ the intake form (web/forms/client.py), the clients_notes table
 missing from the encrypted list would be saved in the clear, or not at all."""
 
 import sqlite3
+from contextlib import closing
 
 from isdi.scanner import db
 from isdi.web.forms import ClientForm
@@ -13,9 +14,9 @@ BOOKKEEPING = {"id", "created_at", "clientid"}
 
 
 def _table_columns(table):
-    conn = sqlite3.connect(":memory:")
-    conn.executescript(db.SCHEMA_SQL)
-    return {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+    with closing(sqlite3.connect(":memory:")) as conn:
+        conn.executescript(db.SCHEMA_SQL)
+        return {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
 
 
 def test_every_form_field_is_an_encrypted_column():
