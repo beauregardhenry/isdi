@@ -138,16 +138,19 @@ def test_hostile_phone_text_stays_text(client_of, no_csrf, hostile_phone):
     pages["start page"] = client.get("/").get_data(as_text=True)
 
     # The consultation record, with this phone added to it.
-    r = client.post("/consultation/devices/add", data={"scan_id": scanid})
+    r = client.post("/consultation/devices/add", data={"scanid": scanid})
+    assert r.status_code == 302, r.status_code
     pages["consultation"] = client.get("/consultation").get_data(as_text=True)
-    for path in sorted(
+    device_pages = sorted(
         set(
             re.findall(
                 r'href="(/consultation/devices/[^"/]+/(?:apps|questions))"',
                 pages["consultation"],
             )
         )
-    ):
+    )
+    assert len(device_pages) == 2, device_pages  # the apps and the questions
+    for path in device_pages:
         pages[path] = client.get(path).get_data(as_text=True)
     for query in ("", "?copy=takehome", "?copy=takehome&lang=es"):
         pages[f"report{query}"] = client.get(f"/consultation/report{query}").get_data(
