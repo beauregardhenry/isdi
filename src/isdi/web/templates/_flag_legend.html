@@ -1,0 +1,14 @@
+{#- What each flag in `apps` means. The flags show this in hover tooltips,
+    which a keyboard or a touch screen cannot open; this is the same text. -#}
+{% set legend = flag_legend(apps) %}
+{% if legend %}
+<details class="isdi-flag-legend mt-2">
+<summary>What the flags mean</summary>
+<dl class="mb-0 mt-2">
+{% for flag, colour, meaning in legend %}
+  <dt class="{{ 'text-' ~ colour if colour else '' }}">{{ flag }}</dt>
+  <dd>{{ meaning }}</dd>
+{% endfor %}
+</dl>
+</details>
+{% endif %}

@@ -7,6 +7,13 @@ have no section here.
 
 ## Unreleased
 
+- **Flag meanings without a mouse.** What each flag means was shown only
+  in a tooltip on hover, which a keyboard or a touch screen cannot open.
+  Scan results and the consultation's device page now have a "What the
+  flags mean" section listing each flag in that scan. The explanation of
+  "Managed (supervision, profiles)" is now visible text, and the
+  uninstall buttons are named for screen readers. A keyboard-only walk of
+  every page found every control reachable with a visible focus ring.
 - **Checked: a phone cannot inject markup into ISDi's pages.** Every
   string a phone or app reports (app names, permission reasons, the model
   name, root-check output, configuration profiles and who manages them)
