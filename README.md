@@ -1,44 +1,74 @@
-# IPV Spyware Discovery (ISDi) Tool
+# ISDi: IPV Spyware Discovery
 
-ISDi tool checks Android or iOS devices for apps that can be used for surveillaince
-(a.k.a "stalkerware", "spouseware", "spyware" apps). ISDi's technical details are included
-in ["Clinical Computer Security for Victims of Intimate Partner Violence"
-(USENIX 2019)](https://www.usenix.org/conference/usenixsecurity19/presentation/havron). The blacklist is based
-on apps crawled in ["The Spyware Used in Intimate Partner Violence" (IEEE S&P 2018)](https://www.computer.org/csdl/pds/api/csdl/proceedings/download-article/12OmNxWuiny/pdf).
+ISDi checks an Android phone or iPhone for stalkerware: apps and settings
+that let someone else watch the person who carries it. It is built for
+staff at tech-abuse clinics and domestic-violence services, who run it on
+a laptop with the client present and go through the results together.
+It runs in a browser on that laptop, and client data stays on it.
 
 [![Tests](https://github.com/beauregardhenry/isdi/actions/workflows/tests.yml/badge.svg)](https://github.com/beauregardhenry/isdi/actions/workflows/tests.yml)
 [![ISDI_Linter](https://github.com/beauregardhenry/isdi/actions/workflows/super-linter.yml/badge.svg)](https://github.com/beauregardhenry/isdi/actions/workflows/super-linter.yml)
 [![Sync with IOC stalkerware indicators](https://github.com/beauregardhenry/isdi/actions/workflows/get-stalkerware-indicators.yml/badge.svg)](https://github.com/beauregardhenry/isdi/actions/workflows/get-stalkerware-indicators.yml)
 
+## What it finds
+
+- **Known stalkerware, by name and by signing certificate.** The list comes
+  from the [stalkerware-indicators](https://github.com/AssoEchap/stalkerware-indicators)
+  project and is synced weekly. On Android, matching the certificate catches copies
+  that were renamed to avoid the list.
+- **Apps that hide and hold powers (Android).** An app installed outside the store,
+  with no icon in the app list, that holds accessibility, notification
+  access or device administrator rights. This does not depend on any list.
+- **Phone-wide control.** Device owner and Android special access; iPhone
+  supervision and configuration profiles; rooting and jailbreaks.
+- **Apps named to blend in.** iPhone apps are listed by their home-screen
+  name, which is how the client knows them.
+
+Each release ends with a [detection scorecard](https://github.com/beauregardhenry/isdi/releases/latest).
+In the latest one, every listed package (615) and certificate (473) is
+matched, and so are 98% of the known stalkerware samples that record a
+package or certificate (1,562 of 1,594). The samples it misses each use
+their own random name and key, which no list can match. The checks for
+hidden apps and powers are there for those.
+
+## For staff
+
+Start with the one-page [quick start for advocates](docs/STAFF_QUICKSTART.md).
+ISDi keeps a consultation record per client (questionnaire, account
+checks, notes, screenshots) and produces a report and a take-home copy.
+
+Client data is encrypted at rest, every page needs a sign-in, and raw
+phone dumps exist only while the phone is scanned; see [DATA_PROTECTION.md](DATA_PROTECTION.md). For using ISDi
+records in court, see [COURT_RECORDS.md](COURT_RECORDS.md) (one-page
+version for counsel: [docs/COUNSEL_BRIEF.md](docs/COUNSEL_BRIEF.md)).
+
 ## About this fork
 
-This is a maintained fork of [stopipv/isdi](https://github.com/stopipv/isdi).
-It fixes security and detection bugs in upstream 1.0.9, including a command
-injection reachable from any web page and a blocklist that flagged no known
-stalkerware (see the [releases](https://github.com/beauregardhenry/isdi/releases)).
-It is distributed through GitHub releases, not PyPI: the `isdi-scanner`
-package on PyPI is upstream's. When the stalkerware blocklist changes, a
-patch release is published, so upgrade regularly to detect newly listed apps.
-What each release changes for staff is in [CHANGELOG.md](CHANGELOG.md).
+This is a maintained fork of [stopipv/isdi](https://github.com/stopipv/isdi),
+the tool described in ["Clinical Computer Security for Victims of Intimate
+Partner Violence" (USENIX Security 2019)](https://www.usenix.org/conference/usenixsecurity19/presentation/havron).
+Its original app list came from ["The Spyware Used in Intimate Partner
+Violence" (IEEE S&P 2018)](https://www.computer.org/csdl/pds/api/csdl/proceedings/download-article/12OmNxWuiny/pdf).
+The fork fixes security and detection bugs in upstream 1.0.9, including a
+command injection reachable from any web page and a blocklist that
+flagged no known stalkerware. It also absorbed the consultation workflow
+of the retired Sherloc fork.
 
-Staff using ISDi with clients: start with the one-page
-[quick start for advocates](docs/STAFF_QUICKSTART.md).
+It is distributed through [GitHub releases](https://github.com/beauregardhenry/isdi/releases),
+not PyPI: the `isdi-scanner` package on PyPI is upstream's. A patch
+release follows each blocklist change, so upgrade regularly. What each
+release changes for staff is in [CHANGELOG.md](CHANGELOG.md).
 
-Client data is encrypted at rest and raw phone dumps are not kept unless an
-evidence copy is asked for; see [DATA_PROTECTION.md](DATA_PROTECTION.md).
-For using ISDi records in court, see [COURT_RECORDS.md](COURT_RECORDS.md)
-(one-page version for counsel: [docs/COUNSEL_BRIEF.md](docs/COUNSEL_BRIEF.md)).
-To have the Spanish translation reviewed, see [docs/review/](docs/review/README.md).
 To help confirm ISDi's checks on real phones, see [FIELD_TEST.md](FIELD_TEST.md)
-(`isdi field-test`, on a test phone).
+(`isdi field-test`, on a test phone). To have the Spanish translation
+reviewed, see [docs/review/](docs/review/README.md). To report a security
+problem, see [SECURITY.md](SECURITY.md). For anything else, open an
+[issue](https://github.com/beauregardhenry/isdi/issues).
 
-**Upgrading to 1.5:** every page now needs a sign-in. The first time ISDi
-starts after the upgrade, it asks for a first account (username, full
-name, password) in the terminal; add one for each other person with
-`isdi user add`. ISDi no longer asks for a name at startup.
-
-To report a security problem, see [SECURITY.md](SECURITY.md). For anything
-else, open an [issue](https://github.com/beauregardhenry/isdi/issues).
+**Upgrading from before 1.5:** every page now needs a sign-in. The first
+time ISDi starts after the upgrade, it asks for a first account
+(username, full name, password) in the terminal; add one for each other
+person with `isdi user add`.
 
 
 ## Installing ISDi :computer:
